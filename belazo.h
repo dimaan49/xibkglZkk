@@ -1,33 +1,32 @@
 #ifndef BELAZO_H
 #define BELAZO_H
 
-#include "ciphercore.h"
+#include "cipherinterface.h"
 
-class BelazoCipher {
-private:
-    QString alphabet;
-
+class BelazoCipher : public CipherInterface
+{
 public:
     BelazoCipher();
 
-    // Шифрование Белазо с ключевым словом
-    CipherResult encrypt(const QString& text, const QString& key) const;
+    CipherResult encrypt(const QString& text, const QVariantMap& params = {}) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params = {}) override;
 
-    // Дешифрование Белазо с ключевым словом
-    CipherResult decrypt(const QString& text, const QString& key) const;
-
-    QString name() const;
-    QString description() const;
+    QString name() const override { return "Шифр Белазо"; }
+    QString description() const override {
+        return "Полиалфавитный шифр с ключевым словом";
+    }
 
 private:
-    // Генерация повторяющегося ключа
+    QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+
     QString generateKey(const QString& text, const QString& key) const;
-
-    // Нормализация сдвига
-    int normalizeShift(int shift) const;
-
-    // Получение индекса буквы
-    int getLetterIndex(QChar letter) const;
 };
+
+class BelazoCipherRegister {
+public:
+    BelazoCipherRegister();
+};
+
+static BelazoCipherRegister belazoRegister;
 
 #endif // BELAZO_H

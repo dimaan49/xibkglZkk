@@ -8,38 +8,25 @@ TARGET = cryptoApp
 TEMPLATE = app
 
 SOURCES += \
+    main.cpp \
+    mainwindow.cpp \
+    cipherfactory.cpp \
+    atbash.cpp \
     belazo.cpp \
     caesar.cpp \
-    cardano.cpp \
-    columnarcipher.cpp \
     formatter.cpp \
-    logger.cpp \
-    main.cpp \
-    ciphercore.cpp \
-    atbash.cpp \
-    mainwindow.cpp \
-    routecipher.cpp \
-    trithemius.cpp \
-    vigenere_auto.cpp \
-    vigenere_ciphertext.cpp
-
+    logger.cpp
 
 HEADERS += \
-    belazo.h \
-    caesar.h \
-    cardano.h \
+    mainwindow.h \
+    cipherinterface.h \
+    cipherfactory.h \
     ciphercore.h \
     atbash.h \
-    cipherinterface.h \
-    columnarcipher.h \
+    belazo.h \
+    caesar.h \
     formatter.h \
-    logger.h \
-    mainwindow.h \
-    routecipher.h \
-    trithemius.h \
-    vigenere_auto.h \
-    vigenere_ciphertext.h
-
+    logger.h
 
 win32 {
     QMAKE_LFLAGS += -Wl,-subsystem,console

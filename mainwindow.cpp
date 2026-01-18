@@ -1,8 +1,8 @@
 #include "mainwindow.h"
-#include "atbash.h"
-#include "caesar.h"
-#include "vigenere_auto.h"
+#include "cipherfactory.h"
 #include "formatter.h"
+
+#include <iostream>
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -11,41 +11,38 @@
 #include <QTextEdit>
 #include <QPushButton>
 #include <QLabel>
-#include <QSpinBox>
-#include <QLineEdit>
 #include <QMessageBox>
-#include <iostream>
+#include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent),
-      cipherComboBox(nullptr),
-      inputTextEdit(nullptr),
-      outputTextEdit(nullptr),
-      debugConsole(nullptr),
-      encryptButton(nullptr),
-      decryptButton(nullptr),
-      clearButton(nullptr),
-      statusLabel(nullptr),
-      parametersGroup(nullptr),
-      parametersLayout(nullptr),
-      shiftSpinBox(nullptr),
-      keyLineEdit(nullptr),
-      startCharLineEdit(nullptr) {
-
+    : QMainWindow(parent)
+    , cipherComboBox(nullptr)
+    , inputTextEdit(nullptr)
+    , outputTextEdit(nullptr)
+    , debugConsole(nullptr)
+    , encryptButton(nullptr)
+    , decryptButton(nullptr)
+    , clearButton(nullptr)
+    , statusLabel(nullptr)
+    , parametersGroup(nullptr)
+    , parametersLayout(nullptr)
+{
     setupUI();
     setupCiphers();
 
-    setWindowTitle("Криптографическое приложение");
+    setWindowTitle("Криптографическое приложение с фабрикой");
     resize(800, 600);
 
     logToConsole("=== Приложение запущено ===");
+    logToConsole("Фабрика шифров инициализирована");
 }
 
-MainWindow::~MainWindow() {
-    // Qt автоматически удалит все виджеты
+MainWindow::~MainWindow()
+{
 }
 
-void MainWindow::setupUI() {
+void MainWindow::setupUI()
+{
     // Центральный виджет
     QWidget *centralWidget = new QWidget(this);
     setCentralWidget(centralWidget);
@@ -53,7 +50,7 @@ void MainWindow::setupUI() {
     // Основной layout
     QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
 
-    // 1. Выбор шифра - КОМБО-БОКС!
+    // 1. Выбор шифра
     QHBoxLayout *cipherSelectionLayout = new QHBoxLayout();
     cipherSelectionLayout->addWidget(new QLabel("Выберите шифр:"));
     cipherComboBox = new QComboBox();
@@ -61,7 +58,7 @@ void MainWindow::setupUI() {
     cipherSelectionLayout->addWidget(cipherComboBox);
     cipherSelectionLayout->addStretch();
 
-    // 2. Панель параметров (изначально пустая)
+    // 2. Панель параметров
     parametersGroup = new QGroupBox("Параметры шифра");
     parametersLayout = new QVBoxLayout(parametersGroup);
     parametersGroup->setLayout(parametersLayout);
@@ -102,13 +99,15 @@ void MainWindow::setupUI() {
     debugConsole->setReadOnly(true);
     debugConsole->setMaximumHeight(150);
     debugConsole->setStyleSheet("font-family: 'Courier New', monospace; font-size: 10pt; background-color: #f8f8f8; color: #000000;");
+    consoleLayout->addWidget(debugConsole);
+    consoleGroup->setLayout(consoleLayout);
 
     // 7. Статус
     statusLabel = new QLabel("Готов к работе. Выберите шифр из списка.");
     statusLabel->setStyleSheet("padding: 8px; background-color: #e8e8e8; border: 1px solid #ccc; border-radius: 3px; color: black;");
     statusLabel->setAlignment(Qt::AlignCenter);
 
-    // Компоновка всех элементов
+    // Компоновка
     mainLayout->addLayout(cipherSelectionLayout);
     mainLayout->addWidget(parametersGroup);
     mainLayout->addWidget(inputGroup);
@@ -120,274 +119,73 @@ void MainWindow::setupUI() {
     // Подключение сигналов
     connect(cipherComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &MainWindow::onCipherChanged);
-    connect(encryptButton, &QPushButton::clicked, this, &MainWindow::onEncryptClicked);
-    connect(decryptButton, &QPushButton::clicked, this, &MainWindow::onDecryptClicked);
-    connect(clearButton, &QPushButton::clicked, this, &MainWindow::onClearClicked);
+    connect(encryptButton, &QPushButton::clicked,
+            this, &MainWindow::onEncryptClicked);
+    connect(decryptButton, &QPushButton::clicked,
+            this, &MainWindow::onDecryptClicked);
+    connect(clearButton, &QPushButton::clicked,
+            this, &MainWindow::onClearClicked);
 }
 
-void MainWindow::setupCiphers() {
-    // Заполняем ComboBox шифрами
-    cipherComboBox->addItem("Атбаш");
-    cipherComboBox->addItem("Шифр Цезаря");
-    cipherComboBox->addItem("Виженер (самоключ)");
-    cipherComboBox->addItem("Тритемий");
-    cipherComboBox->addItem("Белазо");
-    cipherComboBox->addItem("Матричный шифр");
-    cipherComboBox->addItem("Маршрутная перестановка");
-    cipherComboBox->addItem("Шифр Кардано");
+void MainWindow::setupCiphers()
+{
+    // Получаем список шифров из фабрики
+    cipherComboBox->clear();
+    cipherComboBox->addItems(CipherFactory::instance().displayNames());
 
-    // Настраиваем шифраторы
-
-    // 1. Атбаш
-    encryptors["Атбаш"] = [](const QString& text) {
-        AtbashCipher cipher;
-        return cipher.encrypt(text);
-    };
-    decryptors["Атбаш"] = encryptors["Атбаш"]; // Atbash симметричен
-
-    // 2. Цезарь
-    encryptors["Шифр Цезаря"] = [this](const QString& text) {
-        CaesarCipher cipher;
-        return cipher.encrypt(text, getCaesarShift());
-    };
-    decryptors["Шифр Цезаря"] = [this](const QString& text) {
-        CaesarCipher cipher;
-        return cipher.decrypt(text, getCaesarShift());
-    };
-
-    // 3. Виженер
-    encryptors["Виженер (самоключ)"] = [this](const QString& text) {
-        VigenereAutoCipher cipher;
-        return cipher.encrypt(text, getVigenereStartChar());
-    };
-    decryptors["Виженер (самоключ)"] = [this](const QString& text) {
-        // Предполагаем, что шифр симметричный
-        VigenereAutoCipher cipher;
-        return cipher.encrypt(text, getVigenereStartChar());
-    };
-
-    // 4. Тритемий - ЗАГЛУШКА
-    encryptors["Тритемий"] = [](const QString& text) {
-        return CipherResult("Тритемий: введите текст");
-    };
-    decryptors["Тритемий"] = encryptors["Тритемий"];
-
-    // 5. Белазо - ЗАГЛУШКА
-    encryptors["Белазо"] = [](const QString& text) {
-        return CipherResult("Белазо: введите текст");
-    };
-    decryptors["Белазо"] = encryptors["Белазо"];
-
-    // 6. Матричный - ЗАГЛУШКА
-    encryptors["Матричный шифр"] = [](const QString& text) {
-        return CipherResult("Матричный: введите текст");
-    };
-    decryptors["Матричный шифр"] = encryptors["Матричный шифр"];
-
-    // 7. Маршрутная - ЗАГЛУШКА
-    encryptors["Маршрутная перестановка"] = [](const QString& text) {
-        return CipherResult("Маршрутная: введите текст");
-    };
-    decryptors["Маршрутная перестановка"] = encryptors["Маршрутная перестановка"];
-
-    // 8. Кардано - ЗАГЛУШКА
-    encryptors["Шифр Кардано"] = [](const QString& text) {
-        return CipherResult("Кардано: введите текст");
-    };
-    decryptors["Шифр Кардано"] = encryptors["Шифр Кардано"];
-
-    // Автоматически выбираем первый шифр
-    onCipherChanged();
-}
-
-void MainWindow::onCipherChanged() {
-    QString cipherName = cipherComboBox->currentText();
-
-    // Очищаем старые параметры
-    clearParameters();
-
-    // Создаем новые параметры в зависимости от выбранного шифра
-    if (cipherName == "Атбаш") {
-        setupAtbashParameters();
+    // Выбираем первый шифр
+    if (cipherComboBox->count() > 0) {
+        onCipherChanged(0);
+    } else {
+        logToConsole("ПРЕДУПРЕЖДЕНИЕ: Нет зарегистрированных шифров");
+        statusLabel->setText("Нет доступных шифров!");
     }
-    else if (cipherName == "Шифр Цезаря") {
-        setupCaesarParameters();
-    }
-    else if (cipherName == "Виженер (самоключ)") {
-        setupVigenereParameters();
-    }
-    else if (cipherName == "Тритемий") {
-        setupTrithemiusParameters();
-    }
-    else if (cipherName == "Белазо") {
-        setupBelazoParameters();
-    }
-    else if (cipherName == "Матричный шифр") {
-        setupMatrixParameters();
-    }
-    else if (cipherName == "Маршрутная перестановка") {
-        setupRouteParameters();
-    }
-    else if (cipherName == "Шифр Кардано") {
-        setupCardanoParameters();
-    }
-    else {
-        // Для остальных шифров - просто сообщение
-        QLabel* infoLabel = new QLabel("Параметры для этого шифра пока не реализованы");
-        infoLabel->setWordWrap(true);
-        parametersLayout->addWidget(infoLabel);
-    }
-
-    logToConsole(">>> Выбран шифр: " + cipherName);
-    statusLabel->setText("Выбран: " + cipherName + " - готов к работе");
 }
 
-void MainWindow::clearParameters() {
-    // Удаляем старые виджеты параметров
-    QLayoutItem* item;
-    while ((item = parametersLayout->takeAt(0)) != nullptr) {
-        if (item->widget()) {
-            // Запоминаем указатели на динамические элементы
-            QWidget* widget = item->widget();
-            if (widget == shiftSpinBox) shiftSpinBox = nullptr;
-            else if (widget == keyLineEdit) keyLineEdit = nullptr;
-            else if (widget == startCharLineEdit) startCharLineEdit = nullptr;
+void MainWindow::onCipherChanged(int index)
+{
+    Q_UNUSED(index);
 
-            delete widget;
-        }
-        delete item;
-    }
+    QString displayName = cipherComboBox->currentText();
+    QString cipherId = CipherFactory::instance().idFromDisplayName(displayName);
 
-    // Обнуляем указатели
-    shiftSpinBox = nullptr;
-    keyLineEdit = nullptr;
-    startCharLineEdit = nullptr;
-}
-
-void MainWindow::setupAtbashParameters() {
-    QLabel* infoLabel = new QLabel("Зеркальный шифр. Каждая буква заменяется на симметричную относительно центра алфавита.");
-    infoLabel->setWordWrap(true);
-    parametersLayout->addWidget(infoLabel);
-}
-
-void MainWindow::setupCaesarParameters() {
-    // Layout для сдвига
-    QHBoxLayout* shiftLayout = new QHBoxLayout();
-
-    QLabel* shiftLabel = new QLabel("Сдвиг:");
-    shiftLabel->setMinimumWidth(60);
-
-    shiftSpinBox = new QSpinBox();
-    shiftSpinBox->setRange(1, 33);
-    shiftSpinBox->setValue(3);
-    shiftSpinBox->setToolTip("На сколько позиций сдвигать алфавит (1-33)");
-    shiftSpinBox->setMinimumWidth(80);
-
-    QLabel* exampleLabel = new QLabel("Пример: при сдвиге 3, А→Г, Б→Д, ...");
-    exampleLabel->setStyleSheet("color: #666; font-size: 9pt;");
-
-    shiftLayout->addWidget(shiftLabel);
-    shiftLayout->addWidget(shiftSpinBox);
-    shiftLayout->addStretch();
-    shiftLayout->addWidget(exampleLabel);
-
-    parametersLayout->addLayout(shiftLayout);
-}
-
-void MainWindow::setupVigenereParameters() {
-    // Layout для начального символа
-    QHBoxLayout* charLayout = new QHBoxLayout();
-
-    QLabel* charLabel = new QLabel("Начальный символ:");
-    charLabel->setMinimumWidth(120);
-
-    startCharLineEdit = new QLineEdit();
-    startCharLineEdit->setText("А");
-    startCharLineEdit->setMaxLength(1);
-    startCharLineEdit->setMaximumWidth(50);
-    startCharLineEdit->setToolTip("Первый символ самоключа (обычно 'А' или 'Ю')");
-
-    QLabel* infoLabel = new QLabel("Пример: при 'Ю' ключ начинается с 'Ю'");
-    infoLabel->setStyleSheet("color: #666; font-size: 9pt;");
-
-    charLayout->addWidget(charLabel);
-    charLayout->addWidget(startCharLineEdit);
-    charLayout->addStretch();
-    charLayout->addWidget(infoLabel);
-
-    parametersLayout->addLayout(charLayout);
-}
-
-// РЕАЛИЗАЦИИ НОВЫХ ФУНКЦИЙ:
-
-void MainWindow::setupTrithemiusParameters() {
-    QLabel* infoLabel = new QLabel("Линейный шифр: каждая следующая буква сдвигается на 1 больше предыдущей.");
-    infoLabel->setWordWrap(true);
-    parametersLayout->addWidget(infoLabel);
-}
-
-void MainWindow::setupBelazoParameters() {
-    QHBoxLayout* keyLayout = new QHBoxLayout();
-
-    QLabel* keyLabel = new QLabel("Ключ:");
-    keyLabel->setMinimumWidth(60);
-
-    keyLineEdit = new QLineEdit();
-    keyLineEdit->setText("ЗОНД");
-    keyLineEdit->setToolTip("Ключевое слово для шифра Белазо");
-
-    keyLayout->addWidget(keyLabel);
-    keyLayout->addWidget(keyLineEdit);
-    keyLayout->addStretch();
-
-    parametersLayout->addLayout(keyLayout);
-}
-
-void MainWindow::setupMatrixParameters() {
-    QLabel* infoLabel = new QLabel("Матричный шифр: умножение текста на квадратную матрицу.");
-    infoLabel->setWordWrap(true);
-    parametersLayout->addWidget(infoLabel);
-}
-
-void MainWindow::setupRouteParameters() {
-    QLabel* infoLabel = new QLabel("Маршрутная перестановка: запись в таблицу и чтение по маршруту.");
-    infoLabel->setWordWrap(true);
-    parametersLayout->addWidget(infoLabel);
-}
-
-void MainWindow::setupCardanoParameters() {
-    QLabel* infoLabel = new QLabel("Шифр Кардано: использование решетки с отверстиями.");
-    infoLabel->setWordWrap(true);
-    parametersLayout->addWidget(infoLabel);
-}
-
-int MainWindow::getCaesarShift() const {
-    return shiftSpinBox ? shiftSpinBox->value() : 3;
-}
-
-QString MainWindow::getVigenereKey() const {
-    return keyLineEdit ? keyLineEdit->text() : "КЛЮЧ";
-}
-
-QChar MainWindow::getVigenereStartChar() const {
-    if (startCharLineEdit && !startCharLineEdit->text().isEmpty()) {
-        return startCharLineEdit->text().at(0).toUpper();
-    }
-    return QChar('А');
-}
-
-void MainWindow::onEncryptClicked() {
-    QString cipherName = cipherComboBox->currentText();
-    QString inputText = inputTextEdit->toPlainText().trimmed();
-
-    if (inputText.isEmpty()) {
-        QMessageBox::warning(this, "Ошибка", "Введите текст для шифрования!");
+    if (cipherId.isEmpty()) {
+        logToConsole("ОШИБКА: Шифр не найден: " + displayName);
         return;
     }
 
-    if (!encryptors.contains(cipherName)) {
-        logToConsole("ОШИБКА: Шифр '" + cipherName + "' не поддерживается");
-        QMessageBox::warning(this, "Ошибка", "Этот шифр еще не реализован");
+    // Создаем новый экземпляр шифра через фабрику
+    m_currentCipher = CipherFactory::instance().createCipher(cipherId);
+
+    if (!m_currentCipher) {
+        logToConsole("ОШИБКА: Не удалось создать шифр: " + displayName);
+        statusLabel->setText("Ошибка создания шифра: " + displayName);
+        return;
+    }
+
+    // Очищаем параметры
+    clearParameters();
+
+    // Добавляем описание шифра
+    QLabel* infoLabel = new QLabel(m_currentCipher->description());
+    infoLabel->setWordWrap(true);
+    parametersLayout->addWidget(infoLabel);
+
+    logToConsole(">>> Выбран шифр: " + displayName);
+    logToConsole("    Описание: " + m_currentCipher->description());
+    statusLabel->setText("Выбран: " + displayName + " - готов к работе");
+}
+
+void MainWindow::onEncryptClicked()
+{
+    if (!m_currentCipher) {
+        QMessageBox::warning(this, "Ошибка", "Шифр не выбран!");
+        return;
+    }
+
+    QString inputText = inputTextEdit->toPlainText().trimmed();
+    if (inputText.isEmpty()) {
+        QMessageBox::warning(this, "Ошибка", "Введите текст для шифрования!");
         return;
     }
 
@@ -396,47 +194,36 @@ void MainWindow::onEncryptClicked() {
 
     try {
         logToConsole("\n════════════════════════════════════════");
-        logToConsole("ШИФРОВАНИЕ: " + cipherName);
+        logToConsole("ШИФРОВАНИЕ: " + m_currentCipher->name());
         logToConsole("Входной текст: " + inputText);
 
-        // Получаем параметры
-        if (cipherName == "Шифр Цезаря") {
-            logToConsole("Сдвиг: " + QString::number(getCaesarShift()));
-        }
-        else if (cipherName == "Виженер (самоключ)") {
-            logToConsole("Начальный символ: " + QString(getVigenereStartChar()));
-        }
-        else if (cipherName == "Белазо") {
-            logToConsole("Ключ: " + getVigenereKey());
-        }
-
-        // Выполняем шифрование
-        CipherResult result = encryptors[cipherName](inputText);
+        // Выполняем шифрование (без параметров для Atbash)
+        CipherResult result = m_currentCipher->encrypt(inputText);
 
         // Выводим результат
         outputTextEdit->setText(result.result);
 
-        // Используем ваш formatter для красивого вывода
-        QString formatted = StepFormatter::formatResultOnly(result, 5);
-        logToConsole("Результат: " + formatted);
-
-        // Детализация шагов
+        // Форматируем вывод
         if (!result.steps.isEmpty()) {
+            logToConsole("Результат: " + result.result);
             logToConsole("--- Детализация (" + QString::number(result.steps.size()) + " шагов) ---");
 
-            // Показываем первые 3 шага и последние 2
+            // Показываем первые 5 шагов
             int stepsToShow = qMin(5, result.steps.size());
             for (int i = 0; i < stepsToShow; i++) {
                 const CipherStep& step = result.steps[i];
-                logToConsole(QString("  [%1] %2 → %3")
+                logToConsole(QString("  [%1] %2 → %3 (%4)")
                     .arg(step.index + 1)
                     .arg(step.originalChar)
-                    .arg(step.resultValue));
+                    .arg(step.resultValue)
+                    .arg(step.description));
             }
 
             if (result.steps.size() > 5) {
                 logToConsole("  ... и еще " + QString::number(result.steps.size() - 5) + " шагов");
             }
+        } else {
+            logToConsole("Результат: " + result.result);
         }
 
         logToConsole("════════════════════════════════════════\n");
@@ -446,7 +233,7 @@ void MainWindow::onEncryptClicked() {
 
     } catch (const std::exception& e) {
         QString error = QString("Ошибка: %1").arg(e.what());
-        logToConsole("КРИТИЧЕСКАЯ ОШИБКА: " + error);
+        logToConsole("ОШИБКА: " + error);
         QMessageBox::critical(this, "Ошибка", error);
 
         statusLabel->setText("Ошибка при шифровании!");
@@ -454,18 +241,16 @@ void MainWindow::onEncryptClicked() {
     }
 }
 
-void MainWindow::onDecryptClicked() {
-    QString cipherName = cipherComboBox->currentText();
-    QString inputText = inputTextEdit->toPlainText().trimmed();
-
-    if (inputText.isEmpty()) {
-        QMessageBox::warning(this, "Ошибка", "Введите текст для дешифрования!");
+void MainWindow::onDecryptClicked()
+{
+    if (!m_currentCipher) {
+        QMessageBox::warning(this, "Ошибка", "Шифр не выбран!");
         return;
     }
 
-    if (!decryptors.contains(cipherName)) {
-        logToConsole("ОШИБКА: Шифр '" + cipherName + "' не поддерживает дешифрование");
-        QMessageBox::warning(this, "Ошибка", "Этот шифр еще не реализован");
+    QString inputText = inputTextEdit->toPlainText().trimmed();
+    if (inputText.isEmpty()) {
+        QMessageBox::warning(this, "Ошибка", "Введите текст для дешифрования!");
         return;
     }
 
@@ -474,11 +259,11 @@ void MainWindow::onDecryptClicked() {
 
     try {
         logToConsole("\n════════════════════════════════════════");
-        logToConsole("ДЕШИФРОВАНИЕ: " + cipherName);
+        logToConsole("ДЕШИФРОВАНИЕ: " + m_currentCipher->name());
         logToConsole("Входной текст: " + inputText);
 
         // Выполняем дешифрование
-        CipherResult result = decryptors[cipherName](inputText);
+        CipherResult result = m_currentCipher->decrypt(inputText);
 
         // Выводим результат
         outputTextEdit->setText(result.result);
@@ -491,7 +276,7 @@ void MainWindow::onDecryptClicked() {
 
     } catch (const std::exception& e) {
         QString error = QString("Ошибка: %1").arg(e.what());
-        logToConsole("КРИТИЧЕСКАЯ ОШИБКА: " + error);
+        logToConsole("ОШИБКА: " + error);
         QMessageBox::critical(this, "Ошибка", error);
 
         statusLabel->setText("Ошибка при дешифровании!");
@@ -499,7 +284,8 @@ void MainWindow::onDecryptClicked() {
     }
 }
 
-void MainWindow::onClearClicked() {
+void MainWindow::onClearClicked()
+{
     inputTextEdit->clear();
     outputTextEdit->clear();
     debugConsole->clear();
@@ -508,8 +294,20 @@ void MainWindow::onClearClicked() {
     logToConsole("=== Все поля очищены ===");
 }
 
-void MainWindow::logToConsole(const QString& message) {
-    // Двойной вывод
+void MainWindow::clearParameters()
+{
+    // Удаляем старые виджеты параметров
+    QLayoutItem* item;
+    while ((item = parametersLayout->takeAt(0)) != nullptr) {
+        if (item->widget()) {
+            delete item->widget();
+        }
+        delete item;
+    }
+}
+
+void MainWindow::logToConsole(const QString& message)
+{
     debugConsole->append(message);
     std::cout << message.toStdString() << std::endl;
 }

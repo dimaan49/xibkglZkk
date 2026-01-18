@@ -1,42 +1,60 @@
 #include "atbash.h"
+#include "cipherfactory.h"
+#include <QDebug>
 
-AtbashCipher::AtbashCipher() {
-    alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+AtbashCipher::AtbashCipher()
+{
 }
 
-CipherResult AtbashCipher::encrypt(const QString& text) const {
-    QVector<CipherStep> steps;
-    int n = alphabet.size();
+CipherResult AtbashCipher::encrypt(const QString& text, const QVariantMap& params)
+{
+    Q_UNUSED(params);
 
-    // Фильтруем текст (убираем пробелы)
-    QString filteredText = CipherUtils::filterAlphabetOnly(text, alphabet);
-    QString result;
+    CipherResult result;
+    result.cipherName = name();
+    result.alphabet = m_alphabet;
 
-    for (int i = 0; i < filteredText.size(); ++i) {
-        QChar ch = filteredText[i];
-        int pos = alphabet.indexOf(ch);
+    // Фильтруем только буквы алфавита
+    QString filteredText = CipherUtils::filterAlphabetOnly(text, m_alphabet);
 
-        int newPos = n - 1 - pos;
-        QChar newChar = alphabet[newPos];
-        result.append(newChar);
-
-        QString desc = QStringLiteral(u"%1[%2] → %3[%4]")
-            .arg(ch).arg(pos).arg(newChar).arg(newPos);
-        steps.append(CipherStep(i, ch, QString(newChar), desc));
+    if (filteredText.isEmpty()) {
+        result.result = "Нет букв для преобразования";
+        return result;
     }
 
-    return CipherResult(result, steps, alphabet, name(), false);
+    QString encryptedText;
+    int n = m_alphabet.length();
+
+    for (int i = 0; i < filteredText.length(); ++i) {
+        QChar originalChar = filteredText[i];
+        int index = m_alphabet.indexOf(originalChar);
+
+        if (index != -1) {
+            int mirrorIndex = n - 1 - index;
+            QChar resultChar = m_alphabet[mirrorIndex];
+            encryptedText.append(resultChar);
+
+            // Добавляем шаг для детализации
+            CipherStep step;
+            step.index = i;
+            step.originalChar = originalChar;
+            step.resultValue = resultChar;
+            step.description = QString("%1 → %2 (зеркальное отражение)")
+                              .arg(originalChar)
+                              .arg(resultChar);
+            result.steps.append(step);
+        }
+    }
+
+    result.result = encryptedText;
+    return result;
 }
 
-
-CipherResult AtbashCipher::decrypt(const QString& text) const {
-    return encrypt(text);
-}
-
-QString AtbashCipher::name() const {
-    return QStringLiteral(u"Атбаш");
-}
-
-QString AtbashCipher::description() const {
-    return QStringLiteral(u"Зеркальный шифр: А↔Я, Б↔Ю, В↔Э, ...");
+AtbashCipherRegister::AtbashCipherRegister()
+{
+    CipherFactory::instance().registerCipher(
+        "atbash",
+        "Атбаш",
+        []() -> CipherInterface* { return new AtbashCipher(); }
+    );
 }

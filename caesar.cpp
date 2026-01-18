@@ -1,59 +1,78 @@
 #include "caesar.h"
-#include <QStringBuilder>
+#include "cipherfactory.h"
 
-CaesarCipher::CaesarCipher() {
-    alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+CaesarCipher::CaesarCipher()
+{
 }
 
-// Нормализация сдвига (остаток от деления по модулю длины алфавита)
-int CaesarCipher::normalizeShift(int shift) const {
-    int n = alphabet.size();
-    shift = shift % n;
+int CaesarCipher::getShift(const QVariantMap& params) const
+{
+    if (params.contains("shift")) {
+        return params["shift"].toInt();
+    }
+    return 3; // значение по умолчанию
+}
 
-    // Обеспечиваем положительный результат
-    if (shift < 0) {
-        shift += n;
+CipherResult CaesarCipher::encrypt(const QString& text, const QVariantMap& params)
+{
+    return shiftText(text, getShift(params), "шифрование");
+}
+
+CipherResult CaesarCipher::decrypt(const QString& text, const QVariantMap& params)
+{
+    return shiftText(text, -getShift(params), "дешифрование");
+}
+
+CipherResult CaesarCipher::shiftText(const QString& text, int shift, const QString& operation)
+{
+    CipherResult result;
+    result.cipherName = name();
+    result.alphabet = m_alphabet;
+
+    QString filtered = CipherUtils::filterAlphabetOnly(text, m_alphabet);
+
+    if (filtered.isEmpty()) {
+        result.result = "Нет букв для преобразования";
+        return result;
     }
 
-    return shift;
-}
+    QString transformed;
+    int n = m_alphabet.length();
 
-CipherResult CaesarCipher::encrypt(const QString& text, int shift) const {
-    QVector<CipherStep> steps;
-    int n = alphabet.size();
-    int normalizedShift = normalizeShift(shift);
+    // Нормализуем сдвиг (делаем положительным)
+    shift = ((shift % n) + n) % n;
 
-    // Фильтруем текст (убираем пробелы)
-    QString filteredText = CipherUtils::filterAlphabetOnly(text, alphabet);
-    QString result;
+    for (int i = 0; i < filtered.length(); ++i) {
+        QChar ch = filtered[i];
+        int idx = m_alphabet.indexOf(ch);
 
-    for (int i = 0; i < filteredText.size(); ++i) {
-        QChar ch = filteredText[i];
-        int pos = alphabet.indexOf(ch);
+        if (idx != -1) {
+            int newIdx = (idx + shift) % n;
+            QChar newChar = m_alphabet[newIdx];
+            transformed.append(newChar);
 
-        int newPos = (pos + normalizedShift) % n;
-        QChar newChar = alphabet[newPos];
-        result.append(newChar);
-
-        QString desc = QStringLiteral(u"%1[%2] + %3 = %4[%5]")
-            .arg(ch).arg(pos)
-            .arg(normalizedShift)
-            .arg(newChar).arg(newPos);
-        steps.append(CipherStep(i, ch, QString(newChar), desc));
+            CipherStep step;
+            step.index = i;
+            step.originalChar = ch;
+            step.resultValue = QString(newChar);
+            step.description = QString("%1: %2 → %3 (сдвиг %4)")
+                              .arg(operation)
+                              .arg(ch)
+                              .arg(newChar)
+                              .arg(shift > 0 ? "+" + QString::number(shift) : QString::number(shift));
+            result.steps.append(step);
+        }
     }
 
-    return CipherResult(result, steps, alphabet, name(), false);
+    result.result = transformed;
+    return result;
 }
 
-CipherResult CaesarCipher::decrypt(const QString& text, int shift) const {
-    // Дешифрование = шифрование с отрицательным сдвигом
-    return encrypt(text, -shift);
-}
-
-QString CaesarCipher::name() const {
-    return QStringLiteral(u"Шифр Цезаря");
-}
-
-QString CaesarCipher::description() const {
-    return QStringLiteral(u"Шифр сдвига: каждая буква сдвигается на фиксированное число позиций");
+CaesarCipherRegister::CaesarCipherRegister()
+{
+    CipherFactory::instance().registerCipher(
+        "caesar",
+        "Шифр Цезаря",
+        []() -> CipherInterface* { return new CaesarCipher(); }
+    );
 }

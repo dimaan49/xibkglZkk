@@ -1,27 +1,38 @@
-#ifndef CAESAR_H
-#define CAESAR_H
+#ifndef CAESARCIPHER_H
+#define CAESARCIPHER_H
 
-#include "ciphercore.h"
+#include "cipherinterface.h"
 
-class CaesarCipher {
-private:
-    QString alphabet;
-
+class CaesarCipher : public CipherInterface
+{
 public:
     CaesarCipher();
 
-    // Шифрование с указанным сдвигом (по умолчанию +3)
-    CipherResult encrypt(const QString& text, int shift = 3) const;
+    CipherResult encrypt(const QString& text, const QVariantMap& params = {}) override;
 
-    // Дешифрование (отрицательный сдвиг)
-    CipherResult decrypt(const QString& text, int shift = 3) const;
+    // Дешифрование = шифрование с отрицательным сдвигом
+    CipherResult decrypt(const QString& text, const QVariantMap& params = {}) override;
 
-    QString name() const;
-    QString description() const;
+    QString name() const override { return "Шифр Цезаря"; }
+    QString description() const override {
+        return "Шифр сдвига. Каждая буква сдвигается на фиксированное количество позиций в алфавите.";
+    }
 
 private:
-    // Вспомогательный метод для нормализации сдвига
-    int normalizeShift(int shift) const;
+    QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+
+    // Основная функция сдвига
+    CipherResult shiftText(const QString& text, int shift, const QString& operation);
+
+    // Получение сдвига из параметров
+    int getShift(const QVariantMap& params) const;
 };
 
-#endif // CAESAR_H
+class CaesarCipherRegister {
+public:
+    CaesarCipherRegister();
+};
+
+static CaesarCipherRegister caesarRegister;
+
+#endif // CAESARCIPHER_H
