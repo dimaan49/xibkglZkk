@@ -9,8 +9,6 @@ public:
     CaesarCipher();
 
     CipherResult encrypt(const QString& text, const QVariantMap& params = {}) override;
-
-    // Дешифрование = шифрование с отрицательным сдвигом
     CipherResult decrypt(const QString& text, const QVariantMap& params = {}) override;
 
     QString name() const override { return "Шифр Цезаря"; }
@@ -18,13 +16,11 @@ public:
         return "Шифр сдвига. Каждая буква сдвигается на фиксированное количество позиций в алфавите.";
     }
 
+
 private:
     QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
 
-    // Основная функция сдвига
     CipherResult shiftText(const QString& text, int shift, const QString& operation);
-
-    // Получение сдвига из параметров
     int getShift(const QVariantMap& params) const;
 };
 

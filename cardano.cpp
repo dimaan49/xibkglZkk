@@ -1,18 +1,32 @@
 #include "cardano.h"
+#include "cipherfactory.h"
+#include "cipherwidgetfactory.h"
 #include <QStringBuilder>
 #include <algorithm>
 #include <QDebug>
 
-CardanoCipher::CardanoCipher(const std::vector<std::vector<bool>>& holePattern) {
-    rows = holePattern.size();
-    if (rows > 0) {
-        cols = holePattern[0].size();
+CardanoCipher::CardanoCipher()
+{
+    m_holes = createDefaultGrid();
+    m_rows = m_holes.size();
+    if (m_rows > 0) {
+        m_cols = m_holes[0].size();
     } else {
-        cols = 0;
+        m_cols = 0;
     }
+    m_grid.resize(m_rows, std::vector<QChar>(m_cols, QChar()));
+}
 
-    holes = holePattern;
-    grid.resize(rows, std::vector<QChar>(cols, QChar()));
+std::vector<std::vector<bool>> CardanoCipher::createDefaultGrid() const
+{
+    return {
+        {0,1,0,0,0,0,0,0,0,0},  // 0100000000
+        {1,0,0,0,1,0,1,1,0,0},  // 1000101100
+        {0,1,0,0,0,1,0,0,0,1},  // 0100010001
+        {0,0,0,1,0,0,0,1,0,0},  // 0001000100
+        {0,1,0,0,0,0,0,0,0,0},  // 0100000000
+        {0,0,1,0,0,1,1,0,0,1}   // 0010011001
+    };
 }
 
 QChar CardanoCipher::getAlphabetChar(int index) const {
@@ -73,22 +87,22 @@ std::vector<std::vector<bool>> CardanoCipher::mirrorY(const std::vector<std::vec
 std::vector<std::vector<bool>> CardanoCipher::getPosition(int positionNumber) const {
     switch(positionNumber) {
         case 1: // Начальное положение
-            return holes;
+            return m_holes;
 
         case 2: // Поворот на 180 градусов
-            return rotate180(holes);
+            return rotate180(m_holes);
 
         case 3: // Зеркально по оси X относительно первого
-            return mirrorX(holes);
+            return mirrorX(m_holes);
 
         case 4: // Зеркально по оси X относительно первого + поворот 180
         {
-            std::vector<std::vector<bool>> mirrored = mirrorX(holes);
+            std::vector<std::vector<bool>> mirrored = mirrorX(m_holes);
             return rotate180(mirrored);
         }
 
         default:
-            return holes;
+            return m_holes;
     }
 }
 
@@ -109,207 +123,132 @@ int CardanoCipher::countTotalHoles() const {
 }
 
 void CardanoCipher::clearGrid() {
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            grid[i][j] = QChar();
+    for (int i = 0; i < m_rows; ++i) {
+        for (int j = 0; j < m_cols; ++j) {
+            m_grid[i][j] = QChar();
         }
     }
 }
 
-CipherResult CardanoCipher::encrypt(const QString& text) {
+CipherResult CardanoCipher::encrypt(const QString& text, const QVariantMap& params)
+{
+    Q_UNUSED(params);
+
     QVector<CipherStep> steps;
 
-    // Шаг 0: Фильтруем текст
-    QString filteredText = CipherUtils::filterAlphabetOnly(text,
-        QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"));
-
-    steps.append(CipherStep(
-        0,
-        QChar(),
-        filteredText,
-        QStringLiteral(u"Очищенный текст (только буквы алфавита)")
-    ));
+    QString filteredText = CipherUtils::filterAlphabetOnly(text, m_alphabet);
 
     // Проверяем, что текст помещается
     int totalHoles = countTotalHoles();
-    qDebug() << "Всего доступных отверстий за 4 позиции:" << totalHoles;
-    qDebug() << "Длина текста:" << filteredText.length();
 
     if (filteredText.length() > totalHoles) {
         filteredText = filteredText.left(totalHoles);
-        steps.append(CipherStep(
-            1,
-            QChar(),
-            filteredText,
-            QStringLiteral(u"Текст обрезан до %1 символов (максимум для решетки)").arg(totalHoles)
-        ));
     }
 
-    // Шаг 1: Записываем текст через отверстия в 4 положениях
+    // Записываем текст через отверстия
     clearGrid();
     int textIndex = 0;
 
-    // Позиция 1: Начальное положение
-    std::vector<std::vector<bool>> pos1 = getPosition(1);
-    QString placedPos1;
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            if (pos1[i][j] && textIndex < filteredText.length()) {
-                grid[i][j] = filteredText[textIndex];
-                placedPos1.append(filteredText[textIndex]);
-                textIndex++;
+    // Все 4 позиции
+    for (int pos = 1; pos <= 4; ++pos) {
+        std::vector<std::vector<bool>> position = getPosition(pos);
+        QString placedChars;
+
+        for (int i = 0; i < m_rows; ++i) {
+            for (int j = 0; j < m_cols; ++j) {
+                if (position[i][j] && textIndex < filteredText.length()) {
+                    m_grid[i][j] = filteredText[textIndex];
+                    placedChars.append(filteredText[textIndex]);
+                    textIndex++;
+                }
             }
         }
-    }
-    if (!placedPos1.isEmpty()) {
-        steps.append(CipherStep(
-            2,
-            QChar(),
-            placedPos1,
-            QStringLiteral(u"Позиция 1: Начальное положение (%1 букв)").arg(placedPos1.length())
-        ));
-    }
 
-    // Позиция 2: Поворот 180 градусов
-    std::vector<std::vector<bool>> pos2 = getPosition(2);
-    QString placedPos2;
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            if (pos2[i][j] && textIndex < filteredText.length()) {
-                grid[i][j] = filteredText[textIndex];
-                placedPos2.append(filteredText[textIndex]);
-                textIndex++;
-            }
+        if (!placedChars.isEmpty()) {
+            steps.append(CipherStep(
+                pos,
+                QChar(),
+                placedChars,
+                QString("Позиция %1: %2 букв").arg(pos).arg(placedChars.length())
+            ));
         }
     }
-    if (!placedPos2.isEmpty()) {
-        steps.append(CipherStep(
-            3,
-            QChar(),
-            placedPos2,
-            QStringLiteral(u"Позиция 2: Поворот 180° (%1 букв)").arg(placedPos2.length())
-        ));
-    }
 
-    // Позиция 3: Зеркально по оси X
-    std::vector<std::vector<bool>> pos3 = getPosition(3);
-    QString placedPos3;
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            if (pos3[i][j] && textIndex < filteredText.length()) {
-                grid[i][j] = filteredText[textIndex];
-                placedPos3.append(filteredText[textIndex]);
-                textIndex++;
-            }
-        }
-    }
-    if (!placedPos3.isEmpty()) {
-        steps.append(CipherStep(
-            4,
-            QChar(),
-            placedPos3,
-            QStringLiteral(u"Позиция 3: Зеркально по оси X (%1 букв)").arg(placedPos3.length())
-        ));
-    }
-
-    // Позиция 4: Зеркально по оси X + поворот 180
-    std::vector<std::vector<bool>> pos4 = getPosition(4);
-    QString placedPos4;
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            if (pos4[i][j] && textIndex < filteredText.length()) {
-                grid[i][j] = filteredText[textIndex];
-                placedPos4.append(filteredText[textIndex]);
-                textIndex++;
-            }
-        }
-    }
-    if (!placedPos4.isEmpty()) {
-        steps.append(CipherStep(
-            5,
-            QChar(),
-            placedPos4,
-            QStringLiteral(u"Позиция 4: Зеркально по оси X + поворот 180° (%1 букв)").arg(placedPos4.length())
-        ));
-    }
-
-    // Статистика размещения
-    int placedLetters = placedPos1.length() + placedPos2.length() +
-                       placedPos3.length() + placedPos4.length();
-    steps.append(CipherStep(
-        6,
-        QChar(),
-        QString::number(placedLetters),
-        QStringLiteral(u"Всего размещено букв в отверстиях")
-    ));
-
-    // Шаг 2: Заполняем оставшиеся клетки по порядку алфавита
+    // Заполняем оставшиеся клетки
     QString result;
     int alphabetIndex = 0;
-    int filledCells = 0;
 
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            if (grid[i][j].isNull()) {
+    for (int i = 0; i < m_rows; ++i) {
+        for (int j = 0; j < m_cols; ++j) {
+            if (m_grid[i][j].isNull()) {
                 QChar ch = getAlphabetChar(alphabetIndex);
-                grid[i][j] = ch;
+                m_grid[i][j] = ch;
                 alphabetIndex++;
-                filledCells++;
             }
-            result += grid[i][j];
+            result += m_grid[i][j];
         }
     }
 
     steps.append(CipherStep(
-        7,
-        QChar(),
-        QString::number(filledCells),
-        QStringLiteral(u"Заполнено оставшихся ячеек по алфавиту")
-    ));
-
-    steps.append(CipherStep(
-        8,
+        5,
         QChar(),
         result,
-        QStringLiteral(u"Итоговая матрица %1×%2").arg(rows).arg(cols)
+        QString("Итоговая матрица %1×%2").arg(m_rows).arg(m_cols)
     ));
 
-    // Формируем описание решетки для отображения
-    QString gridDescription;
-    gridDescription += QStringLiteral(u"Решетка Кардано %1×%2\n").arg(rows).arg(cols);
-    gridDescription += QStringLiteral(u"Отверстия (1) и нет (0):\n");
-
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            gridDescription += holes[i][j] ? "1" : "0";
-        }
-        gridDescription += "\n";
-    }
-
-    gridDescription += QStringLiteral(u"\n4 позиции решетки:\n");
-    gridDescription += QStringLiteral(u"1. Начальное положение\n");
-    gridDescription += QStringLiteral(u"2. Поворот 180°\n");
-    gridDescription += QStringLiteral(u"3. Зеркально по оси X\n");
-    gridDescription += QStringLiteral(u"4. Зеркально по оси X + поворот 180°");
-
-    return CipherResult(result, steps, gridDescription, name(), false);
+    return CipherResult(result, steps, "Решетка Кардано 6×10", name(), false);
 }
 
-CipherResult CardanoCipher::decrypt(const QString& text) {
-    // Для дешифрования нужно знать исходную решетку и порядок позиций
-    // Пока возвращаем заглушку
+CipherResult CardanoCipher::decrypt(const QString& text, const QVariantMap& params)
+{
+    Q_UNUSED(params);
+
+    // Заглушка - нужно реализовать дешифрование
     QVector<CipherStep> steps;
 
     steps.append(CipherStep(
         1,
         QChar(),
-        QStringLiteral(u"Не реализовано"),
-        QStringLiteral(u"Дешифрование решетки Кардано")
+        "Не реализовано",
+        "Дешифрование решетки Кардано"
     ));
 
-    return CipherResult(QString(), steps,
-                       QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"),
-                       name() + QStringLiteral(u" (дешифрование)"), false);
+    return CipherResult(QString(), steps, m_alphabet, name(), false);
+}
+
+// Остальные вспомогательные методы остаются как были (normalizeShift, getShiftForPosition, etc.)
+// Только заменить alphabet на m_alphabet, rows на m_rows, cols на m_cols, holes на m_holes
+
+CardanoCipherRegister::CardanoCipherRegister()
+{
+    CipherFactory::instance().registerCipher(
+        "cardano",
+        "Кардано",
+        []() -> CipherInterface* { return new CardanoCipher(); }
+    );
+
+    CipherWidgetFactory::instance().registerCipherWidgets(
+        "cardano",
+        [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
+            Q_UNUSED(parent);
+            Q_UNUSED(widgets);
+
+            QLabel* infoLabel = new QLabel(
+                "Используется решетка 6×10:\n"
+                "0100000000\n"
+                "1000101100\n"
+                "0100010001\n"
+                "0001000100\n"
+                "0100000000\n"
+                "0010011001\n"
+                "\n"
+                "1 = отверстие, 0 = нет отверстия"
+            );
+            infoLabel->setWordWrap(true);
+            infoLabel->setStyleSheet("font-family: monospace; color: white; padding: 5px;");
+            layout->addWidget(infoLabel);
+        }
+    );
 }
 
 QString CardanoCipher::name() const {

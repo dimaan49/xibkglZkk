@@ -1,17 +1,14 @@
 #include "vigenere_auto.h"
-#include <QStringBuilder>
+#include "cipherfactory.h"
+#include "cipherwidgetfactory.h"
 
-VigenereAutoCipher::VigenereAutoCipher() {
-    alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+VigenereAutoCipher::VigenereAutoCipher()
+{
 }
 
-int VigenereAutoCipher::getLetterIndex(QChar letter) const {
-    return alphabet.indexOf(letter);
-}
-
-// Генерация ключа для шифрования: keyLetter + текст без последней буквы
-QString VigenereAutoCipher::generateEncryptionKey(const QString& text, QChar keyLetter) const {
-    QString filteredText = CipherUtils::filterAlphabetOnly(text, alphabet);
+QString VigenereAutoCipher::generateEncryptionKey(const QString& text, QChar keyLetter) const
+{
+    QString filteredText = CipherUtils::filterAlphabetOnly(text, m_alphabet);
 
     if (filteredText.isEmpty()) {
         return QString();
@@ -21,124 +18,153 @@ QString VigenereAutoCipher::generateEncryptionKey(const QString& text, QChar key
     return keyLetter + filteredText.left(filteredText.length() - 1);
 }
 
-// Генерация ключа для дешифрования
-QString VigenereAutoCipher::generateDecryptionKey(const QString& text, QChar keyLetter) const {
-    QString filteredText = CipherUtils::filterAlphabetOnly(text, alphabet);
+CipherResult VigenereAutoCipher::encrypt(const QString& text, const QVariantMap& params)
+{
+    CipherResult result;
+    result.cipherName = name();
+    result.alphabet = m_alphabet;
+
+    QChar keyLetter = params.value("keyLetter", "А").toChar();
+    QString filteredText = CipherUtils::filterAlphabetOnly(text, m_alphabet);
 
     if (filteredText.isEmpty()) {
-        return QString();
-    }
-
-    // Для дешифрования ключ генерируется рекурсивно во время дешифрования
-    // Возвращаем пустую строку, так как ключ будет строиться по ходу дешифрования
-    return QString();
-}
-
-CipherResult VigenereAutoCipher::encrypt(const QString& text, QChar keyLetter) const {
-    QVector<CipherStep> steps;
-    int n = alphabet.size();
-
-    // Фильтруем текст
-    QString filteredText = CipherUtils::filterAlphabetOnly(text, alphabet);
-
-    if (filteredText.isEmpty()) {
-        return CipherResult(QString(), QVector<CipherStep>(), alphabet, name(), false);
+        result.result = "Нет букв для преобразования";
+        return result;
     }
 
     // Генерируем ключ: keyLetter + текст без последней буквы
     QString key = generateEncryptionKey(text, keyLetter);
-    QString result;
+    QString encrypted;
+    int n = m_alphabet.size();
 
     for (int i = 0; i < filteredText.length(); ++i) {
         QChar ch = filteredText[i];
         QChar keyChar = key[i];
 
-        int textPos = getLetterIndex(ch);
-        int keyPos = getLetterIndex(keyChar);
+        int textPos = m_alphabet.indexOf(ch);
+        int keyPos = m_alphabet.indexOf(keyChar);
 
-        // Шифрование: (текст + ключ) mod n
         int newPos = (textPos + keyPos) % n;
-        QChar newChar = alphabet[newPos];
-        result.append(newChar);
+        QChar newChar = m_alphabet[newPos];
+        encrypted.append(newChar);
 
-        // Описание шага
-        QString stepDesc;
+        CipherStep step;
+        step.index = i;
+        step.originalChar = ch;
+        step.resultValue = QString(newChar);
+
         if (i == 0) {
-            stepDesc = QStringLiteral(u"%1[%2] + %3[%4] = %5[%6] (ключевая буква)")
-                .arg(ch).arg(textPos)
-                .arg(keyChar).arg(keyPos)
-                .arg(newChar).arg(newPos);
+            step.description = QString("%1[%2] + %3[%4] = %5[%6] (начальная буква ключа)")
+                              .arg(ch).arg(textPos)
+                              .arg(keyChar).arg(keyPos)
+                              .arg(newChar).arg(newPos);
         } else {
-            stepDesc = QStringLiteral(u"%1[%2] + %3[%4] = %5[%6] (буква %7 открытого текста)")
-                .arg(ch).arg(textPos)
-                .arg(keyChar).arg(keyPos)
-                .arg(newChar).arg(newPos)
-                .arg(filteredText[i-1]);
+            step.description = QString("%1[%2] + %3[%4] = %5[%6] (ключ из предыдущей буквы текста)")
+                              .arg(ch).arg(textPos)
+                              .arg(keyChar).arg(keyPos)
+                              .arg(newChar).arg(newPos);
         }
 
-        steps.append(CipherStep(i, ch, QString(newChar), stepDesc));
+        result.steps.append(step);
     }
 
-    return CipherResult(result, steps, alphabet, name(), false);
+    result.result = encrypted;
+    return result;
 }
 
-CipherResult VigenereAutoCipher::decrypt(const QString& text, QChar keyLetter) const {
-    QVector<CipherStep> steps;
-    int n = alphabet.size();
+CipherResult VigenereAutoCipher::decrypt(const QString& text, const QVariantMap& params)
+{
+    CipherResult result;
+    result.cipherName = name();
+    result.alphabet = m_alphabet;
 
-    // Фильтруем текст
-    QString filteredText = CipherUtils::filterAlphabetOnly(text, alphabet);
+    QChar keyLetter = params.value("keyLetter", "А").toChar();
+    QString filteredText = CipherUtils::filterAlphabetOnly(text, m_alphabet);
 
     if (filteredText.isEmpty()) {
-        return CipherResult(QString(), QVector<CipherStep>(), alphabet, name(), false);
+        result.result = "Нет букв для преобразования";
+        return result;
     }
 
-    QString result;
+    QString decrypted;
+    int n = m_alphabet.size();
 
-    // Дешифруем первую букву (используем только keyLetter)
+    // Первая буква: используем только keyLetter
     QChar firstCh = filteredText[0];
-    int firstTextPos = getLetterIndex(firstCh);
-    int firstKeyPos = getLetterIndex(keyLetter);
+    int firstTextPos = m_alphabet.indexOf(firstCh);
+    int firstKeyPos = m_alphabet.indexOf(keyLetter);
 
     int firstNewPos = (firstTextPos - firstKeyPos + n) % n;
-    QChar firstNewChar = alphabet[firstNewPos];
-    result.append(firstNewChar);
+    QChar firstNewChar = m_alphabet[firstNewPos];
+    decrypted.append(firstNewChar);
 
-    QString firstDesc = QStringLiteral(u"%1[%2] - %3[%4] = %5[%6]")
-        .arg(firstCh).arg(firstTextPos)
-        .arg(keyLetter).arg(firstKeyPos)
-        .arg(firstNewChar).arg(firstNewPos);
+    CipherStep firstStep;
+    firstStep.index = 0;
+    firstStep.originalChar = firstCh;
+    firstStep.resultValue = QString(firstNewChar);
+    firstStep.description = QString("%1[%2] - %3[%4] = %5[%6] (начальная буква ключа)")
+                          .arg(firstCh).arg(firstTextPos)
+                          .arg(keyLetter).arg(firstKeyPos)
+                          .arg(firstNewChar).arg(firstNewPos);
+    result.steps.append(firstStep);
 
-    steps.append(CipherStep(0, firstCh, QString(firstNewChar), firstDesc));
-
-    // Дешифруем остальные буквы (используем предыдущие расшифрованные буквы как ключ)
+    // Остальные буквы: используем предыдущие расшифрованные буквы как ключ
     for (int i = 1; i < filteredText.length(); ++i) {
-        // Ключевая буква = предыдущая буква открытого текста
-        QChar keyChar = result[i-1];
+        QChar keyChar = decrypted[i-1]; // Предыдущая расшифрованная буква
         QChar ch = filteredText[i];
 
-        int textPos = getLetterIndex(ch);
-        int keyPos = getLetterIndex(keyChar);
+        int textPos = m_alphabet.indexOf(ch);
+        int keyPos = m_alphabet.indexOf(keyChar);
 
         int newPos = (textPos - keyPos + n) % n;
-        QChar newChar = alphabet[newPos];
-        result.append(newChar);
+        QChar newChar = m_alphabet[newPos];
+        decrypted.append(newChar);
 
-        QString desc = QStringLiteral(u"%1[%2] - %3[%4] = %5[%6] (ключ из предыдущей буквы открытого текста)")
-            .arg(ch).arg(textPos)
-            .arg(keyChar).arg(keyPos)
-            .arg(newChar).arg(newPos);
-
-        steps.append(CipherStep(i, ch, QString(newChar), desc));
+        CipherStep step;
+        step.index = i;
+        step.originalChar = ch;
+        step.resultValue = QString(newChar);
+        step.description = QString("%1[%2] - %3[%4] = %5[%6] (ключ из предыдущей расшифрованной буквы)")
+                          .arg(ch).arg(textPos)
+                          .arg(keyChar).arg(keyPos)
+                          .arg(newChar).arg(newPos);
+        result.steps.append(step);
     }
 
-    return CipherResult(result, steps, alphabet, name(), false);
+    result.result = decrypted;
+    return result;
 }
 
-QString VigenereAutoCipher::name() const {
-    return QStringLiteral(u"Шифр Виженера с самоключом");
-}
+VigenereAutoCipherRegister::VigenereAutoCipherRegister()
+{
+    CipherFactory::instance().registerCipher(
+        "vigenere_auto",
+        "Виженер (самоключ)",
+        []() -> CipherInterface* { return new VigenereAutoCipher(); }
+    );
 
-QString VigenereAutoCipher::description() const {
-    return QStringLiteral(u"Автоключевой шифр: ключ = keyLetter + открытый_текст[0..n-2]");
+    CipherWidgetFactory::instance().registerCipherWidgets(
+        "vigenere_auto",
+        [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
+            QHBoxLayout* keyLayout = new QHBoxLayout();
+            QLabel* keyLabel = new QLabel("Начальная буква ключа:");
+            QLineEdit* keyLineEdit = new QLineEdit(parent);
+            keyLineEdit->setText("А");
+            keyLineEdit->setMaxLength(1);
+            keyLineEdit->setMaximumWidth(50);
+            keyLineEdit->setObjectName("keyLetter");
+            keyLineEdit->setToolTip("Первая буква ключа (остальные берутся из открытого текста)");
+
+            keyLayout->addWidget(keyLabel);
+            keyLayout->addWidget(keyLineEdit);
+            keyLayout->addStretch();
+            layout->addLayout(keyLayout);
+
+            QLabel* infoLabel = new QLabel("Ключ = начальная буква + открытый текст (без последней буквы)");
+            infoLabel->setStyleSheet("color: #666; font-style: italic;");
+            layout->addWidget(infoLabel);
+
+            widgets["keyLetter"] = keyLineEdit;
+        }
+    );
 }

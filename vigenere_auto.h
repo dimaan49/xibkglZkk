@@ -1,33 +1,32 @@
 #ifndef VIGENERE_AUTO_H
 #define VIGENERE_AUTO_H
 
-#include "ciphercore.h"
+#include "cipherinterface.h"
 
-class VigenereAutoCipher {
-private:
-    QString alphabet;
-
+class VigenereAutoCipher : public CipherInterface
+{
 public:
     VigenereAutoCipher();
 
-    // Шифрование Виженера с самоключом (первая буква ключа + открытый текст)
-    CipherResult encrypt(const QString& text, QChar keyLetter) const;
+    CipherResult encrypt(const QString& text, const QVariantMap& params = {}) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params = {}) override;
 
-    // Дешифрование Виженера с самоключом
-    CipherResult decrypt(const QString& text, QChar keyLetter) const;
-
-    QString name() const;
-    QString description() const;
+    QString name() const override { return "Виженер (самоключ)"; }
+    QString description() const override {
+        return "Автоключевой шифр: ключ = начальная буква + открытый текст";
+    }
 
 private:
-    // Получение индекса буквы
-    int getLetterIndex(QChar letter) const;
+    QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
 
-    // Генерация ключа для шифрования (keyLetter + текст без последней буквы)
     QString generateEncryptionKey(const QString& text, QChar keyLetter) const;
-
-    // Генерация ключа для дешифрования
-    QString generateDecryptionKey(const QString& text, QChar keyLetter) const;
 };
+
+class VigenereAutoCipherRegister {
+public:
+    VigenereAutoCipherRegister();
+};
+
+static VigenereAutoCipherRegister vigenereAutoRegister;
 
 #endif // VIGENERE_AUTO_H

@@ -1,16 +1,27 @@
 #ifndef CARDANO_H
 #define CARDANO_H
 
-#include "ciphercore.h"
+#include "cipherinterface.h"
 #include <vector>
 #include <QString>
 
-class CardanoCipher {
+class CardanoCipher : public CipherInterface
+{
+public:
+    CardanoCipher();
+
+    CipherResult encrypt(const QString& text, const QVariantMap& params = {}) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params = {}) override;
+
+    QString name() const override;
+    QString description() const override;
+
 private:
-    std::vector<std::vector<bool>> holes; // Исходная решетка
-    std::vector<std::vector<QChar>> grid; // Рабочая решетка для заполнения
-    int rows;
-    int cols;
+    QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+    std::vector<std::vector<bool>> m_holes; // Решетка
+    std::vector<std::vector<QChar>> m_grid; // Рабочая решетка
+    int m_rows;
+    int m_cols;
 
     // Вспомогательные методы
     QChar getAlphabetChar(int index) const;
@@ -23,16 +34,15 @@ private:
     std::vector<std::vector<bool>> mirrorY(const std::vector<std::vector<bool>>& pattern) const;
     std::vector<std::vector<bool>> getPosition(int positionNumber) const;
 
-public:
-    CardanoCipher(const std::vector<std::vector<bool>>& holePattern);
-
-    // Основные методы
-    CipherResult encrypt(const QString& text);
-    CipherResult decrypt(const QString& text);
-
-    // Информационные методы
-    QString name() const;
-    QString description() const;
+    // Создание решетки по умолчанию
+    std::vector<std::vector<bool>> createDefaultGrid() const;
 };
+
+class CardanoCipherRegister {
+public:
+    CardanoCipherRegister();
+};
+
+static CardanoCipherRegister cardanoRegister;
 
 #endif // CARDANO_H

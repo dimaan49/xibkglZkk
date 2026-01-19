@@ -1,12 +1,13 @@
 #include "trithemius.h"
-#include <QStringBuilder>
+#include "cipherfactory.h"
+#include "cipherwidgetfactory.h"
 
-TrithemiusCipher::TrithemiusCipher() {
-    alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+TrithemiusCipher::TrithemiusCipher()
+{
 }
 
 int TrithemiusCipher::normalizeShift(int shift) const {
-    int n = alphabet.size();
+    int n = m_alphabet.size();
     shift = shift % n;
 
     if (shift < 0) {
@@ -16,94 +17,126 @@ int TrithemiusCipher::normalizeShift(int shift) const {
     return shift;
 }
 
-int TrithemiusCipher::getShiftForPosition(int position, int startShift, int stepShift) const {
-    // Для позиции i: shift = startShift + stepShift * i
-    return startShift + stepShift * position;
-}
+CipherResult TrithemiusCipher::encrypt(const QString& text, const QVariantMap& params)
+{
+    CipherResult result;
+    result.cipherName = name();
+    result.alphabet = m_alphabet;
 
-CipherResult TrithemiusCipher::encrypt(const QString& text, int startShift, int stepShift) const {
-    QVector<CipherStep> steps;
-    int n = alphabet.size();
+    int startShift = params.value("startShift", 0).toInt();
+    const int stepShift = 1; // Фиксированный шаг = 1
 
-    // Фильтруем текст (убираем пробелы)
-    QString filteredText = CipherUtils::filterAlphabetOnly(text, alphabet);
-    QString result;
+    QString filteredText = CipherUtils::filterAlphabetOnly(text, m_alphabet);
+
+    if (filteredText.isEmpty()) {
+        result.result = "Нет букв для преобразования";
+        return result;
+    }
+
+    QString encrypted;
+    int n = m_alphabet.size();
 
     for (int i = 0; i < filteredText.size(); ++i) {
         QChar ch = filteredText[i];
-        int pos = alphabet.indexOf(ch);
+        int pos = m_alphabet.indexOf(ch);
 
-        int shift = startShift + stepShift * i;
+        int shift = startShift + stepShift * i; // startShift + 1 * i
         int normalizedShift = normalizeShift(shift);
 
         int newPos = (pos + normalizedShift) % n;
-        QChar newChar = alphabet[newPos];
-        result.append(newChar);
+        QChar newChar = m_alphabet[newPos];
+        encrypted.append(newChar);
 
-        QString desc = QStringLiteral(u"%1[%2] + (%3 + %4×%5) = %6[%7]")
-            .arg(ch).arg(pos)
-            .arg(startShift).arg(stepShift).arg(i)
-            .arg(newChar).arg(newPos);
-
-        steps.append(CipherStep(i, ch, QString(newChar), desc));
+        CipherStep step;
+        step.index = i;
+        step.originalChar = ch;
+        step.resultValue = QString(newChar);
+        step.description = QString("%1[%2] + (%3+%4) = %5[%6]")
+                          .arg(ch).arg(pos)
+                          .arg(startShift).arg(i)  // startShift + i
+                          .arg(newChar).arg(newPos);
+        result.steps.append(step);
     }
 
-    return CipherResult(result, steps, alphabet, name(), false);
+    result.result = encrypted;
+    return result;
 }
 
-CipherResult TrithemiusCipher::decrypt(const QString& text, int startShift, int stepShift) const {
-    QVector<CipherStep> steps;
-    QString result;
-    int n = alphabet.size();
+CipherResult TrithemiusCipher::decrypt(const QString& text, const QVariantMap& params)
+{
+    CipherResult result;
+    result.cipherName = name();
+    result.alphabet = m_alphabet;
 
-    QString upperText = text.toUpper();
-    int letterCounter = 0;
+    int n = m_alphabet.size();
+    int startShift = params.value("startShift", 0).toInt() % n;
+    const int stepShift = 1; // Фиксированный шаг = 1
 
-    for (int i = 0; i < upperText.size(); ++i) {
-        QChar ch = upperText[i];
-        int pos = alphabet.indexOf(ch);
+    QString filteredText = CipherUtils::filterAlphabetOnly(text, m_alphabet);
 
-        if (pos != -1) {
-            // Вычисляем сдвиг для текущей позиции
-            int shift = getShiftForPosition(letterCounter, startShift, stepShift);
-            int normalizedShift = normalizeShift(shift);
+    if (filteredText.isEmpty()) {
+        result.result = "Нет букв для преобразования";
+        return result;
+    }
 
-            // Дешифрование: вычитаем сдвиг
-            int newPos = (pos - normalizedShift + n) % n;
-            QChar newChar = alphabet[newPos];
-            result.append(newChar);
+    QString decrypted;
 
-            // Формируем описание
-            QString desc;
-            if (stepShift == 0) {
-                desc = QStringLiteral(u"%1[%2] - %3 → %4[%5]")
-                    .arg(ch).arg(pos)
-                    .arg(normalizedShift)
-                    .arg(newChar).arg(newPos);
-            } else {
-                desc = QStringLiteral(u"%1[%2] - (%3 + %4×%5) → %6[%7]")
-                    .arg(ch).arg(pos)
-                    .arg(startShift).arg(stepShift).arg(letterCounter)
-                    .arg(newChar).arg(newPos);
-            }
 
-            steps.append(CipherStep(i, ch, QString(newChar), desc));
-            letterCounter++;
+    for (int i = 0; i < filteredText.size(); ++i) {
+        QChar ch = filteredText[i];
+        int pos = m_alphabet.indexOf(ch);
 
-        } else {
-            result.append(ch);
-            steps.append(CipherStep(i, ch, QString(ch),
-                QStringLiteral(u"Не в алфавите")));
+        int shift = startShift + stepShift * i; // startShift + 1 * i
+        int normalizedShift = normalizeShift(shift);
+
+        int newPos = (pos - normalizedShift + n) % n;
+        QChar newChar = m_alphabet[newPos];
+        decrypted.append(newChar);
+
+        CipherStep step;
+        step.index = i;
+        step.originalChar = ch;
+        step.resultValue = QString(newChar);
+        step.description = QString("%1[%2] - (%3+%4) = %5[%6]")
+                          .arg(ch).arg(pos)
+                          .arg(startShift).arg(i)  // startShift + i
+                          .arg(newChar).arg(newPos);
+        result.steps.append(step);
+    }
+
+    result.result = decrypted;
+    return result;
+}
+
+TrithemiusCipherRegister::TrithemiusCipherRegister()
+{
+    CipherFactory::instance().registerCipher(
+        "trithemius",
+        "Тритемий",
+        []() -> CipherInterface* { return new TrithemiusCipher(); }
+    );
+
+    CipherWidgetFactory::instance().registerCipherWidgets(
+        "trithemius",
+        [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
+            QHBoxLayout* startShiftLayout = new QHBoxLayout();
+            QLabel* startShiftLabel = new QLabel("Начальный сдвиг:");
+            QSpinBox* startShiftSpinBox = new QSpinBox(parent);
+            startShiftSpinBox->setValue(0);
+            startShiftSpinBox->setObjectName("startShift");
+            startShiftSpinBox->setToolTip("Начальный сдвиг для первой буквы");
+
+            startShiftLayout->addWidget(startShiftLabel);
+            startShiftLayout->addWidget(startShiftSpinBox);
+            startShiftLayout->addStretch();
+            layout->addLayout(startShiftLayout);
+
+            // Добавляем информацию о фиксированном шаге
+            QLabel* infoLabel = new QLabel("Шаг увеличения сдвига всегда = 1");
+            infoLabel->setStyleSheet("color: #666; font-style: italic;");
+            layout->addWidget(infoLabel);
+
+            widgets["startShift"] = startShiftSpinBox;
         }
-    }
-
-    return CipherResult(result, steps, alphabet, name(), false);
-}
-
-QString TrithemiusCipher::name() const {
-    return QStringLiteral(u"Шифр Тритемия");
-}
-
-QString TrithemiusCipher::description() const {
-    return QStringLiteral(u"Полиалфавитный шифр с прогрессирующим сдвигом");
+    );
 }

@@ -1,5 +1,7 @@
 #include "belazo.h"
+#include <QLabel>
 #include "cipherfactory.h"
+#include "cipherwidgetfactory.h"
 
 BelazoCipher::BelazoCipher()
 {
@@ -123,5 +125,23 @@ BelazoCipherRegister::BelazoCipherRegister()
         "belazo",
         "Белазо",
         []() -> CipherInterface* { return new BelazoCipher(); }
+    );
+
+    CipherWidgetFactory::instance().registerCipherWidgets(
+        "belazo",
+        [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
+            QHBoxLayout* keyLayout = new QHBoxLayout();
+            QLabel* keyLabel = new QLabel("Ключ:");
+            QLineEdit* keyLineEdit = new QLineEdit(parent);
+            keyLineEdit->setText("КЛЮЧ");
+            keyLineEdit->setObjectName("key");
+
+            keyLayout->addWidget(keyLabel);
+            keyLayout->addWidget(keyLineEdit);
+            keyLayout->addStretch();
+            layout->addLayout(keyLayout);
+
+            widgets["key"] = keyLineEdit;
+        }
     );
 }

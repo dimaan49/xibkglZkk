@@ -1,26 +1,32 @@
 #ifndef VIGENERE_CIPHERTEXT_H
 #define VIGENERE_CIPHERTEXT_H
 
-#include "ciphercore.h"
+#include "cipherinterface.h"
 
-class VigenereCiphertextCipher {
-private:
-    QString alphabet;
-
+class VigenereCiphertextCipher : public CipherInterface
+{
 public:
     VigenereCiphertextCipher();
 
-    // Шифрование: ключ-шифротекст
-    CipherResult encrypt(const QString& text, QChar keyLetter) const;
+    CipherResult encrypt(const QString& text, const QVariantMap& params = {}) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params = {}) override;
 
-    // Дешифрование: ключ-шифротекст
-    CipherResult decrypt(const QString& text, QChar keyLetter) const;
-
-    QString name() const;
-    QString description() const;
+    QString name() const override { return "Виженер (шифротекст)"; }
+    QString description() const override {
+        return "Автоключевой шифр: ключ[i] = шифротекст[i-1] (для i>0)";
+    }
 
 private:
-    int getLetterIndex(QChar letter) const;
+    QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+
+    CipherResult process(const QString& text, QChar keyLetter, bool encrypt);
 };
+
+class VigenereCiphertextCipherRegister {
+public:
+    VigenereCiphertextCipherRegister();
+};
+
+static VigenereCiphertextCipherRegister vigenereCiphertextRegister;
 
 #endif // VIGENERE_CIPHERTEXT_H

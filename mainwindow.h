@@ -5,6 +5,7 @@
 #include <memory>
 #include "cipherinterface.h"
 
+
 class QComboBox;
 class QTextEdit;
 class QPushButton;
@@ -31,6 +32,12 @@ private:
     void setupCiphers();
     void clearParameters();
     void logToConsole(const QString& message);
+    void createCipherWidgets(const QString& cipherId);
+    QVariantMap collectParameters() const;
+
+    // Хранилище виджетов параметров
+    QMap<QString, QWidget*> m_paramWidgets;
+    QMap<QString, CipherParameter> m_currentParams;
 
     // UI элементы
     QComboBox *cipherComboBox;

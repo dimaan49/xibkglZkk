@@ -1,6 +1,6 @@
 #include "atbash.h"
 #include "cipherfactory.h"
-#include <QDebug>
+#include "cipherwidgetfactory.h"
 
 AtbashCipher::AtbashCipher()
 {
@@ -56,5 +56,16 @@ AtbashCipherRegister::AtbashCipherRegister()
         "atbash",
         "Атбаш",
         []() -> CipherInterface* { return new AtbashCipher(); }
+    );
+
+    // Атбаш не имеет параметров, но регистрируем пустую функцию
+    CipherWidgetFactory::instance().registerCipherWidgets(
+        "atbash",
+        [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
+            Q_UNUSED(parent);
+            Q_UNUSED(layout);
+            Q_UNUSED(widgets);
+            // Нет параметров
+        }
     );
 }

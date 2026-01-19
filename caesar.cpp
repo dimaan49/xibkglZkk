@@ -1,5 +1,6 @@
 #include "caesar.h"
 #include "cipherfactory.h"
+#include "cipherwidgetfactory.h"
 
 CaesarCipher::CaesarCipher()
 {
@@ -40,7 +41,7 @@ CipherResult CaesarCipher::shiftText(const QString& text, int shift, const QStri
     int n = m_alphabet.length();
 
     // Нормализуем сдвиг (делаем положительным)
-    shift = ((shift % n) + n) % n;
+    shift = (shift % n);
 
     for (int i = 0; i < filtered.length(); ++i) {
         QChar ch = filtered[i];
@@ -70,9 +71,29 @@ CipherResult CaesarCipher::shiftText(const QString& text, int shift, const QStri
 
 CaesarCipherRegister::CaesarCipherRegister()
 {
+    // Регистрируем шифр в фабрике
     CipherFactory::instance().registerCipher(
         "caesar",
         "Шифр Цезаря",
         []() -> CipherInterface* { return new CaesarCipher(); }
+    );
+
+    // Регистрируем виджеты параметров
+    CipherWidgetFactory::instance().registerCipherWidgets(
+        "caesar",
+        [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
+            QHBoxLayout* shiftLayout = new QHBoxLayout();
+            QLabel* shiftLabel = new QLabel("Сдвиг:");
+            QSpinBox* shiftSpinBox = new QSpinBox(parent);
+            shiftSpinBox->setValue(3);
+            shiftSpinBox->setObjectName("shift");
+
+            shiftLayout->addWidget(shiftLabel);
+            shiftLayout->addWidget(shiftSpinBox);
+            shiftLayout->addStretch();
+            layout->addLayout(shiftLayout);
+
+            widgets["shift"] = shiftSpinBox;
+        }
     );
 }

@@ -2,9 +2,9 @@
 #define CIPHERINTERFACE_H
 
 #include <QString>
-#include <QMap>
 #include <QVariant>
 #include "ciphercore.h"
+#include "cipherparameters.h"  // Добавляем
 
 class CipherInterface
 {
@@ -17,12 +17,6 @@ public:
     virtual QString name() const = 0;
     virtual QString description() const = 0;
 
-    // Проверка параметров (опционально)
-    virtual bool validateParameters(const QVariantMap& params, QString& error) const {
-        Q_UNUSED(params);
-        error.clear();
-        return true;
-    }
 };
 
 #endif // CIPHERINTERFACE_H

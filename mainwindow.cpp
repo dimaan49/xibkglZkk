@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "cipherfactory.h"
+#include "cipherwidgetfactory.h"
 #include "formatter.h"
 
 #include <iostream>
@@ -13,6 +14,8 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QDebug>
+#include <QSpinBox>
+#include <QLineEdit>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -54,9 +57,20 @@ void MainWindow::setupUI()
     QHBoxLayout *cipherSelectionLayout = new QHBoxLayout();
     cipherSelectionLayout->addWidget(new QLabel("Выберите шифр:"));
     cipherComboBox = new QComboBox();
-    cipherComboBox->setMinimumWidth(200);
+    cipherComboBox->setMinimumWidth(250);
+
+
+    // Устанавливаем фиксированную высоту выпадающего списка
+    cipherComboBox->setStyleSheet(
+        "QComboBox {"
+        "    combobox-popup: 0;"  // Отключаем авто-высоту
+        "}"
+        "QComboBox QAbstractItemView {"
+        "    max-height: 200px;"  // Фиксированная высота
+        "}"
+    );
+
     cipherSelectionLayout->addWidget(cipherComboBox);
-    cipherSelectionLayout->addStretch();
 
     // 2. Панель параметров
     parametersGroup = new QGroupBox("Параметры шифра");
@@ -67,6 +81,7 @@ void MainWindow::setupUI()
     QGroupBox *inputGroup = new QGroupBox("Входной текст");
     QVBoxLayout *inputLayout = new QVBoxLayout();
     inputTextEdit = new QTextEdit();
+    inputTextEdit->setText("ОДИН ДУРАК МОЖЕТ БОЛЬШЕ СПРАШИВАТЬ ЗПТ ЧЕМ ДЕСЯТЬ УМНЫХ ОТВЕТИТЬ ТЧК");
     inputTextEdit->setPlaceholderText("Введите текст для шифрования/дешифрования...");
     inputTextEdit->setMaximumHeight(100);
     inputLayout->addWidget(inputTextEdit);
@@ -154,7 +169,6 @@ void MainWindow::onCipherChanged(int index)
         return;
     }
 
-    // Создаем новый экземпляр шифра через фабрику
     m_currentCipher = CipherFactory::instance().createCipher(cipherId);
 
     if (!m_currentCipher) {
@@ -171,10 +185,30 @@ void MainWindow::onCipherChanged(int index)
     infoLabel->setWordWrap(true);
     parametersLayout->addWidget(infoLabel);
 
+    // Создаем виджеты для параметров через фабрику
+    createCipherWidgets(cipherId);
+
     logToConsole(">>> Выбран шифр: " + displayName);
-    logToConsole("    Описание: " + m_currentCipher->description());
     statusLabel->setText("Выбран: " + displayName + " - готов к работе");
 }
+
+void MainWindow::createCipherWidgets(const QString& cipherId)
+{
+    // Вся логика создания виджетов теперь в фабрике
+    CipherWidgetFactory::instance().createWidgets(
+        cipherId,
+        parametersGroup,
+        parametersLayout,
+        m_paramWidgets
+    );
+}
+
+QVariantMap MainWindow::collectParameters() const
+{
+    // Используем статический метод фабрики
+    return CipherWidgetFactory::collectValues(m_paramWidgets);
+}
+
 
 void MainWindow::onEncryptClicked()
 {
@@ -197,36 +231,30 @@ void MainWindow::onEncryptClicked()
         logToConsole("ШИФРОВАНИЕ: " + m_currentCipher->name());
         logToConsole("Входной текст: " + inputText);
 
-        // Выполняем шифрование (без параметров для Atbash)
-        CipherResult result = m_currentCipher->encrypt(inputText);
+        // Собираем параметры из UI
+        QVariantMap params = collectParameters();
+
+        // Логируем параметры
+        for (auto it = params.constBegin(); it != params.constEnd(); ++it) {
+            logToConsole(it.key() + ": " + it.value().toString());
+        }
+
+        // Выполняем шифрование с параметрами
+        CipherResult result = m_currentCipher->encrypt(inputText, params);
 
         // Выводим результат
         outputTextEdit->setText(result.result);
 
-        // Форматируем вывод
+        // === ДОБАВЛЕНО: Используем StepFormatter для красивого вывода ===
         if (!result.steps.isEmpty()) {
-            logToConsole("Результат: " + result.result);
-            logToConsole("--- Детализация (" + QString::number(result.steps.size()) + " шагов) ---");
-
-            // Показываем первые 5 шагов
-            int stepsToShow = qMin(5, result.steps.size());
-            for (int i = 0; i < stepsToShow; i++) {
-                const CipherStep& step = result.steps[i];
-                logToConsole(QString("  [%1] %2 → %3 (%4)")
-                    .arg(step.index + 1)
-                    .arg(step.originalChar)
-                    .arg(step.resultValue)
-                    .arg(step.description));
-            }
-
-            if (result.steps.size() > 5) {
-                logToConsole("  ... и еще " + QString::number(result.steps.size() - 5) + " шагов");
-            }
+            // Выводим детализированный результат с шагами
+            QString formatted = StepFormatter::formatResult(result, true, 5, " ");
+            logToConsole(formatted);
         } else {
-            logToConsole("Результат: " + result.result);
+            // Если нет шагов, выводим просто результат
+            QString formatted = StepFormatter::formatResultOnly(result, 5, " ");
+            logToConsole(formatted);
         }
-
-        logToConsole("════════════════════════════════════════\n");
 
         statusLabel->setText("Шифрование завершено! Символов: " + QString::number(result.steps.size()));
         statusLabel->setStyleSheet("padding: 8px; background-color: #ccffcc; border: 1px solid #00cc00; border-radius: 3px; color: black;");
@@ -262,14 +290,23 @@ void MainWindow::onDecryptClicked()
         logToConsole("ДЕШИФРОВАНИЕ: " + m_currentCipher->name());
         logToConsole("Входной текст: " + inputText);
 
+        // Собираем параметры из UI
+        QVariantMap params = collectParameters();
+
         // Выполняем дешифрование
-        CipherResult result = m_currentCipher->decrypt(inputText);
+        CipherResult result = m_currentCipher->decrypt(inputText, params);
 
         // Выводим результат
         outputTextEdit->setText(result.result);
 
-        logToConsole("Результат: " + result.result);
-        logToConsole("════════════════════════════════════════\n");
+        // === ДОБАВЛЕНО: Используем StepFormatter для красивого вывода ===
+        if (!result.steps.isEmpty()) {
+            QString formatted = StepFormatter::formatResult(result, true, 5, " ");
+            logToConsole(formatted);
+        } else {
+            QString formatted = StepFormatter::formatResultOnly(result, 5, " ");
+            logToConsole(formatted);
+        }
 
         statusLabel->setText("Дешифрование завершено!");
         statusLabel->setStyleSheet("padding: 8px; background-color: #ccffcc; border: 1px solid #00cc00; border-radius: 3px; color: black;");
@@ -294,16 +331,26 @@ void MainWindow::onClearClicked()
     logToConsole("=== Все поля очищены ===");
 }
 
+
 void MainWindow::clearParameters()
 {
-    // Удаляем старые виджеты параметров
-    QLayoutItem* item;
-    while ((item = parametersLayout->takeAt(0)) != nullptr) {
-        if (item->widget()) {
-            delete item->widget();
+    // Очищаем хранилище указателей (без удаления виджетов!)
+    m_paramWidgets.clear();
+
+    // Находим все виджеты в parametersGroup и удаляем их
+    QList<QWidget*> widgets = parametersGroup->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
+    for (QWidget* widget : widgets) {
+        // Исключаем сам parametersGroup из списка
+        if (widget != parametersGroup) {
+            widget->hide();
+            widget->deleteLater();
         }
-        delete item;
     }
+
+    // Пересоздаем чистый layout
+    delete parametersLayout;
+    parametersLayout = new QVBoxLayout(parametersGroup);
+    parametersGroup->setLayout(parametersLayout);
 }
 
 void MainWindow::logToConsole(const QString& message)

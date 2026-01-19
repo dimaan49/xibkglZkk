@@ -1,32 +1,32 @@
 #ifndef TRITHEMIUS_H
 #define TRITHEMIUS_H
 
-#include "ciphercore.h"
+#include "cipherinterface.h"
 
-class TrithemiusCipher {
-private:
-    QString alphabet;
-
+class TrithemiusCipher : public CipherInterface
+{
 public:
     TrithemiusCipher();
 
-    // Шифрование Тритемия
-    // startShift: начальный сдвиг (по умолчанию 0)
-    // stepShift: шаг увеличения сдвига (по умолчанию 1)
-    CipherResult encrypt(const QString& text, int startShift = 0, int stepShift = 1) const;
+    CipherResult encrypt(const QString& text, const QVariantMap& params = {}) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params = {}) override;
 
-    // Дешифрование Тритемия
-    CipherResult decrypt(const QString& text, int startShift = 0, int stepShift = 1) const;
-
-    QString name() const;
-    QString description() const;
+    QString name() const override { return "Шифр Тритемия"; }
+    QString description() const override {
+        return "Полиалфавитный шифр с прогрессирующим сдвигом. Каждая следующая буква сдвигается на 1 больше предыдущей.";
+    }
 
 private:
-    // Вспомогательный метод для вычисления сдвига для позиции i
-    int getShiftForPosition(int position, int startShift, int stepShift) const;
+    QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
 
-    // Нормализация сдвига
     int normalizeShift(int shift) const;
 };
+
+class TrithemiusCipherRegister {
+public:
+    TrithemiusCipherRegister();
+};
+
+static TrithemiusCipherRegister trithemiusRegister;
 
 #endif // TRITHEMIUS_H

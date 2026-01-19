@@ -8,6 +8,17 @@
 #include <memory>
 #include "cipherinterface.h"
 
+// Включаем ВСЕ виджеты Qt, которые могут понадобиться для параметров
+#include <QWidget>
+#include <QLabel>
+#include <QSpinBox>
+#include <QLineEdit>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QComboBox>
+#include <QCheckBox>
+#include <QGroupBox>
+
 class CipherFactory : public QObject
 {
     Q_OBJECT

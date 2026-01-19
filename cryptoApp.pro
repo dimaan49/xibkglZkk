@@ -8,23 +8,33 @@ TARGET = cryptoApp
 TEMPLATE = app
 
 SOURCES += \
+    cipherwidgetfactory.cpp \
     main.cpp \
     mainwindow.cpp \
     cipherfactory.cpp \
     atbash.cpp \
     belazo.cpp \
+    cardano.cpp \
     caesar.cpp \
+    trithemius.cpp \
+    vigenere_auto.cpp \
+    vigenere_ciphertext.cpp \
     formatter.cpp \
     logger.cpp
 
 HEADERS += \
+    cipherwidgetfactory.h \
     mainwindow.h \
     cipherinterface.h \
     cipherfactory.h \
     ciphercore.h \
     atbash.h \
     belazo.h \
+    cardano.h \
     caesar.h \
+    trithemius.h \
+    vigenere_auto.h \
+    vigenere_ciphertext.h \
     formatter.h \
     logger.h
 
