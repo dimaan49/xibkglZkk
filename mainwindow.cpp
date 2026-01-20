@@ -2,6 +2,7 @@
 #include "cipherfactory.h"
 #include "cipherwidgetfactory.h"
 #include "formatter.h"
+#include "stylemanager.h"
 
 #include <iostream>
 
@@ -16,10 +17,59 @@
 #include <QDebug>
 #include <QSpinBox>
 #include <QLineEdit>
+#include <QPropertyAnimation>
+#include <QGraphicsDropShadowEffect>
+#include <QSequentialAnimationGroup>
+#include <QParallelAnimationGroup>
 
+// ==================== AnimatedButton Implementation ====================
+AnimatedButton::AnimatedButton(const QString& text, QWidget* parent)
+    : QPushButton(text, parent)
+{
+    setCursor(Qt::PointingHandCursor);
+
+    m_hoverAnimation = new QPropertyAnimation(this, "borderRadius");
+    m_hoverAnimation->setDuration(150);
+    m_hoverAnimation->setEasingCurve(QEasingCurve::OutCubic);
+}
+
+AnimatedButton::~AnimatedButton() {
+    delete m_hoverAnimation;
+}
+
+void AnimatedButton::setBorderRadius(int radius) {
+    m_borderRadius = radius;
+    QString style = QString(
+        "QPushButton {"
+        "    border-radius: %1px;"
+        "}"
+    ).arg(radius);
+    setStyleSheet(style);
+}
+
+void AnimatedButton::enterEvent(QEnterEvent* event) {
+    QPushButton::enterEvent(event);
+    m_hoverAnimation->stop();
+    m_hoverAnimation->setStartValue(borderRadius());
+    m_hoverAnimation->setEndValue(10);
+    m_hoverAnimation->start();
+}
+
+void AnimatedButton::leaveEvent(QEvent* event) {
+    QPushButton::leaveEvent(event);
+    m_hoverAnimation->stop();
+    m_hoverAnimation->setStartValue(borderRadius());
+    m_hoverAnimation->setEndValue(6);
+    m_hoverAnimation->start();
+}
+
+
+
+// ==================== MainWindow Implementation ====================
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , cipherComboBox(nullptr)
+    , themeComboBox(nullptr)
     , inputTextEdit(nullptr)
     , outputTextEdit(nullptr)
     , debugConsole(nullptr)
@@ -32,12 +82,15 @@ MainWindow::MainWindow(QWidget *parent)
 {
     setupUI();
     setupCiphers();
+    setupThemeSelector();
 
-    setWindowTitle("Криптографическое приложение с фабрикой");
-    resize(800, 600);
+    // Применяем тему по умолчанию
+    StyleManager::applyTheme(this, StyleManager::THEME_CYBER_MIDNIGHT);
 
-    logToConsole("=== Приложение запущено ===");
-    logToConsole("Фабрика шифров инициализирована");
+    setWindowTitle("CryptoGuard - Криптографическое приложение");
+    resize(900, 700);
+
+    logToConsole("=== CryptoGuard запущен ===");
 }
 
 MainWindow::~MainWindow()
@@ -46,90 +99,199 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupUI()
 {
-    // Центральный виджет
+    // Центральный виджет с эффектом тени
     QWidget *centralWidget = new QWidget(this);
+    QGraphicsDropShadowEffect* shadowEffect = new QGraphicsDropShadowEffect();
+    shadowEffect->setBlurRadius(15);
+    shadowEffect->setColor(QColor(0, 0, 0, 80));
+    shadowEffect->setOffset(0, 2);
+    centralWidget->setGraphicsEffect(shadowEffect);
+
     setCentralWidget(centralWidget);
 
-    // Основной layout
+    // Основной layout с отступами
     QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
+    mainLayout->setSpacing(15);
+    mainLayout->setContentsMargins(20, 20, 20, 20);
 
-    // 1. Выбор шифра
-    QHBoxLayout *cipherSelectionLayout = new QHBoxLayout();
-    cipherSelectionLayout->addWidget(new QLabel("Выберите шифр:"));
+    // 1. Верхняя панель: Выбор шифра + темы
+    QHBoxLayout *topPanelLayout = new QHBoxLayout();
+
+    // Логотип/заголовок
+    QLabel *logoLabel = new QLabel("🔒 CryptoGuard");
+    logoLabel->setStyleSheet("font-size: 18px; font-weight: bold; color: #00c896;");
+    topPanelLayout->addWidget(logoLabel);
+    topPanelLayout->addStretch();
+
+    // Выбор темы
+    QLabel *themeLabel = new QLabel("Тема:");
+    themeComboBox = new QComboBox();
+    themeComboBox->addItem("Cyber Midnight");
+    themeComboBox->addItem("Dark Professional");
+    themeComboBox->addItem("Reliable Orange");
+    themeComboBox->setObjectName("themeSelector");
+    connect(themeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &MainWindow::onThemeChanged);
+
+    topPanelLayout->addWidget(themeLabel);
+    topPanelLayout->addWidget(themeComboBox);
+    topPanelLayout->addSpacing(20);
+
+    // Выбор шифра
+    QLabel *cipherLabel = new QLabel("Шифр:");
     cipherComboBox = new QComboBox();
-    cipherComboBox->setMinimumWidth(250);
+    cipherComboBox->setMinimumWidth(220);
+    cipherComboBox->setObjectName("cipherSelector");
 
+    topPanelLayout->addWidget(cipherLabel);
+    topPanelLayout->addWidget(cipherComboBox);
 
-    // Устанавливаем фиксированную высоту выпадающего списка
-    cipherComboBox->setStyleSheet(
-        "QComboBox {"
-        "    combobox-popup: 0;"  // Отключаем авто-высоту
-        "}"
-        "QComboBox QAbstractItemView {"
-        "    max-height: 200px;"  // Фиксированная высота
-        "}"
-    );
-
-    cipherSelectionLayout->addWidget(cipherComboBox);
-
-    // 2. Панель параметров
+    // 2. Панель параметров (с эффектом стекла)
     parametersGroup = new QGroupBox("Параметры шифра");
     parametersLayout = new QVBoxLayout(parametersGroup);
     parametersGroup->setLayout(parametersLayout);
 
+    // Эффект стекла
+    QGraphicsDropShadowEffect* groupShadow = new QGraphicsDropShadowEffect();
+    groupShadow->setBlurRadius(10);
+    groupShadow->setColor(QColor(0, 150, 255, 30));
+    groupShadow->setOffset(0, 3);
+    parametersGroup->setGraphicsEffect(groupShadow);
+
     // 3. Ввод текста
-    QGroupBox *inputGroup = new QGroupBox("Входной текст");
+    QGroupBox *inputGroup = new QGroupBox("📝 Входной текст");
     QVBoxLayout *inputLayout = new QVBoxLayout();
     inputTextEdit = new QTextEdit();
-    inputTextEdit->setText("ОДИН ДУРАК МОЖЕТ БОЛЬШЕ СПРАШИВАТЬ ЗПТ ЧЕМ ДЕСЯТЬ УМНЫХ ОТВЕТИТЬ ТЧК");
+    inputTextEdit->setObjectName("inputText");
     inputTextEdit->setPlaceholderText("Введите текст для шифрования/дешифрования...");
-    inputTextEdit->setMaximumHeight(100);
+    inputTextEdit->setText("ОДИН ДУРАК МОЖЕТ БОЛЬШЕ СПРАШИВАТЬ ЗПТ ЧЕМ ДЕСЯТЬ УМНЫХ ОТВЕТИТЬ ТЧК");
+    inputTextEdit->setAcceptRichText(false);
     inputLayout->addWidget(inputTextEdit);
+
+    // Кнопка очистки ввода
+    QHBoxLayout *inputToolsLayout = new QHBoxLayout();
+    clearInputButton = new QPushButton("🗑️ Очистить");
+    clearInputButton->setObjectName("clearInputButton");
+    clearInputButton->setToolTip("Очистить поле ввода");
+    clearInputButton->setMaximumWidth(100);
+    inputToolsLayout->addStretch();
+    inputToolsLayout->addWidget(clearInputButton);
+    inputLayout->addLayout(inputToolsLayout);
+
     inputGroup->setLayout(inputLayout);
 
-    // 4. Кнопки
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
-    encryptButton = new QPushButton("Зашифровать");
-    decryptButton = new QPushButton("Расшифровать");
-    clearButton = new QPushButton("Очистить всё");
-    buttonLayout->addWidget(encryptButton);
-    buttonLayout->addWidget(decryptButton);
-    buttonLayout->addStretch();
-    buttonLayout->addWidget(clearButton);
-
     // 5. Вывод результата
-    QGroupBox *outputGroup = new QGroupBox("Результат");
+    QGroupBox *outputGroup = new QGroupBox("📊 Результат");
     QVBoxLayout *outputLayout = new QVBoxLayout();
     outputTextEdit = new QTextEdit();
+    outputTextEdit->setObjectName("outputText");
     outputTextEdit->setReadOnly(true);
     outputTextEdit->setPlaceholderText("Здесь появится результат...");
-    outputTextEdit->setMaximumHeight(100);
     outputLayout->addWidget(outputTextEdit);
+
+    // Кнопка очистки вывода
+    QHBoxLayout *outputToolsLayout = new QHBoxLayout();
+    clearOutputButton = new QPushButton("🗑️ Очистить");
+    clearOutputButton->setObjectName("clearOutputButton");
+    clearOutputButton->setToolTip("Очистить поле вывода");
+    clearOutputButton->setMaximumWidth(100);
+    outputToolsLayout->addStretch();
+    outputToolsLayout->addWidget(clearOutputButton);
+    outputLayout->addLayout(outputToolsLayout);
+
     outputGroup->setLayout(outputLayout);
 
+    // 4. Кнопки действий (вертикальный контейнер)
+    QWidget *buttonContainer = new QWidget();
+    QVBoxLayout *buttonLayout = new QVBoxLayout(buttonContainer);
+    buttonLayout->setSpacing(8);
+    buttonLayout->setContentsMargins(10, 0, 10, 0);
+    buttonLayout->setAlignment(Qt::AlignCenter);
+
+    // Шифровать
+    encryptButton = new AnimatedButton("🔐 Шифровать", this);
+    encryptButton->setObjectName("encryptButton");
+    encryptButton->setMinimumSize(120, 40);
+    encryptButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    // Кнопка "Поменять"
+    QPushButton *swapButton = new QPushButton("↕ Поменять", this);
+    swapButton->setObjectName("swapButton");
+    swapButton->setToolTip("Поменять местами входной и выходной текст");
+    swapButton->setMinimumSize(120, 40);
+    swapButton->setMaximumSize(120, 40);
+
+    // Дешифровать
+    decryptButton = new AnimatedButton("🔓 Дешифровать", this);
+    decryptButton->setObjectName("decryptButton");
+    decryptButton->setMinimumSize(120, 40);
+    decryptButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    // текст по умолчанию
+    QPushButton *defaultTextButton = new QPushButton("📝 Пример", this);
+    defaultTextButton->setObjectName("defaultTextButton");
+    defaultTextButton->setToolTip("Вставить пример текста");
+    defaultTextButton->setMinimumSize(120, 40);
+    defaultTextButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    // Очистить всё
+    clearButton = new AnimatedButton("🗑️ Очистить всё", this);
+    clearButton->setObjectName("clearButton");
+    clearButton->setMinimumSize(120, 40);
+    clearButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    // Добавляем кнопки вертикально
+    buttonLayout->addWidget(encryptButton);
+    buttonLayout->addWidget(swapButton);
+    buttonLayout->addWidget(decryptButton);
+    buttonLayout->addWidget(defaultTextButton);
+    buttonLayout->addWidget(clearButton);
+    buttonLayout->addStretch(); // Растягиваем пространство снизу
+
+    // Создаем горизонтальный контейнер для ввода, кнопок и вывода
+    QWidget *inputOutputContainer = new QWidget();
+    QHBoxLayout *horizontalLayout = new QHBoxLayout(inputOutputContainer);
+    horizontalLayout->setSpacing(15);
+    horizontalLayout->setContentsMargins(0, 0, 0, 0);
+
+    // Добавляем ввод, кнопки и вывод в горизонтальный layout
+    horizontalLayout->addWidget(inputGroup, 1);  // Растягиваем по ширине
+    horizontalLayout->addWidget(buttonContainer, 0);  // Фиксированная ширина для кнопок
+    horizontalLayout->addWidget(outputGroup, 1);  // Растягиваем по ширине
+
     // 6. Консоль для логов
-    QGroupBox *consoleGroup = new QGroupBox("Лог выполнения");
+    QGroupBox *consoleGroup = new QGroupBox("📋 Журнал операций");
     QVBoxLayout *consoleLayout = new QVBoxLayout();
     debugConsole = new QTextEdit();
     debugConsole->setReadOnly(true);
-    debugConsole->setMaximumHeight(150);
-    debugConsole->setStyleSheet("font-family: 'Courier New', monospace; font-size: 10pt; background-color: #f8f8f8; color: #000000;");
+    debugConsole->setObjectName("console");
+
+    // Кнопка очистки лога
+    QHBoxLayout *consoleToolsLayout = new QHBoxLayout();
+    clearLogButton = new QPushButton("🗑️ Очистить лог");
+    clearLogButton->setObjectName("clearLogButton");
+    clearLogButton->setToolTip("Очистить журнал операций");
+    clearLogButton->setMaximumWidth(120);
+    consoleToolsLayout->addStretch();
+    consoleToolsLayout->addWidget(clearLogButton);
+
     consoleLayout->addWidget(debugConsole);
+    consoleLayout->addLayout(consoleToolsLayout);
     consoleGroup->setLayout(consoleLayout);
 
-    // 7. Статус
-    statusLabel = new QLabel("Готов к работе. Выберите шифр из списка.");
-    statusLabel->setStyleSheet("padding: 8px; background-color: #e8e8e8; border: 1px solid #ccc; border-radius: 3px; color: black;");
+    // 7. Статусная панель
+    statusLabel = new QLabel("⚡ Готов к работе. Выберите шифр из списка.");
+    statusLabel->setProperty("status", "info");
     statusLabel->setAlignment(Qt::AlignCenter);
+    statusLabel->setMinimumHeight(40);
 
-    // Компоновка
-    mainLayout->addLayout(cipherSelectionLayout);
+    // Компоновка всех элементов
+    mainLayout->addLayout(topPanelLayout);
     mainLayout->addWidget(parametersGroup);
-    mainLayout->addWidget(inputGroup);
-    mainLayout->addLayout(buttonLayout);
-    mainLayout->addWidget(outputGroup);
+    mainLayout->addWidget(inputOutputContainer);  // Вместо отдельных inputGroup, buttonContainer, outputGroup
     mainLayout->addWidget(consoleGroup);
     mainLayout->addWidget(statusLabel);
+
 
     // Подключение сигналов
     connect(cipherComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
@@ -138,8 +300,64 @@ void MainWindow::setupUI()
             this, &MainWindow::onEncryptClicked);
     connect(decryptButton, &QPushButton::clicked,
             this, &MainWindow::onDecryptClicked);
+
+    //CLEAR
     connect(clearButton, &QPushButton::clicked,
             this, &MainWindow::onClearClicked);
+
+    connect(clearInputButton, &QPushButton::clicked,
+            this, &MainWindow::onClearInputClicked);
+    connect(clearOutputButton, &QPushButton::clicked,
+            this, &MainWindow::onClearOutputClicked);
+    connect(clearLogButton, &QPushButton::clicked,
+            this, &MainWindow::onClearLogClicked);
+    connect(swapButton, &QPushButton::clicked,
+            this, &MainWindow::onSwapClicked);
+    //CLEAR
+
+    // DEFAULT TEXT
+    connect(defaultTextButton, &QPushButton::clicked,
+            this, &MainWindow::onDefaultTextClicked);
+    //
+}
+
+void MainWindow::setupThemeSelector()
+{
+    // Уже настроено в setupUI()
+}
+
+void MainWindow::onThemeChanged()
+{
+    int themeIndex = themeComboBox->currentIndex();
+    StyleManager::StyleTheme theme = static_cast<StyleManager::StyleTheme>(themeIndex);
+    StyleManager::applyTheme(this, theme);
+
+    QString themeName = themeComboBox->currentText();
+    logToConsole("✓ Тема изменена: " + themeName);
+}
+
+void MainWindow::showSuccessAnimation()
+{
+    // Простая анимация успеха - мигание цвета
+    QPropertyAnimation* animation = new QPropertyAnimation(statusLabel, "styleSheet");
+    animation->setDuration(600);
+    animation->setStartValue("");
+    animation->setKeyValueAt(0.3, "QLabel { background-color: rgba(0, 200, 150, 0.3); }");
+    animation->setKeyValueAt(0.6, "QLabel { background-color: rgba(0, 200, 150, 0.6); }");
+    animation->setEndValue("");
+    animation->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void MainWindow::showErrorAnimation()
+{
+    // Простая анимация ошибки - красное мигание
+    QPropertyAnimation* animation = new QPropertyAnimation(statusLabel, "styleSheet");
+    animation->setDuration(600);
+    animation->setStartValue("");
+    animation->setKeyValueAt(0.3, "QLabel { background-color: rgba(255, 75, 75, 0.3); }");
+    animation->setKeyValueAt(0.6, "QLabel { background-color: rgba(255, 75, 75, 0.6); }");
+    animation->setEndValue("");
+    animation->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
 void MainWindow::setupCiphers()
@@ -182,6 +400,7 @@ void MainWindow::onCipherChanged(int index)
 
     // Добавляем описание шифра
     QLabel* infoLabel = new QLabel(m_currentCipher->description());
+    infoLabel->setObjectName("descriptionLabel");
     infoLabel->setWordWrap(true);
     parametersLayout->addWidget(infoLabel);
 
@@ -244,7 +463,9 @@ void MainWindow::onEncryptClicked()
 
         // Выводим результат
         outputTextEdit->setText(result.result);
-
+        showSuccessAnimation();
+        statusLabel->setText("✓ Шифрование завершено!");
+        statusLabel->setProperty("status", "success");
         // === ДОБАВЛЕНО: Используем StepFormatter для красивого вывода ===
         if (!result.steps.isEmpty()) {
             // Выводим детализированный результат с шагами
@@ -260,12 +481,9 @@ void MainWindow::onEncryptClicked()
         statusLabel->setStyleSheet("padding: 8px; background-color: #ccffcc; border: 1px solid #00cc00; border-radius: 3px; color: black;");
 
     } catch (const std::exception& e) {
-        QString error = QString("Ошибка: %1").arg(e.what());
-        logToConsole("ОШИБКА: " + error);
-        QMessageBox::critical(this, "Ошибка", error);
-
-        statusLabel->setText("Ошибка при шифровании!");
-        statusLabel->setStyleSheet("padding: 8px; background-color: #ffcccc; border: 1px solid #ff0000; border-radius: 3px; color: black;");
+        showErrorAnimation();
+        statusLabel->setText("✗ Ошибка при шифровании!");
+        statusLabel->setProperty("status", "error");
     }
 }
 
@@ -298,7 +516,9 @@ void MainWindow::onDecryptClicked()
 
         // Выводим результат
         outputTextEdit->setText(result.result);
-
+        showSuccessAnimation();
+        statusLabel->setText("✓ Шифрование завершено!");
+        statusLabel->setProperty("status", "success");
         // === ДОБАВЛЕНО: Используем StepFormatter для красивого вывода ===
         if (!result.steps.isEmpty()) {
             QString formatted = StepFormatter::formatResult(result, true, 5, " ");
@@ -312,12 +532,9 @@ void MainWindow::onDecryptClicked()
         statusLabel->setStyleSheet("padding: 8px; background-color: #ccffcc; border: 1px solid #00cc00; border-radius: 3px; color: black;");
 
     } catch (const std::exception& e) {
-        QString error = QString("Ошибка: %1").arg(e.what());
-        logToConsole("ОШИБКА: " + error);
-        QMessageBox::critical(this, "Ошибка", error);
-
-        statusLabel->setText("Ошибка при дешифровании!");
-        statusLabel->setStyleSheet("padding: 8px; background-color: #ffcccc; border: 1px solid #ff0000; border-radius: 3px; color: black;");
+        showErrorAnimation();
+        statusLabel->setText("✗ Ошибка при шифровании!");
+        statusLabel->setProperty("status", "error");
     }
 }
 
@@ -357,4 +574,40 @@ void MainWindow::logToConsole(const QString& message)
 {
     debugConsole->append(message);
     std::cout << message.toStdString() << std::endl;
+}
+
+void MainWindow::onClearInputClicked()
+{
+    inputTextEdit->clear();
+    logToConsole("✓ Поле ввода очищено");
+}
+
+void MainWindow::onClearOutputClicked()
+{
+    outputTextEdit->clear();
+    logToConsole("✓ Поле вывода очищено");
+}
+
+void MainWindow::onClearLogClicked()
+{
+    debugConsole->clear();
+    logToConsole("✓ Журнал операций очищен");
+}
+
+void MainWindow::onSwapClicked()
+{
+    QString inputText = inputTextEdit->toPlainText();
+    QString outputText = outputTextEdit->toPlainText();
+
+    inputTextEdit->setPlainText(outputText);
+    outputTextEdit->setPlainText(inputText);
+
+    logToConsole("✓ Входной и выходной текст поменяны местами");
+}
+
+void MainWindow::onDefaultTextClicked()
+{
+    QString defaultText = "ОДИН ДУРАК МОЖЕТ БОЛЬШЕ СПРАШИВАТЬ ЗПТ ЧЕМ ДЕСЯТЬ УМНЫХ ОТВЕТИТЬ ТЧК";
+    inputTextEdit->setPlainText(defaultText);
+    logToConsole("✓ Вставлен пример текста: \"" + defaultText + "\"");
 }

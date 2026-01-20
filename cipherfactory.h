@@ -8,7 +8,6 @@
 #include <memory>
 #include "cipherinterface.h"
 
-// Включаем ВСЕ виджеты Qt, которые могут понадобиться для параметров
 #include <QWidget>
 #include <QLabel>
 #include <QSpinBox>

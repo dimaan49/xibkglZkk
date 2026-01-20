@@ -16,6 +16,7 @@ SOURCES += \
     belazo.cpp \
     cardano.cpp \
     caesar.cpp \
+    stylemanager.cpp \
     trithemius.cpp \
     vigenere_auto.cpp \
     vigenere_ciphertext.cpp \
@@ -32,6 +33,7 @@ HEADERS += \
     belazo.h \
     cardano.h \
     caesar.h \
+    stylemanager.h \
     trithemius.h \
     vigenere_auto.h \
     vigenere_ciphertext.h \
