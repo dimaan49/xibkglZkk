@@ -147,6 +147,7 @@ void MainWindow::setupUI()
     topPanelLayout->addWidget(cipherComboBox);
 
     // 2. Панель параметров (с эффектом стекла)
+
     parametersGroup = new QGroupBox("Параметры шифра");
     parametersLayout = new QVBoxLayout(parametersGroup);
     parametersGroup->setLayout(parametersLayout);
@@ -222,7 +223,7 @@ void MainWindow::setupUI()
     swapButton->setMaximumSize(120, 40);
 
     // Дешифровать
-    decryptButton = new AnimatedButton("🔓 Дешифровать", this);
+    decryptButton = new AnimatedButton("🔓 Расшифровать", this);
     decryptButton->setObjectName("decryptButton");
     decryptButton->setMinimumSize(120, 40);
     decryptButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -261,12 +262,16 @@ void MainWindow::setupUI()
 
     // 6. Консоль для логов
     QGroupBox *consoleGroup = new QGroupBox("📋 Журнал операций");
-    QVBoxLayout *consoleLayout = new QVBoxLayout();
+    QVBoxLayout *consoleLayout = new QVBoxLayout(consoleGroup);
+    consoleLayout->setSpacing(5);
+    consoleLayout->setContentsMargins(5, 5, 5, 5);
+
     debugConsole = new QTextEdit();
     debugConsole->setReadOnly(true);
     debugConsole->setObjectName("console");
-
+    debugConsole->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     // Кнопка очистки лога
+
     QHBoxLayout *consoleToolsLayout = new QHBoxLayout();
     clearLogButton = new QPushButton("🗑️ Очистить лог");
     clearLogButton->setObjectName("clearLogButton");
@@ -290,6 +295,7 @@ void MainWindow::setupUI()
     mainLayout->addWidget(parametersGroup);
     mainLayout->addWidget(inputOutputContainer);  // Вместо отдельных inputGroup, buttonContainer, outputGroup
     mainLayout->addWidget(consoleGroup);
+    mainLayout->addStretch(1);
     mainLayout->addWidget(statusLabel);
 
 
@@ -573,6 +579,11 @@ void MainWindow::clearParameters()
 void MainWindow::logToConsole(const QString& message)
 {
     debugConsole->append(message);
+    // Автоскроллинг к низу
+    QTextCursor cursor = debugConsole->textCursor();
+    cursor.movePosition(QTextCursor::End);
+    debugConsole->setTextCursor(cursor);
+
     std::cout << message.toStdString() << std::endl;
 }
 

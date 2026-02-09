@@ -107,16 +107,18 @@ QString StyleManager::getStylesheet(StyleTheme theme) {
             }
 
             /* ====== Console/ Area (БОЛЬШЕ) ====== */
-            QTextEdit#console, QPlainTextEdit#console,
-            QTextEdit#logText, QPlainTextEdit#logText {
-                background-color: #0a0f15;
-                border: 1px solid #1a232f;
+            QTextEdit#console, QPlainTextEdit#console {
+                background-color: #0a0704;
+                border: 1px solid #1a140d;
                 border-radius: 4px;
-                color: #64d8cb;
+                color: #d4a017;
                 font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
                 font-size: 10px;
-                min-height: 200px;
-                max-height: 600px;
+                min-height: 150px;
+                max-height: 300px; /* Уменьшил с 600px */
+                /* Добавьте эти свойства: */
+                selection-background-color: #e65c00;
+                selection-color: white;
             }
 
             /* ====== Labels ====== */
@@ -512,14 +514,16 @@ QString StyleManager::getStylesheet(StyleTheme theme) {
             /* ====== Console/ Area (БОЛЬШЕ) ====== */
             QTextEdit#console, QPlainTextEdit#console,
             QTextEdit#logText, QPlainTextEdit#logText {
-                background-color: #0a0a0a;
-                border: 1px solid #1e1e1e;
+                background-color: #0a0f15;
+                border: 1px solid #1a232f;
                 border-radius: 4px;
-                color: #3a7afe;
+                color: #64d8cb;
                 font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
                 font-size: 10px;
-                min-height: 200px;
-                max-height: 600px;
+                min-height: 150px;
+                max-height: 300px;
+                selection-background-color: #0096ff;
+                selection-color: white;
             }
 
             /* ====== Labels ====== */

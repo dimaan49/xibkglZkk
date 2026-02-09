@@ -124,6 +124,7 @@ TrithemiusCipherRegister::TrithemiusCipherRegister()
             QSpinBox* startShiftSpinBox = new QSpinBox(parent);
             startShiftSpinBox->setValue(0);
             startShiftSpinBox->setObjectName("startShift");
+            startShiftSpinBox->setEnabled(false);
             startShiftSpinBox->setToolTip("Начальный сдвиг для первой буквы");
 
             startShiftLayout->addWidget(startShiftLabel);

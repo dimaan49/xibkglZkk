@@ -1,14 +1,24 @@
 #ifndef ROUTECIPHER_H
 #define ROUTECIPHER_H
 
-#include "ciphercore.h"
+#include "cipherinterface.h"
 #include <vector>
 #include <QString>
 #include <QVector>
 
-class RouteCipher {
+class RouteCipher : public CipherInterface
+{
+public:
+    RouteCipher();
+
+    CipherResult encrypt(const QString& text, const QVariantMap& params = {}) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params = {}) override;
+
+    QString name() const override;
+    QString description() const override;
+
 private:
-    // Основной метод с полным набором параметров
+    // Внутренние методы остаются прежними
     CipherResult encryptImpl(const QString& text,
                             int rows, int cols,
                             const QVector<Direction>& writeDirections,
@@ -16,7 +26,6 @@ private:
                             const QVector<int>& rowOrder,
                             const QVector<int>& columnOrder);
 
-    // Вспомогательные методы
     std::vector<std::vector<QChar>> fillTable(const QString& text,
                                              const QVector<Direction>& writeDirections,
                                              const QVector<int>& rowOrder,
@@ -31,24 +40,16 @@ private:
     void calculateOptimalSize(int textLength, int& optimalRows, int& optimalCols) const;
     QVector<int> normalizeOrder(const QVector<int>& order, int size, const QString& orderName) const;
 
-public:
-    RouteCipher() = default;
-
-    // Текущий интерфейс (для обратной совместимости)
-    CipherResult encrypt(const QString& text,
-                        const QVector<Direction>& writeDirections,
-                        const QVector<Direction>& readDirections,
-                        int rows = 0, int cols = 0);
-
-    // Новый интерфейс с конфигурацией
-    CipherResult encrypt(const QString& text, const RouteCipherConfig& config);
-
-    // Дешифрование (упрощенное)
-    CipherResult decrypt(const QString& text,
-                        const RouteCipherConfig& config);
-
-    QString name() const;
-    QString description() const;
+    // Фиксированные настройки по умолчанию
+    QVector<Direction> getDefaultWriteDirections(int rows) const;
+    QVector<Direction> getDefaultReadDirections(int cols) const;
 };
+
+class RouteCipherRegister {
+public:
+    RouteCipherRegister();
+};
+
+static RouteCipherRegister routeCipherRegister;
 
 #endif // ROUTECIPHER_H

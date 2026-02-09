@@ -31,4 +31,6 @@ public:
 
 static CaesarCipherRegister caesarRegister;
 
+
+
 #endif // CAESARCIPHER_H

@@ -4,6 +4,8 @@
 #include <QString>
 #include <QVector>
 #include <QChar>
+#include <QLineEdit>
+#include <QKeyEvent>
 
 // БАЗА
 // Шаг преобразования одного символа
@@ -315,7 +317,6 @@ namespace MatrixUtils {
         return adjugate;
     }
 };
-
 
 
 

@@ -7,38 +7,59 @@ QT += core widgets
 TARGET = cryptoApp
 TEMPLATE = app
 
-SOURCES += \
-    cipherwidgetfactory.cpp \
-    main.cpp \
-    mainwindow.cpp \
-    cipherfactory.cpp \
-    atbash.cpp \
-    belazo.cpp \
-    cardano.cpp \
-    caesar.cpp \
-    stylemanager.cpp \
-    trithemius.cpp \
-    vigenere_auto.cpp \
-    vigenere_ciphertext.cpp \
-    formatter.cpp \
-    logger.cpp
+INCLUDEPATH += \
+    $$PWD \
+    $$PWD\core \
+    $$PWD\gui \
+    $$PWD\ciphers \
+    $$PWD\fabrics \
+    $$PWD\classes
 
-HEADERS += \
-    cipherwidgetfactory.h \
-    mainwindow.h \
-    cipherinterface.h \
-    cipherfactory.h \
-    ciphercore.h \
-    atbash.h \
-    belazo.h \
-    cardano.h \
-    caesar.h \
-    stylemanager.h \
-    trithemius.h \
-    vigenere_auto.h \
-    vigenere_ciphertext.h \
-    formatter.h \
-    logger.h
+
+
+
+SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
+    ciphers/atbash.cpp \
+    ciphers/belazo.cpp \
+    ciphers/caesar.cpp \
+    ciphers/cardano.cpp \
+    ciphers/magmasblock.cpp \
+    ciphers/matrixcipher.cpp \
+    ciphers/polibiusquare.cpp \
+    ciphers/routecipher.cpp \
+    ciphers/trithemius.cpp \
+    ciphers/vigenere_auto.cpp \
+    ciphers/vigenere_ciphertext.cpp \
+    classes/RestrictedSpinBox.cpp \
+    core/ciphercore.cpp \
+    core/formatter.cpp \
+    fabrics/cipherfactory.cpp \
+    fabrics/cipherwidgetfactory.cpp \
+    gui/logger.cpp \
+    gui/mainwindow.cpp \
+    gui/stylemanager.cpp
+HEADERS += $$files($$PWD/*/*.h) \    \
+    ciphers/atbash.h \
+    ciphers/belazo.h \
+    ciphers/caesar.h \
+    ciphers/cardano.h \
+    ciphers/magmasblock.h \
+    ciphers/matrixcipher.h \
+    ciphers/polibiusquare.h \
+    ciphers/routecipher.h \
+    ciphers/trithemius.h \
+    ciphers/vigenere_auto.h \
+    ciphers/vigenere_ciphertext.h \
+    classes/RestrictedSpinBox.h \
+    core/ciphercore.h \
+    core/cipherinterface.h \
+    core/formatter.h \
+    fabrics/cipherfactory.h \
+    fabrics/cipherwidgetfactory.h \
+    gui/logger.h \
+    gui/mainwindow.h \
+    gui/stylemanager.h
+
 
 win32 {
     QMAKE_LFLAGS += -Wl,-subsystem,console

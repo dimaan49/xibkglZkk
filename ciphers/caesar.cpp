@@ -1,6 +1,9 @@
 #include "caesar.h"
 #include "cipherfactory.h"
 #include "cipherwidgetfactory.h"
+#include "RestrictedSpinBox.h"
+
+
 
 CaesarCipher::CaesarCipher()
 {
@@ -84,9 +87,10 @@ CaesarCipherRegister::CaesarCipherRegister()
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QHBoxLayout* shiftLayout = new QHBoxLayout();
             QLabel* shiftLabel = new QLabel("Сдвиг:");
-            QSpinBox* shiftSpinBox = new QSpinBox(parent);
-            shiftSpinBox->setValue(3);
+            RestrictedSpinBox* shiftSpinBox = new RestrictedSpinBox(parent);
             shiftSpinBox->setObjectName("shift");
+            shiftSpinBox->setRange(1,31);
+
 
             shiftLayout->addWidget(shiftLabel);
             shiftLayout->addWidget(shiftSpinBox);

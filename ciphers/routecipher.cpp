@@ -1,7 +1,14 @@
 #include "routecipher.h"
+#include "cipherfactory.h"
+#include "cipherwidgetfactory.h"
 #include <algorithm>
 #include <cmath>
 #include <QDebug>
+
+RouteCipher::RouteCipher()
+{
+}
+
 
 // Внутренний основной метод
 CipherResult RouteCipher::encryptImpl(const QString& text,
@@ -90,32 +97,56 @@ CipherResult RouteCipher::encryptImpl(const QString& text,
     return CipherResult(encrypted, steps, description, name(), false);
 }
 
-// Публичный интерфейс с параметрами
-CipherResult RouteCipher::encrypt(const QString& text,
-                                 const QVector<Direction>& writeDirections,
-                                 const QVector<Direction>& readDirections,
-                                 int rows, int cols) {
-    return encryptImpl(text, rows, cols, writeDirections, readDirections,
-                      QVector<int>(), QVector<int>());
+QVector<Direction> RouteCipher::getDefaultWriteDirections(int rows) const
+{
+    QVector<Direction> directions;
+    // Змейка: чередование направлений
+    for (int i = 0; i < rows; ++i) {
+        directions.append((i % 2 == 0) ? LEFT_TO_RIGHT : RIGHT_TO_LEFT);
+    }
+    return directions;
 }
 
-// Публичный интерфейс с конфигурацией
-CipherResult RouteCipher::encrypt(const QString& text, const RouteCipherConfig& config) {
-    return encryptImpl(text, config.rows, config.cols,
-                      config.writeDirections, config.readDirections,
-                      config.rowOrder, config.columnOrder);
+QVector<Direction> RouteCipher::getDefaultReadDirections(int cols) const
+{
+    QVector<Direction> directions(cols, TOP_TO_BOTTOM);
+    return directions;
 }
 
-// Дешифрование
-CipherResult RouteCipher::decrypt(const QString& text, const RouteCipherConfig& config) {
+CipherResult RouteCipher::encrypt(const QString& text, const QVariantMap& params)
+{
+    Q_UNUSED(params); // Параметры не используются
+
+    // Автоматически определяем размер таблицы
+    QString cleanText = CipherUtils::filterAlphabetOnly(text,
+        QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"));
+
+    int rows = 0, cols = 0;
+    calculateOptimalSize(cleanText.length(), rows, cols);
+
+    // Получаем направления по умолчанию
+    QVector<Direction> writeDirections = getDefaultWriteDirections(rows);
+    QVector<Direction> readDirections = getDefaultReadDirections(cols);
+
+    // Используем порядок по умолчанию
+    QVector<int> rowOrder, columnOrder;
+
+    return encryptImpl(cleanText, rows, cols, writeDirections, readDirections, rowOrder, columnOrder);
+}
+
+CipherResult RouteCipher::decrypt(const QString& text, const QVariantMap& params)
+{
+    Q_UNUSED(params);
+    Q_UNUSED(text);
+
     QVector<CipherStep> steps;
     steps.append(CipherStep(1, QChar(),
-        QStringLiteral(u"Дешифрование RouteCipher"),
-        QStringLiteral(u"Еще не реализовано")));
+        "Дешифрование RouteCipher",
+        "Еще не реализовано"));
 
     return CipherResult(QString(), steps,
-                       QStringLiteral(u"Дешифрование RouteCipher"),
-                       name() + QStringLiteral(u" (дешифрование)"), false);
+                       "Дешифрование RouteCipher",
+                       name() + " (дешифрование)", false);
 }
 
 // Вспомогательные методы
@@ -350,4 +381,40 @@ QString RouteCipher::name() const {
 
 QString RouteCipher::description() const {
     return QStringLiteral(u"Шифр маршрутной перестановки");
+}
+
+
+RouteCipherRegister::RouteCipherRegister()
+{
+    CipherFactory::instance().registerCipher(
+        "route",
+        "Маршрутная перестановка",
+        []() -> CipherInterface* { return new RouteCipher(); }
+    );
+
+    CipherWidgetFactory::instance().registerCipherWidgets(
+        "route",
+        [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
+            Q_UNUSED(parent);
+            Q_UNUSED(widgets);
+
+            QLabel* infoLabel = new QLabel(
+                "🔄 Автоматическая маршрутная перестановка\n\n"
+                "• Размер таблицы определяется автоматически\n"
+                "• Запись: змейкой (↱↰ чередование)\n"
+                "• Чтение: сверху вниз (↓)\n"
+                "• Без параметров"
+            );
+            infoLabel->setWordWrap(true);
+            infoLabel->setStyleSheet(
+                "QLabel {"
+                "    padding: 10px;"
+                "    background-color: rgba(0, 150, 255, 0.1);"
+                "    border: 1px solid rgba(0, 150, 255, 0.3);"
+                "    border-radius: 6px;"
+                "}"
+            );
+            layout->addWidget(infoLabel);
+        }
+    );
 }
