@@ -22,6 +22,7 @@ public:
 
     static void applyTheme(QWidget* window, StyleTheme theme);
     static QString getStylesheet(StyleTheme theme);
+    static QString getLogWindowStylesheet();
 };
 
 #endif // STYLEMANAGER_H

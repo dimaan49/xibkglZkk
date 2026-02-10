@@ -87,10 +87,8 @@ MainWindow::MainWindow(QWidget *parent)
     // Применяем тему по умолчанию
     StyleManager::applyTheme(this, StyleManager::THEME_CYBER_MIDNIGHT);
 
-    setWindowTitle("CryptoGuard - Криптографическое приложение");
+    setWindowTitle("MospolyCrypt - Криптографическое приложение");
     resize(900, 700);
-
-    logToConsole("=== CryptoGuard запущен ===");
 }
 
 MainWindow::~MainWindow()
@@ -118,7 +116,7 @@ void MainWindow::setupUI()
     QHBoxLayout *topPanelLayout = new QHBoxLayout();
 
     // Логотип/заголовок
-    QLabel *logoLabel = new QLabel("🔒 CryptoGuard");
+    QLabel *logoLabel = new QLabel("🔒 MospolyCryp");
     logoLabel->setStyleSheet("font-size: 18px; font-weight: bold; color: #00c896;");
     topPanelLayout->addWidget(logoLabel);
     topPanelLayout->addStretch();
@@ -260,6 +258,9 @@ void MainWindow::setupUI()
     horizontalLayout->addWidget(buttonContainer, 0);  // Фиксированная ширина для кнопок
     horizontalLayout->addWidget(outputGroup, 1);  // Растягиваем по ширине
 
+
+    //6. Большое окно логов
+    logWindow = new LogWindow(this);
     // 6. Консоль для логов
     QGroupBox *consoleGroup = new QGroupBox("📋 Журнал операций");
     QVBoxLayout *consoleLayout = new QVBoxLayout(consoleGroup);
@@ -270,17 +271,28 @@ void MainWindow::setupUI()
     debugConsole->setReadOnly(true);
     debugConsole->setObjectName("console");
     debugConsole->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    // Кнопка очистки лога
+    consoleLayout->addWidget(debugConsole);
 
+    // ПАНЕЛЬ КНОПОК ЛОГА (справа снизу под полем лога)
     QHBoxLayout *consoleToolsLayout = new QHBoxLayout();
+
+    // Кнопка для открытия подробного лога
+    showLogButton = new QPushButton("📋 Подробный лог");
+    showLogButton->setObjectName("logButton");
+    showLogButton->setToolTip("Открыть подробный журнал операций");
+    showLogButton->setMaximumWidth(120);
+
+    // Кнопка очистки лога
     clearLogButton = new QPushButton("🗑️ Очистить лог");
-    clearLogButton->setObjectName("clearLogButton");
+    clearLogButton->setObjectName("logButton");
     clearLogButton->setToolTip("Очистить журнал операций");
     clearLogButton->setMaximumWidth(120);
+
+    // Располагаем кнопки справа
     consoleToolsLayout->addStretch();
     consoleToolsLayout->addWidget(clearLogButton);
+    consoleToolsLayout->addWidget(showLogButton);
 
-    consoleLayout->addWidget(debugConsole);
     consoleLayout->addLayout(consoleToolsLayout);
     consoleGroup->setLayout(consoleLayout);
 
@@ -310,6 +322,8 @@ void MainWindow::setupUI()
     //CLEAR
     connect(clearButton, &QPushButton::clicked,
             this, &MainWindow::onClearClicked);
+    // LOG WINDOW
+    connect(showLogButton, &QPushButton::clicked, this, &MainWindow::onShowLogClicked);
 
     connect(clearInputButton, &QPushButton::clicked,
             this, &MainWindow::onClearInputClicked);
@@ -621,4 +635,16 @@ void MainWindow::onDefaultTextClicked()
     QString defaultText = "ОДИН ДУРАК МОЖЕТ БОЛЬШЕ СПРАШИВАТЬ ЗПТ ЧЕМ ДЕСЯТЬ УМНЫХ ОТВЕТИТЬ ТЧК";
     inputTextEdit->setPlainText(defaultText);
     logToConsole("✓ Вставлен пример текста: \"" + defaultText + "\"");
+}
+
+
+void MainWindow::onShowLogClicked()
+{
+    // Передаем текущий лог в окно
+    logWindow->setLogContent(debugConsole->toPlainText());
+    logWindow->show();
+    logWindow->raise();
+    logWindow->activateWindow();
+
+    logToConsole("✓ Открыт детальный журнал операций");
 }

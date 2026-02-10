@@ -32,10 +32,11 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     ciphers/vigenere_ciphertext.cpp \
     classes/RestrictedSpinBox.cpp \
     core/ciphercore.cpp \
-    core/formatter.cpp \
     fabrics/cipherfactory.cpp \
     fabrics/cipherwidgetfactory.cpp \
+    gui/formatter.cpp \
     gui/logger.cpp \
+    gui/logwindow.cpp \
     gui/mainwindow.cpp \
     gui/stylemanager.cpp
 HEADERS += $$files($$PWD/*/*.h) \    \
@@ -45,6 +46,7 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     ciphers/cardano.h \
     ciphers/magmasblock.h \
     ciphers/matrixcipher.h \
+    ciphers/matrixcipherregister.h \
     ciphers/polibiusquare.h \
     ciphers/routecipher.h \
     ciphers/trithemius.h \
@@ -53,10 +55,11 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     classes/RestrictedSpinBox.h \
     core/ciphercore.h \
     core/cipherinterface.h \
-    core/formatter.h \
     fabrics/cipherfactory.h \
     fabrics/cipherwidgetfactory.h \
+    gui/formatter.h \
     gui/logger.h \
+    gui/logwindow.h \
     gui/mainwindow.h \
     gui/stylemanager.h
 

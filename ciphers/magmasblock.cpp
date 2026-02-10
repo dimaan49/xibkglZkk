@@ -154,10 +154,7 @@ QString MagmaSBlockCipher::process64BitBlock(const QString& block64, int startSB
 
     // Обрабатываем ЛЕВУЮ часть
     QString processedLeft = process32BitBlock(left32, startSBlockIndex, encrypt);
-
-    // Для правой части используем следующий S-блок (или можно тот же, зависит от спецификации)
-    int rightStartIndex = (startSBlockIndex + 4) % 8; // Смещение на 4 S-блока для правой части
-    QString processedRight = process32BitBlock(right32, rightStartIndex, encrypt);
+    QString processedRight = process32BitBlock(right32, startSBlockIndex, encrypt);
 
     // Объединяем результаты
     return processedLeft + processedRight;
@@ -205,7 +202,7 @@ CipherResult MagmaSBlockCipher::encrypt(const QString& text, const QVariantMap& 
         }
 
         // Определяем начальный S-блок для этого блока
-        int startSBlockIndex = (blockCounter - 1) % 8;
+        int startSBlockIndex = 0;
 
         // Обрабатываем блок
         QString processedBlock = process64BitBlock(block64bit, startSBlockIndex, true);
@@ -216,12 +213,8 @@ CipherResult MagmaSBlockCipher::encrypt(const QString& text, const QVariantMap& 
         blockStep.index = blockCounter;
         blockStep.originalChar = QChar('0' + (blockCounter % 10));
         blockStep.resultValue = processedBlock.mid(0, 20) + "...";
-        blockStep.description = QString("Блок %1: L-часть S-блоки %2-%3, R-часть S-блоки %4-%5, ROL 11")
-                              .arg(blockCounter)
-                              .arg(startSBlockIndex + 1)
-                              .arg((startSBlockIndex + 7) % 8 + 1)
-                              .arg(((startSBlockIndex + 4) % 8) + 1)
-                              .arg(((startSBlockIndex + 4 + 7) % 8) + 1);
+        blockStep.description = QString("Блок %1: L и R части: S-блоки 1-8 → ROL 11")
+                              .arg(blockCounter);
         result.steps.append(blockStep);
     }
 
@@ -281,7 +274,7 @@ CipherResult MagmaSBlockCipher::decrypt(const QString& text, const QVariantMap& 
         }
 
         // Важно: используем ТОТ ЖЕ порядок S-блоков, что и при шифровании
-        int startSBlockIndex = (blockCounter - 1) % 8;
+        int startSBlockIndex = 0;
 
         // Обрабатываем блок (дешифрование)
         QString processedBlock = process64BitBlock(block64bit, startSBlockIndex, false);
@@ -291,12 +284,8 @@ CipherResult MagmaSBlockCipher::decrypt(const QString& text, const QVariantMap& 
         blockStep.index = blockCounter;
         blockStep.originalChar = QChar('0' + (blockCounter % 10));
         blockStep.resultValue = processedBlock.mid(0, 20) + "...";
-        blockStep.description = QString("Блок %1: L-часть ROR 11 + обратные S-блоки %2-%3, R-часть S-блоки %4-%5")
-                              .arg(blockCounter)
-                              .arg(startSBlockIndex + 1)
-                              .arg((startSBlockIndex + 7) % 8 + 1)
-                              .arg(((startSBlockIndex + 4) % 8) + 1)
-                              .arg(((startSBlockIndex + 4 + 7) % 8) + 1);
+        blockStep.description = QString("Блок %1: L и R части: S-блоки 1-8 → ROL 11")
+                              .arg(blockCounter);
         result.steps.append(blockStep);
     }
 

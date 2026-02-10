@@ -110,25 +110,21 @@ QString StepFormatter::formatStepsTable(const QVector<CipherStep>& steps) {
         return QStringLiteral(u"\nНет шагов преобразования\n");
     }
 
-    QString table;
-    table += QStringLiteral(u"\n┌─────┬─────────┬──────────┬────────────────────────┐\n");
-    table += QStringLiteral(u"│ Поз │ Исходн. │ Результат│ Описание               │\n");
-    table += QStringLiteral(u"├─────┼─────────┼──────────┼────────────────────────┤\n");
+    QString list;
+    list += QStringLiteral(u"\nДЕТАЛЬНЫЕ ШАГИ ПРЕОБРАЗОВАНИЯ:\n");
+    list += QStringLiteral(u"════════════════════════════════════════\n\n");
 
     for (const auto& step : steps) {
         QString original = getDisplayChar(step.originalChar);
         QString resultChar = getDisplayString(step.resultValue);
 
-        table += QStringLiteral(u"│ %1 │ %2 │ %3 │ %4 │\n")
-            .arg(step.index, 3)
-            .arg(original, 7, QChar(' '))
-            .arg(resultChar, 8, QChar(' '))
-            .arg(step.description.left(22), -22);
+        list += QStringLiteral(u"● Шаг #%1:\n").arg(step.index + 1);
+        list += QStringLiteral(u"    Исходный: %1\n").arg(original);
+        list += QStringLiteral(u"    Результат: %1\n").arg(resultChar);
+        list += QStringLiteral(u"    Описание: %1\n\n").arg(step.description);
     }
 
-    table += QStringLiteral(u"└─────┴─────────┴──────────┴────────────────────────┘\n");
-
-    return table;
+    return list;
 }
 
 QString StepFormatter::formatStepsList(const QVector<CipherStep>& steps) {

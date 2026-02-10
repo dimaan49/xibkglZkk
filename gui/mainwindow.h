@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <memory>
 #include "cipherinterface.h"
+#include "logwindow.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGroupBox>
@@ -19,6 +20,7 @@
 #include <QGraphicsDropShadowEffect>
 #include <QSequentialAnimationGroup>
 #include <QParallelAnimationGroup>
+#include <QPlainTextEdit>
 
 
 class AnimatedButton : public QPushButton {
@@ -56,6 +58,7 @@ private slots:
     void onClearLogClicked();
     void onSwapClicked();
     void onDefaultTextClicked();
+    void onShowLogClicked();
 
 private:
     // UI элементы
@@ -75,6 +78,10 @@ private:
     QLabel *statusLabel;
     QGroupBox *parametersGroup;
     QVBoxLayout *parametersLayout;
+
+    //log
+    LogWindow *logWindow;
+    QPushButton *showLogButton;
 
     // Текущий шифр
     std::unique_ptr<CipherInterface> m_currentCipher;
