@@ -39,12 +39,21 @@ QVariantMap CipherWidgetFactory::collectValues(const QMap<QString, QWidget*>& wi
         else if (QLineEdit* lineEdit = qobject_cast<QLineEdit*>(widget)) {
             QString text = lineEdit->text();
             if (paramId == "keyLetter" && !text.isEmpty()) {
-                    params[paramId] = text[0].toUpper();
-                } else {
-                    params[paramId] = text;
+                params[paramId] = text[0].toUpper();
+            } else {
+                params[paramId] = text;
             }
         }
-        // Добавьте другие типы виджетов
+        else if (QTextEdit* textEdit = qobject_cast<QTextEdit*>(widget)) {
+            params[paramId] = textEdit->toPlainText();
+        }
+        else if (QComboBox* comboBox = qobject_cast<QComboBox*>(widget)) {
+            params[paramId] = comboBox->currentText();
+        }
+        else if (QCheckBox* checkBox = qobject_cast<QCheckBox*>(widget)) {
+            params[paramId] = checkBox->isChecked();
+        }
+        // Добавьте другие типы виджетов при необходимости
     }
 
     return params;

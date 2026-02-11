@@ -5,6 +5,10 @@
 #include <QMap>
 #include <QVariant>
 #include <QVBoxLayout>
+#include <QTextEdit>
+#include <QCheckBox>
+#include <QComboBox>
+
 
 class CipherWidgetFactory
 {
