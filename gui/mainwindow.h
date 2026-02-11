@@ -59,6 +59,7 @@ private slots:
     void onSwapClicked();
     void onDefaultTextClicked();
     void onShowLogClicked();
+    void onAdvancedSettingsClicked();
 
 private:
     // UI элементы
@@ -88,6 +89,11 @@ private:
 
     // Хранилище виджетов параметров
     QMap<QString, QWidget*> m_paramWidgets;
+    QPushButton* m_advancedSettingsButton;  // Кнопка-шестеренка
+    QMap<QString, QVariantMap> m_cipherAdvancedSettings;  // Хранилище настроек для каждого шифра
+    QString m_currentCipherId;  // Сохраняем текущий ID шифра
+
+    void updateAdvancedSettingsButton();
 
     void onCipherChanged(int index);
     void onEncryptClicked();

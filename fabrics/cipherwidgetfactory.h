@@ -1,34 +1,50 @@
+// cipherwidgetfactory.h
 #ifndef CIPHERWIDGETFACTORY_H
 #define CIPHERWIDGETFACTORY_H
 
 #include <QWidget>
-#include <QMap>
-#include <QVariant>
 #include <QVBoxLayout>
-#include <QTextEdit>
-#include <QCheckBox>
-#include <QComboBox>
-
+#include <QMap>
+#include <functional>
 
 class CipherWidgetFactory
 {
 public:
     static CipherWidgetFactory& instance();
 
-    // Регистрация виджетов для шифра
+    // Регистрация только основных виджетов
     void registerCipherWidgets(const QString& cipherId,
                               std::function<void(QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets)> creator);
 
-    // Создание виджетов для шифра
-    void createWidgets(const QString& cipherId, QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets);
+    // Регистрация основных + расширенных виджетов
+    void registerCipherWidgets(const QString& cipherId,
+                              std::function<void(QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets)> mainCreator,
+                              std::function<void(QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets)> advancedCreator);
 
-    // Получение значений из виджетов
+    // Создание основных виджетов
+    void createMainWidgets(const QString& cipherId, QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets);
+
+    // Создание расширенных виджетов
+    void createAdvancedWidgets(const QString& cipherId, QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets);
+
+    // Проверка наличия расширенных виджетов
+    bool hasAdvancedWidgets(const QString& cipherId) const;
+
+    // Сбор значений из виджетов
     static QVariantMap collectValues(const QMap<QString, QWidget*>& widgets);
+
+    // Обновление значений в виджетах
+    static void updateWidgets(const QMap<QString, QWidget*>& widgets, const QVariantMap& values);
 
 private:
     CipherWidgetFactory() = default;
 
-    QMap<QString, std::function<void(QWidget*, QVBoxLayout*, QMap<QString, QWidget*>&)>> m_creators;
+    struct CipherWidgetSet {
+        std::function<void(QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets)> mainCreator;
+        std::function<void(QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets)> advancedCreator;
+    };
+
+    QMap<QString, CipherWidgetSet> m_widgets;
 };
 
 #endif // CIPHERWIDGETFACTORY_H

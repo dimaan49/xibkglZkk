@@ -34,6 +34,7 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     core/ciphercore.cpp \
     fabrics/cipherfactory.cpp \
     fabrics/cipherwidgetfactory.cpp \
+    gui/advancedsettingsdialog.cpp \
     gui/formatter.cpp \
     gui/logger.cpp \
     gui/logwindow.cpp \
@@ -57,6 +58,7 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     core/cipherinterface.h \
     fabrics/cipherfactory.h \
     fabrics/cipherwidgetfactory.h \
+    gui/advancedsettingsdialog.h \
     gui/formatter.h \
     gui/logger.h \
     gui/logwindow.h \

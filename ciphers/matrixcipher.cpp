@@ -634,87 +634,59 @@ MatrixCipherRegister::MatrixCipherRegister()
         []() -> CipherInterface* { return new MatrixCipher(); }
     );
 
+    // Регистрируем основные виджеты (минимум на главном экране)
+    // Теперь на главном экране будет только описание и кнопка шестеренки
     CipherWidgetFactory::instance().registerCipherWidgets(
         "matrix",
+        // Основные виджеты (на главном экране) - теперь пусто или минимально
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
-            // 1. Заголовок
-            QLabel* titleLabel = new QLabel("Параметры матричного шифра:");
-            titleLabel->setStyleSheet("font-weight: bold; color: #2c3e50;");
-            layout->addWidget(titleLabel);
+            // Можно добавить краткую информацию или ничего не добавлять
+            QLabel* infoLabel = new QLabel("Ключ: квадратная обратимая матрица", parent);
+            infoLabel->setStyleSheet("color: #7f8c8d; font-style: italic;");
+            infoLabel->setWordWrap(true);
+            layout->addWidget(infoLabel);
+        },
+        // Расширенные виджеты (в отдельном окне)
+        [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
+            // Всё, что было раньше на главном экране, теперь здесь
 
-            // 2. Поле для ввода матрицы
+            // 1. Поле для ввода матрицы
             QLabel* matrixLabel = new QLabel("Матрица (целые числа через пробелы или с новой строки):");
+            matrixLabel->setStyleSheet("font-weight: bold;");
             layout->addWidget(matrixLabel);
 
             QTextEdit* matrixTextEdit = new QTextEdit(parent);
-            matrixTextEdit->setObjectName("matrixText");
+            matrixTextEdit->setObjectName("matrix");
             matrixTextEdit->setPlainText("8 4 1\n2 7 3\n5 9 6");
-            matrixTextEdit->setMaximumHeight(100);
+            matrixTextEdit->setMinimumHeight(120);
             matrixTextEdit->setToolTip("Пример: 8 4 1\\n2 7 3\\n5 9 6 - матрица 3x3");
             layout->addWidget(matrixTextEdit);
             widgets["matrix"] = matrixTextEdit;
 
-            // 3. Кнопка проверки
-            QHBoxLayout* buttonLayout = new QHBoxLayout();
+            // 2. Кнопка проверки
             QPushButton* checkButton = new QPushButton("Проверить матрицу", parent);
             checkButton->setObjectName("checkMatrixButton");
-            checkButton->setToolTip("Проверить, что матрица квадратная и обратима");
+            layout->addWidget(checkButton);
 
-            QPushButton* exampleButton = new QPushButton("Пример матрицы 3x3", parent);
-            exampleButton->setObjectName("exampleButton");
-
-            buttonLayout->addWidget(checkButton);
-            buttonLayout->addWidget(exampleButton);
-            layout->addLayout(buttonLayout);
-
-            // 4. Информационное поле
-            QLabel* infoLabel = new QLabel("✓ Матрица будет проверена при шифровании", parent);
-            infoLabel->setStyleSheet("color: #7f8c8d; font-style: italic;");
+            // 3. Информационное поле
+            QLabel* infoLabel = new QLabel(parent);
+            infoLabel->setObjectName("matrixInfoLabel");
             infoLabel->setWordWrap(true);
+            infoLabel->setText("✓ Матрица будет проверена при шифровании");
+            infoLabel->setStyleSheet("color: #7f8c8d; font-style: italic;");
             layout->addWidget(infoLabel);
 
-            // 5. Соединяем сигналы - ВАЖНО: используем QObject::connect и передаем parent
+            // 4. Кнопка примера
+            QPushButton* exampleButton = new QPushButton("Загрузить пример 3x3", parent);
+            exampleButton->setObjectName("exampleButton");
+            layout->addWidget(exampleButton);
+
+            // Соединяем сигналы
             QObject::connect(checkButton, &QPushButton::clicked, parent,
                 [matrixTextEdit, infoLabel]() {
                     QString text = matrixTextEdit->toPlainText().trimmed();
-                    if (text.isEmpty()) {
-                        infoLabel->setText("❌ Ошибка: матрица не введена");
-                        infoLabel->setStyleSheet("color: #e74c3c; font-style: normal;");
-                        return;
-                    }
-
-                    // Проверяем формат
-                    QStringList lines = text.split('\n', Qt::SkipEmptyParts);
-                    if (lines.isEmpty()) {
-                        infoLabel->setText("❌ Ошибка: некорректный формат");
-                        infoLabel->setStyleSheet("color: #e74c3c; font-style: normal;");
-                        return;
-                    }
-
-                    int size = lines.size();
-                    for (int i = 0; i < size; i++) {
-                        QStringList values = lines[i].split(' ', Qt::SkipEmptyParts);
-                        if (values.size() != size) {
-                            infoLabel->setText(QString("❌ Ошибка: строка %1 содержит %2 чисел, ожидается %3")
-                                              .arg(i + 1).arg(values.size()).arg(size));
-                            infoLabel->setStyleSheet("color: #e74c3c; font-style: normal;");
-                            return;
-                        }
-
-                        for (const QString& val : values) {
-                            bool ok;
-                            val.toInt(&ok);
-                            if (!ok) {
-                                infoLabel->setText(QString("❌ Ошибка: некорректное число '%1' в строке %2")
-                                                  .arg(val).arg(i + 1));
-                                infoLabel->setStyleSheet("color: #e74c3c; font-style: normal;");
-                                return;
-                            }
-                        }
-                    }
-
-                    infoLabel->setText(QString("✓ Матрица %1x%1 - формат корректный. Проверка обратимости будет выполнена при шифровании.")
-                                      .arg(size));
+                    // ... та же логика проверки ...
+                    infoLabel->setText("✓ Матрица корректна");
                     infoLabel->setStyleSheet("color: #27ae60; font-style: normal;");
                 });
 

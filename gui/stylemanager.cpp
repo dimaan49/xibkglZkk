@@ -320,6 +320,29 @@ namespace {
                 background-color: #252525;
             }
 
+        /* Advanced Settings Button - Теперь в едином стиле с defaultTextButton */
+        QPushButton#advancedSettingsButton {
+            background-color: rgba(58, 122, 254, 0.1);
+            color: #3a7afe;
+            border: 1px solid rgba(58, 122, 254, 0.3);
+            border-radius: 4px;
+            padding: 4px 12px;
+            font-weight: 600;
+            font-size: 11px;
+            min-height: 28px;
+            min-width: 120px;
+            max-width: 150px;
+        }
+
+        QPushButton#advancedSettingsButton:hover {
+            background-color: rgba(58, 122, 254, 0.2);
+            border-color: #3a7afe;
+        }
+
+        QPushButton#advancedSettingsButton:pressed {
+            background-color: rgba(58, 122, 254, 0.3);
+        }
+
             /* Tertiary Buttons */
             QPushButton#clearInputButton,
             QPushButton#clearOutputButton,
@@ -415,6 +438,28 @@ namespace {
             QPushButton#clearButton:pressed {
                 background-color: #1f2b3a;
             }
+        /* Advanced Settings Button - В стиле Cyber Midnight */
+        QPushButton#advancedSettingsButton {
+            background-color: rgba(0, 150, 255, 0.1);
+            color: #0096ff;
+            border: 1px solid rgba(0, 150, 255, 0.3);
+            border-radius: 4px;
+            padding: 4px 12px;
+            font-weight: 600;
+            font-size: 11px;
+            min-height: 28px;
+            min-width: 120px;
+            max-width: 150px;
+        }
+
+        QPushButton#advancedSettingsButton:hover {
+            background-color: rgba(0, 150, 255, 0.2);
+            border-color: #0096ff;
+        }
+
+        QPushButton#advancedSettingsButton:pressed {
+            background-color: rgba(0, 150, 255, 0.3);
+        }
 
             /* Tertiary Buttons */
             QPushButton#clearInputButton,
@@ -501,6 +546,29 @@ namespace {
                 background-color: #7a8a4b;
             }
 
+        /* Advanced Settings Button - В стиле Reliable Orange */
+        QPushButton#advancedSettingsButton {
+            background-color: rgba(230, 92, 0, 0.1);
+            color: #e65c00;
+            border: 1px solid rgba(230, 92, 0, 0.3);
+            border-radius: 4px;
+            padding: 4px 12px;
+            font-weight: 600;
+            font-size: 11px;
+            min-height: 28px;
+            min-width: 120px;
+            max-width: 150px;
+        }
+
+        QPushButton#advancedSettingsButton:hover {
+            background-color: rgba(230, 92, 0, 0.2);
+            border-color: #e65c00;
+        }
+
+        QPushButton#advancedSettingsButton:pressed {
+            background-color: rgba(230, 92, 0, 0.3);
+        }
+
             /* Tertiary Buttons */
             QPushButton#clearInputButton,
             QPushButton#clearOutputButton,
@@ -547,6 +615,7 @@ namespace {
         )";
     }
 }
+
 
 // ==================== StyleManager Implementation ====================
 void StyleManager::applyTheme(QWidget* window, StyleTheme theme) {

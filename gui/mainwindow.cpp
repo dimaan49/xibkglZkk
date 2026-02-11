@@ -3,6 +3,7 @@
 #include "cipherwidgetfactory.h"
 #include "formatter.h"
 #include "stylemanager.h"
+#include "advancedsettingsdialog.h"
 
 #include <iostream>
 
@@ -78,6 +79,7 @@ MainWindow::MainWindow(QWidget *parent)
     , clearButton(nullptr)
     , statusLabel(nullptr)
     , parametersGroup(nullptr)
+    , m_advancedSettingsButton(nullptr)
     , parametersLayout(nullptr)
 {
     setupUI();
@@ -144,13 +146,43 @@ void MainWindow::setupUI()
     topPanelLayout->addWidget(cipherLabel);
     topPanelLayout->addWidget(cipherComboBox);
 
-    // 2. Панель параметров (с эффектом стекла)
-
+    // 2. Панель параметров
     parametersGroup = new QGroupBox("Параметры шифра");
     parametersLayout = new QVBoxLayout(parametersGroup);
-    parametersGroup->setLayout(parametersLayout);
+    parametersLayout->setSpacing(8);
+    parametersLayout->setContentsMargins(10, 15, 10, 10);
 
-    // Эффект стекла
+    // === ИСПРАВЛЕНО: Правильное размещение кнопки расширенных настроек ===
+    // Создаем горизонтальный layout для заголовка и кнопки
+    QHBoxLayout* parametersHeaderLayout = new QHBoxLayout();
+
+    // Заголовок (можно оставить пустой или добавить текст)
+    QLabel* parametersTitle = new QLabel("Параметры шифра");
+    parametersTitle->setStyleSheet("font-weight: bold; color: #2c3e50;");
+    parametersHeaderLayout->addWidget(parametersTitle);
+    parametersHeaderLayout->addStretch();
+
+    // Кнопка расширенных настроек - улучшенная версия
+    m_advancedSettingsButton = new QPushButton("⚙ Расширенные", parametersGroup);
+     m_advancedSettingsButton->setObjectName("advancedSettingsButton");
+     m_advancedSettingsButton->setToolTip("Открыть расширенные настройки шифра\n"
+                                          "Дополнительные параметры и режимы работы");
+     m_advancedSettingsButton->setCursor(Qt::PointingHandCursor);
+     m_advancedSettingsButton->setMinimumHeight(28);
+     m_advancedSettingsButton->setMinimumWidth(120);
+
+     // УБИРАЕМ лишние эффекты - они будут определяться стилями
+     // Не устанавливаем flat режим, не добавляем тени
+
+     // Добавляем кнопку в header layout
+     parametersHeaderLayout->addWidget(m_advancedSettingsButton);
+
+     // Вставляем header layout в начало parametersLayout
+     parametersLayout->insertLayout(0, parametersHeaderLayout);
+    // Добавляем кнопку в header layout
+    parametersHeaderLayout->addWidget(m_advancedSettingsButton);
+
+    // Эффект стекла для группы
     QGraphicsDropShadowEffect* groupShadow = new QGraphicsDropShadowEffect();
     groupShadow->setBlurRadius(10);
     groupShadow->setColor(QColor(0, 150, 255, 30));
@@ -245,7 +277,7 @@ void MainWindow::setupUI()
     buttonLayout->addWidget(decryptButton);
     buttonLayout->addWidget(defaultTextButton);
     buttonLayout->addWidget(clearButton);
-    buttonLayout->addStretch(); // Растягиваем пространство снизу
+    buttonLayout->addStretch();
 
     // Создаем горизонтальный контейнер для ввода, кнопок и вывода
     QWidget *inputOutputContainer = new QWidget();
@@ -254,14 +286,14 @@ void MainWindow::setupUI()
     horizontalLayout->setContentsMargins(0, 0, 0, 0);
 
     // Добавляем ввод, кнопки и вывод в горизонтальный layout
-    horizontalLayout->addWidget(inputGroup, 1);  // Растягиваем по ширине
-    horizontalLayout->addWidget(buttonContainer, 0);  // Фиксированная ширина для кнопок
-    horizontalLayout->addWidget(outputGroup, 1);  // Растягиваем по ширине
+    horizontalLayout->addWidget(inputGroup, 1);
+    horizontalLayout->addWidget(buttonContainer, 0);
+    horizontalLayout->addWidget(outputGroup, 1);
 
-
-    //6. Большое окно логов
+    // 6. Большое окно логов
     logWindow = new LogWindow(this);
-    // 6. Консоль для логов
+
+    // 7. Консоль для логов
     QGroupBox *consoleGroup = new QGroupBox("📋 Журнал операций");
     QVBoxLayout *consoleLayout = new QVBoxLayout(consoleGroup);
     consoleLayout->setSpacing(5);
@@ -273,7 +305,7 @@ void MainWindow::setupUI()
     debugConsole->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     consoleLayout->addWidget(debugConsole);
 
-    // ПАНЕЛЬ КНОПОК ЛОГА (справа снизу под полем лога)
+    // ПАНЕЛЬ КНОПОК ЛОГА
     QHBoxLayout *consoleToolsLayout = new QHBoxLayout();
 
     // Кнопка для открытия подробного лога
@@ -288,7 +320,6 @@ void MainWindow::setupUI()
     clearLogButton->setToolTip("Очистить журнал операций");
     clearLogButton->setMaximumWidth(120);
 
-    // Располагаем кнопки справа
     consoleToolsLayout->addStretch();
     consoleToolsLayout->addWidget(clearLogButton);
     consoleToolsLayout->addWidget(showLogButton);
@@ -296,7 +327,7 @@ void MainWindow::setupUI()
     consoleLayout->addLayout(consoleToolsLayout);
     consoleGroup->setLayout(consoleLayout);
 
-    // 7. Статусная панель
+    // 8. Статусная панель
     statusLabel = new QLabel("⚡ Готов к работе. Выберите шифр из списка.");
     statusLabel->setProperty("status", "info");
     statusLabel->setAlignment(Qt::AlignCenter);
@@ -305,11 +336,10 @@ void MainWindow::setupUI()
     // Компоновка всех элементов
     mainLayout->addLayout(topPanelLayout);
     mainLayout->addWidget(parametersGroup);
-    mainLayout->addWidget(inputOutputContainer);  // Вместо отдельных inputGroup, buttonContainer, outputGroup
+    mainLayout->addWidget(inputOutputContainer);
     mainLayout->addWidget(consoleGroup);
     mainLayout->addStretch(1);
     mainLayout->addWidget(statusLabel);
-
 
     // Подключение сигналов
     connect(cipherComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
@@ -318,13 +348,12 @@ void MainWindow::setupUI()
             this, &MainWindow::onEncryptClicked);
     connect(decryptButton, &QPushButton::clicked,
             this, &MainWindow::onDecryptClicked);
+    connect(m_advancedSettingsButton, &QPushButton::clicked,
+            this, &MainWindow::onAdvancedSettingsClicked);
 
-    //CLEAR
+    // CLEAR
     connect(clearButton, &QPushButton::clicked,
             this, &MainWindow::onClearClicked);
-    // LOG WINDOW
-    connect(showLogButton, &QPushButton::clicked, this, &MainWindow::onShowLogClicked);
-
     connect(clearInputButton, &QPushButton::clicked,
             this, &MainWindow::onClearInputClicked);
     connect(clearOutputButton, &QPushButton::clicked,
@@ -333,13 +362,15 @@ void MainWindow::setupUI()
             this, &MainWindow::onClearLogClicked);
     connect(swapButton, &QPushButton::clicked,
             this, &MainWindow::onSwapClicked);
-    //CLEAR
+
+    // LOG WINDOW
+    connect(showLogButton, &QPushButton::clicked, this, &MainWindow::onShowLogClicked);
 
     // DEFAULT TEXT
     connect(defaultTextButton, &QPushButton::clicked,
             this, &MainWindow::onDefaultTextClicked);
-    //
 }
+
 
 void MainWindow::setupThemeSelector()
 {
@@ -401,6 +432,7 @@ void MainWindow::onCipherChanged(int index)
 
     QString displayName = cipherComboBox->currentText();
     QString cipherId = CipherFactory::instance().idFromDisplayName(displayName);
+    m_currentCipherId = cipherId;  // Сохраняем ID
 
     if (cipherId.isEmpty()) {
         logToConsole("ОШИБКА: Шифр не найден: " + displayName);
@@ -424,30 +456,90 @@ void MainWindow::onCipherChanged(int index)
     infoLabel->setWordWrap(true);
     parametersLayout->addWidget(infoLabel);
 
-    // Создаем виджеты для параметров через фабрику
-    createCipherWidgets(cipherId);
+    // Создаем виджеты для основных параметров
+    CipherWidgetFactory::instance().createMainWidgets(
+        cipherId,
+        parametersGroup,
+        parametersLayout,
+        m_paramWidgets
+    );
+
+    // Обновляем видимость кнопки расширенных настроек
+    updateAdvancedSettingsButton();
 
     logToConsole(">>> Выбран шифр: " + displayName);
     statusLabel->setText("Выбран: " + displayName + " - готов к работе");
 }
 
+void MainWindow::updateAdvancedSettingsButton()
+{
+    bool hasAdvanced = CipherWidgetFactory::instance().hasAdvancedWidgets(m_currentCipherId);
+    m_advancedSettingsButton->setVisible(hasAdvanced);
+
+    // Восстанавливаем сохраненные настройки, если есть
+    if (hasAdvanced && m_cipherAdvancedSettings.contains(m_currentCipherId)) {
+        // Здесь мы обновим виджеты, когда они будут созданы
+        // Это будет сделано в onAdvancedSettingsDialogAccepted
+    }
+}
+
+void MainWindow::onAdvancedSettingsClicked()
+{
+    if (m_currentCipherId.isEmpty() || !m_currentCipher) {
+        return;
+    }
+
+    QString displayName = cipherComboBox->currentText();
+    qDebug() << "=== Opening Advanced Settings for" << displayName << "===";
+
+    // Создаем на стеке - гарантированное уничтожение
+    AdvancedSettingsDialog dialog(m_currentCipherId, displayName, this);
+
+    if (m_cipherAdvancedSettings.contains(m_currentCipherId)) {
+        dialog.setSettings(m_cipherAdvancedSettings[m_currentCipherId]);
+    }
+
+    int result = dialog.exec();
+    qDebug() << "  Dialog exec returned:" << result;
+
+    if (result == QDialog::Accepted) {
+        QVariantMap advancedSettings = dialog.getSettings();
+        m_cipherAdvancedSettings[m_currentCipherId] = advancedSettings;
+        logToConsole("✓ Сохранены расширенные настройки для " + displayName);
+    }
+
+    qDebug() << "=== Dialog will be destroyed ===";
+    // dialog уничтожится здесь
+}
+
 void MainWindow::createCipherWidgets(const QString& cipherId)
 {
-    // Вся логика создания виджетов теперь в фабрике
-    CipherWidgetFactory::instance().createWidgets(
+    // Используем новый API - создаем ТОЛЬКО основные виджеты
+    CipherWidgetFactory::instance().createMainWidgets(
         cipherId,
         parametersGroup,
         parametersLayout,
         m_paramWidgets
     );
 }
-
 QVariantMap MainWindow::collectParameters() const
 {
-    // Используем статический метод фабрики
-    return CipherWidgetFactory::collectValues(m_paramWidgets);
-}
+    // Собираем основные параметры
+    QVariantMap params = CipherWidgetFactory::collectValues(m_paramWidgets);
 
+    // ДОБАВЛЯЕМ расширенные настройки, если они есть для текущего шифра
+    if (m_cipherAdvancedSettings.contains(m_currentCipherId)) {
+        const QVariantMap& advancedParams = m_cipherAdvancedSettings[m_currentCipherId];
+
+        // Добавляем все расширенные параметры (с приоритетом - перезаписывают основные)
+        for (auto it = advancedParams.constBegin(); it != advancedParams.constEnd(); ++it) {
+            params[it.key()] = it.value();
+            qDebug() << "  Added advanced param:" << it.key() << "=" << it.value().toString();
+        }
+    }
+
+    return params;
+}
 
 void MainWindow::onEncryptClicked()
 {
@@ -571,23 +663,59 @@ void MainWindow::onClearClicked()
 
 void MainWindow::clearParameters()
 {
-    // Очищаем хранилище указателей (без удаления виджетов!)
+    // Очищаем хранилище указателей
     m_paramWidgets.clear();
 
-    // Находим все виджеты в parametersGroup и удаляем их
+    // Удаляем ВСЕ дочерние виджеты, КРОМЕ:
+    // 1. Самого parametersGroup
+    // 2. Кнопки расширенных настроек
+    // 3. Заголовка (если мы его где-то сохранили)
+
     QList<QWidget*> widgets = parametersGroup->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
     for (QWidget* widget : widgets) {
-        // Исключаем сам parametersGroup из списка
-        if (widget != parametersGroup) {
-            widget->hide();
-            widget->deleteLater();
+        // НЕ УДАЛЯЕМ кнопку расширенных настроек!
+        if (widget != parametersGroup &&
+            widget != m_advancedSettingsButton) {
+
+            // Проверяем, не является ли виджет частью заголовка
+            bool isHeaderWidget = false;
+            if (parametersLayout && parametersLayout->count() > 0) {
+                QLayoutItem* firstItem = parametersLayout->itemAt(0);
+                if (firstItem && firstItem->layout()) {
+                    QLayout* headerLayout = firstItem->layout();
+                    // Проверяем, принадлежит ли widget этому layout'у
+                    if (headerLayout->indexOf(widget) != -1) {
+                        isHeaderWidget = true;
+                    }
+                }
+            }
+
+            // Удаляем только если это не виджет из заголовка
+            if (!isHeaderWidget) {
+                widget->hide();
+                widget->deleteLater();
+            }
         }
     }
 
-    // Пересоздаем чистый layout
-    delete parametersLayout;
-    parametersLayout = new QVBoxLayout(parametersGroup);
-    parametersGroup->setLayout(parametersLayout);
+    // Удаляем все layout-элементы, КРОМЕ первого (заголовка)
+    while (parametersLayout && parametersLayout->count() > 1) {
+        QLayoutItem* item = parametersLayout->takeAt(1);
+        if (item) {
+            if (item->layout()) {
+                // Рекурсивно очищаем layout
+                QLayout* subLayout = item->layout();
+                QLayoutItem* child;
+                while ((child = subLayout->takeAt(0))) {
+                    delete child;
+                }
+            }
+            if (item->widget()) {
+                item->widget()->deleteLater();
+            }
+            delete item;
+        }
+    }
 }
 
 void MainWindow::logToConsole(const QString& message)
