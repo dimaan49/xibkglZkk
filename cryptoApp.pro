@@ -25,6 +25,7 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     ciphers/cardano.cpp \
     ciphers/magmasblock.cpp \
     ciphers/matrixcipher.cpp \
+    ciphers/playfair.cpp \
     ciphers/polibiusquare.cpp \
     ciphers/routecipher.cpp \
     ciphers/trithemius.cpp \
@@ -48,6 +49,7 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     ciphers/magmasblock.h \
     ciphers/matrixcipher.h \
     ciphers/matrixcipherregister.h \
+    ciphers/playfair.h \
     ciphers/polibiusquare.h \
     ciphers/routecipher.h \
     ciphers/trithemius.h \

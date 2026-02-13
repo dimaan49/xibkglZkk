@@ -32,8 +32,8 @@ AdvancedSettingsDialog::~AdvancedSettingsDialog()
 void AdvancedSettingsDialog::setupUI()
 {
     setWindowTitle(tr("Расширенные настройки - %1").arg(m_cipherName));
-    setMinimumWidth(500);
-    setMinimumHeight(400);
+    setMinimumWidth(1000);
+    setMinimumHeight(600);
     setModal(true);
     setObjectName("AdvancedSettingsDialog");
 
