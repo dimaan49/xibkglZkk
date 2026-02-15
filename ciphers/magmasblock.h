@@ -41,7 +41,6 @@ private:
     QString binaryToLetters(const QString& binary);
     QString process64BitBlock(const QString& block64, int startSBlockIndex, bool encrypt);
     QString process32BitBlock(const QString& block32, int startSBlockIndex, bool encrypt);
-    QString applySBlock(int sBlockIndex, int value, bool encrypt);
 };
 
 class MagmaSBlockCipherRegister {

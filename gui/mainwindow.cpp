@@ -80,6 +80,7 @@ MainWindow::MainWindow(QWidget *parent)
     , statusLabel(nullptr)
     , parametersGroup(nullptr)
     , m_advancedSettingsButton(nullptr)
+    , m_statusResetTimer(nullptr)
     , parametersLayout(nullptr)
 {
     setupUI();
@@ -544,18 +545,17 @@ QVariantMap MainWindow::collectParameters() const
 void MainWindow::onEncryptClicked()
 {
     if (!m_currentCipher) {
-        QMessageBox::warning(this, "Ошибка", "Шифр не выбран!");
+        handleError("Шифр не выбран!");
         return;
     }
 
     QString inputText = inputTextEdit->toPlainText().trimmed();
     if (inputText.isEmpty()) {
-        QMessageBox::warning(this, "Ошибка", "Введите текст для шифрования!");
+        handleError("Введите текст для шифрования!");
         return;
     }
 
-    statusLabel->setText("Выполняется шифрование...");
-    statusLabel->setStyleSheet("padding: 8px; background-color: #ffffcc; border: 1px solid #ffcc00; border-radius: 3px; color: black;");
+    setStatusText("Выполняется шифрование...", "info");
 
     try {
         logToConsole("\n════════════════════════════════════════");
@@ -573,47 +573,82 @@ void MainWindow::onEncryptClicked()
         // Выполняем шифрование с параметрами
         CipherResult result = m_currentCipher->encrypt(inputText, params);
 
-        // Выводим результат
-        outputTextEdit->setText(result.result);
-        showSuccessAnimation();
-        statusLabel->setText("✓ Шифрование завершено!");
-        statusLabel->setProperty("status", "success");
-        // === ДОБАВЛЕНО: Используем StepFormatter для красивого вывода ===
-        if (!result.steps.isEmpty()) {
-            // Выводим детализированный результат с шагами
-            QString formatted = StepFormatter::formatResult(result, true, 5, " ");
-            logToConsole(formatted);
-        } else {
-            // Если нет шагов, выводим просто результат
-            QString formatted = StepFormatter::formatResultOnly(result, 5, " ");
-            logToConsole(formatted);
+        // Безопасная проверка результата
+        QString resultText = result.result;
+        QString cipherName = result.cipherName;
+
+        // Проверяем результат на наличие ошибки
+        bool hasError = resultText.isEmpty() ||
+                       resultText.contains("ошибка", Qt::CaseInsensitive) ||
+                       resultText.contains("error", Qt::CaseInsensitive) ||
+                       cipherName.contains("ошибка", Qt::CaseInsensitive);
+
+        if (hasError) {
+            // Формируем сообщение об ошибке
+            QString errorMsg;
+            if (resultText.isEmpty()) {
+                errorMsg = "Пустой результат шифрования";
+            } else if (resultText.length() > 100) {
+                errorMsg = resultText.left(100) + "...";
+            } else {
+                errorMsg = resultText;
+            }
+
+            handleError(errorMsg);
+
+            // Безопасно логируем шаги, если они есть
+            if (!result.steps.isEmpty()) {
+                try {
+                    QString formatted = StepFormatter::formatResult(result, true, 5, " ");
+                    logToConsole(formatted);
+                } catch (...) {
+                    logToConsole("Ошибка при форматировании шагов");
+                }
+            }
+            return;
         }
 
-        statusLabel->setText("Шифрование завершено! Символов: " + QString::number(result.steps.size()));
-        statusLabel->setStyleSheet("padding: 8px; background-color: #ccffcc; border: 1px solid #00cc00; border-radius: 3px; color: black;");
+        // Успешное шифрование
+        outputTextEdit->setText(resultText);
+        showSuccessAnimation();
+
+        // Форматируем и выводим результат
+        try {
+            if (!result.steps.isEmpty()) {
+                QString formatted = StepFormatter::formatResult(result, true, 5, " ");
+                logToConsole(formatted);
+            } else {
+                QString formatted = StepFormatter::formatResultOnly(result, 5, " ");
+                logToConsole(formatted);
+            }
+        } catch (...) {
+            logToConsole("Результат: " + resultText);
+        }
+
+        handleSuccess("Шифрование успешно завершено! Получено символов: " +
+                     QString::number(resultText.length()));
 
     } catch (const std::exception& e) {
-        showErrorAnimation();
-        statusLabel->setText("✗ Ошибка при шифровании!");
-        statusLabel->setProperty("status", "error");
+        handleError(QString("Исключение: ") + e.what());
+    } catch (...) {
+        handleError("Неизвестное исключение при шифровании");
     }
 }
 
 void MainWindow::onDecryptClicked()
 {
     if (!m_currentCipher) {
-        QMessageBox::warning(this, "Ошибка", "Шифр не выбран!");
+        handleError("Шифр не выбран!");
         return;
     }
 
     QString inputText = inputTextEdit->toPlainText().trimmed();
     if (inputText.isEmpty()) {
-        QMessageBox::warning(this, "Ошибка", "Введите текст для дешифрования!");
+        handleError("Введите текст для дешифрования!");
         return;
     }
 
-    statusLabel->setText("Выполняется дешифрование...");
-    statusLabel->setStyleSheet("padding: 8px; background-color: #ffffcc; border: 1px solid #ffcc00; border-radius: 3px; color: black;");
+    setStatusText("Выполняется дешифрование...", "info");
 
     try {
         logToConsole("\n════════════════════════════════════════");
@@ -626,27 +661,65 @@ void MainWindow::onDecryptClicked()
         // Выполняем дешифрование
         CipherResult result = m_currentCipher->decrypt(inputText, params);
 
-        // Выводим результат
-        outputTextEdit->setText(result.result);
-        showSuccessAnimation();
-        statusLabel->setText("✓ Шифрование завершено!");
-        statusLabel->setProperty("status", "success");
-        // === ДОБАВЛЕНО: Используем StepFormatter для красивого вывода ===
-        if (!result.steps.isEmpty()) {
-            QString formatted = StepFormatter::formatResult(result, true, 5, " ");
-            logToConsole(formatted);
-        } else {
-            QString formatted = StepFormatter::formatResultOnly(result, 5, " ");
-            logToConsole(formatted);
+        // Безопасная проверка результата
+        QString resultText = result.result;
+        QString cipherName = result.cipherName;
+
+        // Проверяем результат на наличие ошибки
+        bool hasError = resultText.isEmpty() ||
+                       resultText.contains("ошибка", Qt::CaseInsensitive) ||
+                       resultText.contains("error", Qt::CaseInsensitive) ||
+                       cipherName.contains("ошибка", Qt::CaseInsensitive);
+
+        if (hasError) {
+            // Формируем сообщение об ошибке
+            QString errorMsg;
+            if (resultText.isEmpty()) {
+                errorMsg = "Пустой результат дешифрования";
+            } else if (resultText.length() > 100) {
+                errorMsg = resultText.left(100) + "...";
+            } else {
+                errorMsg = resultText;
+            }
+
+            handleError(errorMsg);
+
+            // Безопасно логируем шаги, если они есть
+            if (!result.steps.isEmpty()) {
+                try {
+                    QString formatted = StepFormatter::formatResult(result, true, 5, " ");
+                    logToConsole(formatted);
+                } catch (...) {
+                    logToConsole("Ошибка при форматировании шагов");
+                }
+            }
+            return;
         }
 
-        statusLabel->setText("Дешифрование завершено!");
-        statusLabel->setStyleSheet("padding: 8px; background-color: #ccffcc; border: 1px solid #00cc00; border-radius: 3px; color: black;");
+        // Успешное дешифрование
+        outputTextEdit->setText(resultText);
+        showSuccessAnimation();
+
+        // Форматируем и выводим результат
+        try {
+            if (!result.steps.isEmpty()) {
+                QString formatted = StepFormatter::formatResult(result, true, 5, " ");
+                logToConsole(formatted);
+            } else {
+                QString formatted = StepFormatter::formatResultOnly(result, 5, " ");
+                logToConsole(formatted);
+            }
+        } catch (...) {
+            logToConsole("Результат: " + resultText);
+        }
+
+        handleSuccess("Дешифрование успешно завершено! Получено символов: " +
+                     QString::number(resultText.length()));
 
     } catch (const std::exception& e) {
-        showErrorAnimation();
-        statusLabel->setText("✗ Ошибка при шифровании!");
-        statusLabel->setProperty("status", "error");
+        handleError(QString("Исключение: ") + e.what());
+    } catch (...) {
+        handleError("Неизвестное исключение при дешифровании");
     }
 }
 
@@ -775,4 +848,76 @@ void MainWindow::onShowLogClicked()
     logWindow->activateWindow();
 
     logToConsole("✓ Открыт детальный журнал операций");
+}
+
+void MainWindow::setStatusText(const QString& text, const QString& type)
+{
+    if (!statusLabel) return;
+
+    statusLabel->setText(text);
+    statusLabel->setProperty("status", type);
+
+    // Принудительно обновляем стиль
+    statusLabel->style()->unpolish(statusLabel);
+    statusLabel->style()->polish(statusLabel);
+
+    // Сбрасываем таймер, если он уже запущен
+    if (m_statusResetTimer) {
+        m_statusResetTimer->stop();
+    } else {
+        m_statusResetTimer = new QTimer(this);
+        m_statusResetTimer->setSingleShot(true);
+        connect(m_statusResetTimer, &QTimer::timeout, [this]() {
+            if (statusLabel) {
+                statusLabel->setText("⚡ Готов к работе");
+                statusLabel->setProperty("status", "info");
+                statusLabel->style()->unpolish(statusLabel);
+                statusLabel->style()->polish(statusLabel);
+            }
+        });
+    }
+
+    // Сбрасываем через 5 секунд
+    m_statusResetTimer->start(5000);
+}
+
+void MainWindow::flashWindow(const QColor& color, int duration)
+{
+    // Создаем полупрозрачный colored overlay
+    QFrame* overlay = new QFrame(this);
+    overlay->setGeometry(rect());
+    overlay->setStyleSheet(QString(
+        "background-color: rgba(%1, %2, %3, 0.15);"
+        "border: 4px solid rgba(%1, %2, %3, 0.8);"
+    ).arg(color.red()).arg(color.green()).arg(color.blue()));
+
+    overlay->raise();
+    overlay->show();
+
+    // Просто удаляем через duration
+    QTimer::singleShot(duration, [overlay]() {
+        overlay->deleteLater();
+    });
+}
+
+void MainWindow::handleError(const QString& errorMessage)
+{
+    if (!statusLabel) return;
+
+    setStatusText("❌ " + errorMessage, "error");
+
+    // Безопасная вспышка окна
+    try {
+        flashWindow(QColor(255, 75, 75), 800);
+    } catch (...) {
+        // Игнорируем ошибки анимации
+    }
+
+    logToConsole("❌ ОШИБКА: " + errorMessage);
+}
+
+void MainWindow::handleSuccess(const QString& successMessage)
+{
+    setStatusText("✅ " + successMessage, "success");
+    logToConsole("✅ " + successMessage);
 }

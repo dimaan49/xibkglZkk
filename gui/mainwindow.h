@@ -21,6 +21,7 @@
 #include <QSequentialAnimationGroup>
 #include <QParallelAnimationGroup>
 #include <QPlainTextEdit>
+#include <QTimer>
 
 
 class AnimatedButton : public QPushButton {
@@ -61,6 +62,11 @@ private slots:
     void onShowLogClicked();
     void onAdvancedSettingsClicked();
 
+    void setStatusText(const QString& text, const QString& type = "info");
+    void flashWindow(const QColor& color = QColor(255, 75, 75), int duration = 800);
+    void handleError(const QString& errorMessage);
+    void handleSuccess(const QString& successMessage);
+
 private:
     // UI элементы
     //clear
@@ -92,6 +98,9 @@ private:
     QPushButton* m_advancedSettingsButton;  // Кнопка-шестеренка
     QMap<QString, QVariantMap> m_cipherAdvancedSettings;  // Хранилище настроек для каждого шифра
     QString m_currentCipherId;  // Сохраняем текущий ID шифра
+
+    QTimer* m_statusResetTimer;
+    QString m_originalStatusStyle;
 
     void updateAdvancedSettingsButton();
 

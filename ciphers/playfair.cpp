@@ -14,7 +14,7 @@
 #include <QGroupBox>
 
 // Определение статических констант с использованием QStringLiteral
-const QChar PlayfairCipher::DEFAULT_FILLER = QChar('Х');
+const QChar PlayfairCipher::DEFAULT_FILLER = QChar(0x0425); // Явно задаём Unicode код для 'Х'
 const QString PlayfairCipher::ALPHABET_5x6 = QStringLiteral(u"АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЬЫЭЮЯ");
 const QString PlayfairCipher::ALPHABET_4x8 = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
 
@@ -40,11 +40,11 @@ QString PlayfairCipher::getAlphabet(MatrixSize size) const
 QChar PlayfairCipher::normalizeChar(const QChar& ch, MatrixSize size) const
 {
     if (size == Size5x6) {
-        if (ch == QChar('Ё')) return QChar('Е');
-        if (ch == QChar('Й')) return QChar('И');
-        if (ch == QChar('Ъ')) return QChar('Ь');
+        if (ch == QChar('Ё') || ch == QChar(0x0401)) return QChar('Е');
+        if (ch == QChar('Й') || ch == QChar(0x0419)) return QChar('И');
+        if (ch == QChar('Ъ') || ch == QChar(0x042A)) return QChar('Ь');
     } else { // Size4x8
-        if (ch == QChar('Ё')) return QChar('Е');
+        if (ch == QChar('Ё') || ch == QChar(0x0401)) return QChar('Е');
     }
     return ch;
 }
@@ -75,6 +75,7 @@ QStringList PlayfairCipher::splitIntoBigrams(const QString& text, QChar filler)
 {
     QStringList bigrams;
     QString processed;
+    processed.reserve(text.length() * 2);
 
     int i = 0;
     while (i < text.length()) {
@@ -83,15 +84,17 @@ QStringList PlayfairCipher::splitIntoBigrams(const QString& text, QChar filler)
             processed.append(text[i]);
             processed.append(filler);
             i++;
-        } else if (text[i] == text[i + 1]) {
+        }
+        else if (text[i] == text[i + 1]) {
             // Две одинаковые буквы подряд
-            processed.append(text[i]);
-            processed.append(filler);
-            i++; // Не увеличиваем i на 2, чтобы следующая итерация обработала вторую букву
-        } else {
+            processed.append(text[i]);  // первая буква
+            processed.append(filler);    // фиктивная буква между ними
+            i++; // переходим ко второй букве
+        }
+        else {
             // Нормальная биграмма
-            processed.append(text[i]);
-            processed.append(text[i + 1]);
+            processed.append(text[i]);     // первая буква
+            processed.append(text[i + 1]); // вторая буква
             i += 2;
         }
     }
@@ -112,12 +115,6 @@ QVector<QVector<QChar>> PlayfairCipher::createTable(const QString& slogan, Matri
     int cols = (size == Size5x6) ? 6 : 8;
 
     QString alphabet = getAlphabet(size);
-
-    // Проверяем, что алфавит содержит нужное количество букв
-    int expectedSize = rows * cols;
-    if (alphabet.length() != expectedSize) {
-        qWarning() << "Alphabet size mismatch!" << alphabet.length() << "!=" << expectedSize;
-    }
 
     QVector<QVector<QChar>> table(rows, QVector<QChar>(cols));
     QString used;
@@ -165,8 +162,9 @@ PlayfairCipher::Position PlayfairCipher::findPosition(const QVector<QVector<QCha
             }
         }
     }
-    return Position();
+    return Position(-1, -1);
 }
+
 
 QString PlayfairCipher::processBigram(const QVector<QVector<QChar>>& table, const QString& bigram, bool encrypt)
 {
@@ -186,11 +184,9 @@ QString PlayfairCipher::processBigram(const QVector<QVector<QChar>>& table, cons
         // Одна строка
         int col1, col2;
         if (encrypt) {
-            // При шифровании - вправо
             col1 = (pos1.col + 1) % cols;
             col2 = (pos2.col + 1) % cols;
         } else {
-            // При дешифровании - влево
             col1 = (pos1.col - 1 + cols) % cols;
             col2 = (pos2.col - 1 + cols) % cols;
         }
@@ -200,11 +196,9 @@ QString PlayfairCipher::processBigram(const QVector<QVector<QChar>>& table, cons
         // Один столбец
         int row1, row2;
         if (encrypt) {
-            // При шифровании - вниз
             row1 = (pos1.row + 1) % rows;
             row2 = (pos2.row + 1) % rows;
         } else {
-            // При дешифровании - вверх
             row1 = (pos1.row - 1 + rows) % rows;
             row2 = (pos2.row - 1 + rows) % rows;
         }
@@ -225,15 +219,13 @@ QStringList PlayfairCipher::parseEncryptedText(const QString& text)
 {
     QStringList result;
     QString cleaned = text.toUpper();
-    // Убираем все пробелы и разбиваем на биграммы
     cleaned.remove(' ');
+    cleaned.remove('\t');
+    cleaned.remove('\n');
 
     for (int i = 0; i < cleaned.length(); i += 2) {
         if (i + 1 < cleaned.length()) {
             result.append(cleaned.mid(i, 2));
-        } else {
-            // Если остался один символ (не должно быть при корректном шифровании)
-            result.append(cleaned.mid(i, 1) + QStringLiteral("?"));
         }
     }
 
@@ -242,9 +234,9 @@ QStringList PlayfairCipher::parseEncryptedText(const QString& text)
 
 bool PlayfairCipher::isFillerAndRemovable(const QString& text, int index, QChar filler) const
 {
-    if (text[index] != filler) return false;
+    if (index >= text.length() || text[index] != filler) return false;
 
-    // Проверяем, является ли эта буква фиктивной (между одинаковыми или в конце)
+    // Проверяем, является ли эта буква фиктивной
     if (index == text.length() - 1) {
         // Последняя буква
         return true;
@@ -255,7 +247,47 @@ bool PlayfairCipher::isFillerAndRemovable(const QString& text, int index, QChar 
         return true;
     }
 
+    // Проверка для случая, когда фиктивная буква вставлена между одинаковыми
+    // и после неё идёт такая же буква
+    if (index < text.length() - 1 && index > 0 &&
+        text[index - 1] == text[index + 1] &&
+        text[index] == filler) {
+        return true;
+    }
+
     return false;
+}
+
+// Вспомогательная функция для безопасного получения filler из параметров
+QChar getFillerFromParams(const QVariantMap& params, const QChar& defaultValue)
+{
+    if (!params.contains("filler")) {
+        return defaultValue;
+    }
+
+    QVariant fillerVar = params["filler"];
+
+    // Если это строка, берём первый символ
+    if (fillerVar.type() == QVariant::String || fillerVar.type() == QVariant::ByteArray) {
+        QString fillerStr = fillerVar.toString().trimmed().toUpper();
+        if (!fillerStr.isEmpty()) {
+            // Проверяем, не латиница ли это 'X'
+            if (fillerStr[0] == QLatin1Char('X') || fillerStr[0] == QLatin1Char('x')) {
+                return QChar(0x0425); // Кириллическая Х
+            }
+            return fillerStr[0];
+        }
+    }
+    // Если это QChar, проверяем и нормализуем
+    else if (fillerVar.type() == QVariant::Char) {
+        QChar ch = fillerVar.toChar().toUpper();
+        if (ch == QLatin1Char('X')) {
+            return QChar(0x0425); // Кириллическая Х
+        }
+        return ch;
+    }
+
+    return defaultValue;
 }
 
 CipherResult PlayfairCipher::encrypt(const QString& text, const QVariantMap& params)
@@ -272,12 +304,18 @@ CipherResult PlayfairCipher::encrypt(const QString& text, const QVariantMap& par
 
         QString slogan = params["slogan"].toString();
         MatrixSize size = static_cast<MatrixSize>(params["matrixSize"].toInt());
-        QChar filler = params.contains("filler") ? params["filler"].toChar() : DEFAULT_FILLER;
 
-        steps.append(CipherStep(1, QChar(),
-            QString(QStringLiteral("Параметры: размер=%1, лозунг='%2', фиктивная буква='%3'"))
-                .arg(size == Size5x6 ? QStringLiteral("5×6") : QStringLiteral("4×8")).arg(slogan).arg(filler),
-            QStringLiteral("Загрузка параметров")));
+        // Безопасное получение filler
+        QChar filler = getFillerFromParams(params, DEFAULT_FILLER);
+
+        // Формируем строку параметров безопасным способом
+        QString sizeStr = (size == Size5x6) ? QStringLiteral("5×6") : QStringLiteral("4×8");
+        QString paramMsg = QStringLiteral("Параметры: размер=") + sizeStr +
+                          QStringLiteral(", лозунг='") + slogan +
+                          QStringLiteral("', фиктивная буква='") + QString(filler) +
+                          QStringLiteral("'");
+
+        steps.append(CipherStep(1, QChar(), paramMsg, QStringLiteral("Загрузка параметров")));
 
         // Шаг 2: Создание таблицы
         QVector<QVector<QChar>> table = createTable(slogan, size);
@@ -331,7 +369,6 @@ CipherResult PlayfairCipher::encrypt(const QString& text, const QVariantMap& par
                 QString(QStringLiteral("Биграмма %1: '%2'")).arg(i + 1).arg(bigram),
                 QString(QStringLiteral("Обработка биграммы %1")).arg(i + 1)));
 
-            // Находим позиции букв
             Position pos1 = findPosition(table, bigram[0]);
             Position pos2 = findPosition(table, bigram[1]);
 
@@ -360,19 +397,14 @@ CipherResult PlayfairCipher::encrypt(const QString& text, const QVariantMap& par
             QStringLiteral("Формирование результата")));
 
         // Формируем описание
-        QString description = QString(QStringLiteral("Шифр Плейфера\n"
+        QString description = QStringLiteral("Шифр Плейфера\n"
                                     "════════════════════════════════════════\n"
-                                    "Размер таблицы: %1x%2\n"
-                                    "Слово-лозунг: %3\n"
-                                    "Фиктивная буква: %4\n"
-                                    "Исходный текст: %5 символов\n"
-                                    "Биграмм: %6"))
-                            .arg(size == Size5x6 ? QStringLiteral("5") : QStringLiteral("4"))
-                            .arg(size == Size5x6 ? QStringLiteral("6") : QStringLiteral("8"))
-                            .arg(slogan)
-                            .arg(filler)
-                            .arg(preparedText.length())
-                            .arg(bigrams.size());
+                                    "Размер таблицы: ") +
+                                    (size == Size5x6 ? QStringLiteral("5x6") : QStringLiteral("4x8")) +
+                                    QStringLiteral("\nСлово-лозунг: ") + slogan +
+                                    QStringLiteral("\nФиктивная буква: ") + QString(filler) +
+                                    QStringLiteral("\nИсходный текст: ") + QString::number(preparedText.length()) +
+                                    QStringLiteral(" символов\nБиграмм: ") + QString::number(bigrams.size());
 
         return CipherResult(result, steps, description, name(), true);
 
@@ -398,14 +430,19 @@ CipherResult PlayfairCipher::decrypt(const QString& text, const QVariantMap& par
 
         QString slogan = params["slogan"].toString();
         MatrixSize size = static_cast<MatrixSize>(params["matrixSize"].toInt());
-        QChar filler = params.contains("filler") ? params["filler"].toChar() : DEFAULT_FILLER;
 
-        steps.append(CipherStep(1, QChar(),
-            QString(QStringLiteral("Параметры: размер=%1, лозунг='%2', фиктивная буква='%3'"))
-                .arg(size == Size5x6 ? QStringLiteral("5×6") : QStringLiteral("4×8")).arg(slogan).arg(filler),
-            QStringLiteral("Загрузка параметров")));
+        // Безопасное получение filler
+        QChar filler = getFillerFromParams(params, DEFAULT_FILLER);
 
-        // Шаг 2: Создание таблицы (та же, что и при шифровании)
+        QString sizeStr = (size == Size5x6) ? QStringLiteral("5×6") : QStringLiteral("4×8");
+        QString paramMsg = QStringLiteral("Параметры: размер=") + sizeStr +
+                          QStringLiteral(", лозунг='") + slogan +
+                          QStringLiteral("', фиктивная буква='") + QString(filler) +
+                          QStringLiteral("'");
+
+        steps.append(CipherStep(1, QChar(), paramMsg, QStringLiteral("Загрузка параметров")));
+
+        // Шаг 2: Создание таблицы
         QVector<QVector<QChar>> table = createTable(slogan, size);
 
         QString tableDisplay;
@@ -447,7 +484,6 @@ CipherResult PlayfairCipher::decrypt(const QString& text, const QVariantMap& par
                 QString(QStringLiteral("Биграмма %1: '%2'")).arg(i + 1).arg(bigram),
                 QString(QStringLiteral("Обработка биграммы %1")).arg(i + 1)));
 
-            // Находим позиции букв
             Position pos1 = findPosition(table, bigram[0]);
             Position pos2 = findPosition(table, bigram[1]);
 
@@ -484,19 +520,14 @@ CipherResult PlayfairCipher::decrypt(const QString& text, const QVariantMap& par
             QStringLiteral("Формирование результата")));
 
         // Формируем описание
-        QString description = QString(QStringLiteral("Дешифрование шифра Плейфера\n"
+        QString description = QStringLiteral("Дешифрование шифра Плейфера\n"
                                     "════════════════════════════════════════\n"
-                                    "Размер таблицы: %1x%2\n"
-                                    "Слово-лозунг: %3\n"
-                                    "Фиктивная буква: %4\n"
-                                    "Биграмм в шифртексте: %5\n"
-                                    "Получено символов: %6"))
-                            .arg(size == Size5x6 ? QStringLiteral("5") : QStringLiteral("4"))
-                            .arg(size == Size5x6 ? QStringLiteral("6") : QStringLiteral("8"))
-                            .arg(slogan)
-                            .arg(filler)
-                            .arg(encryptedBigrams.size())
-                            .arg(result.length());
+                                    "Размер таблицы: ") +
+                                    (size == Size5x6 ? QStringLiteral("5x6") : QStringLiteral("4x8")) +
+                                    QStringLiteral("\nСлово-лозунг: ") + slogan +
+                                    QStringLiteral("\nФиктивная буква: ") + QString(filler) +
+                                    QStringLiteral("\nБиграмм в шифртексте: ") + QString::number(encryptedBigrams.size()) +
+                                    QStringLiteral("\nПолучено символов: ") + QString::number(result.length());
 
         return CipherResult(result, steps, description, name() + QStringLiteral(" (дешифрование)"), false);
 
@@ -508,7 +539,7 @@ CipherResult PlayfairCipher::decrypt(const QString& text, const QVariantMap& par
     }
 }
 
-// Регистратор виджетов (исправленная версия)
+// Регистратор виджетов
 PlayfairCipherRegister::PlayfairCipherRegister()
 {
     CipherFactory::instance().registerCipher(
@@ -519,29 +550,25 @@ PlayfairCipherRegister::PlayfairCipherRegister()
 
     CipherWidgetFactory::instance().registerCipherWidgets(
         "playfair",
-        // Основные виджеты (на главном экране)
+        // Основные виджеты
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QLabel* infoLabel = new QLabel(QStringLiteral("Ключ: слово-лозунг для заполнения таблицы 5×6 или 4×8"), parent);
             infoLabel->setStyleSheet(QStringLiteral("color: #7f8c8d; font-style: italic;"));
             infoLabel->setWordWrap(true);
             layout->addWidget(infoLabel);
         },
-        // Расширенные виджеты (в отдельном окне)
+        // Расширенные виджеты
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
-            // Создаем главный горизонтальный layout
             QHBoxLayout* mainLayout = new QHBoxLayout();
             layout->addLayout(mainLayout);
 
-            // Левая панель - настройки
             QVBoxLayout* leftPanel = new QVBoxLayout();
-            mainLayout->addLayout(leftPanel, 1); // 1 часть ширины
+            mainLayout->addLayout(leftPanel, 1);
 
-            // Правая панель - таблица
             QVBoxLayout* rightPanel = new QVBoxLayout();
-            mainLayout->addLayout(rightPanel, 2); // 2 части ширины
+            mainLayout->addLayout(rightPanel, 2);
 
-            // ============= ЛЕВАЯ ПАНЕЛЬ =============
-            // Группа выбора размерности
+            // Левая панель - настройки
             QGroupBox* sizeGroup = new QGroupBox(QStringLiteral("Размерность таблицы"), parent);
             QVBoxLayout* sizeLayout = new QVBoxLayout(sizeGroup);
 
@@ -554,7 +581,6 @@ PlayfairCipherRegister::PlayfairCipherRegister()
             leftPanel->addWidget(sizeGroup);
             widgets[QStringLiteral("matrixSize")] = sizeCombo;
 
-            // Группа ключа
             QGroupBox* keyGroup = new QGroupBox(QStringLiteral("Ключ шифрования"), parent);
             QVBoxLayout* keyLayout = new QVBoxLayout(keyGroup);
 
@@ -577,18 +603,22 @@ PlayfairCipherRegister::PlayfairCipherRegister()
             fillerEdit->setPlaceholderText(QStringLiteral("Х"));
             fillerEdit->setText(QStringLiteral("Х"));
             fillerEdit->setMaxLength(1);
+
+            // Убеждаемся, что это кириллица
+            QFont font = fillerEdit->font();
+            font.setFamily(QStringLiteral("Arial"));
+            fillerEdit->setFont(font);
+
             keyLayout->addWidget(fillerEdit);
             widgets[QStringLiteral("filler")] = fillerEdit;
 
             leftPanel->addWidget(keyGroup);
 
-            // Кнопка генерации таблицы
             QPushButton* generateButton = new QPushButton(QStringLiteral("Сгенерировать таблицу"), parent);
             generateButton->setObjectName(QStringLiteral("generateTableButton"));
             generateButton->setStyleSheet(QStringLiteral("QPushButton { background-color: #3498db; color: white; padding: 8px; margin-top: 10px; }"));
             leftPanel->addWidget(generateButton);
 
-            // Информационное поле
             QLabel* infoLabel = new QLabel(parent);
             infoLabel->setObjectName(QStringLiteral("infoLabel"));
             infoLabel->setWordWrap(true);
@@ -596,7 +626,6 @@ PlayfairCipherRegister::PlayfairCipherRegister()
             infoLabel->setStyleSheet(QStringLiteral("color: #7f8c8d; font-style: italic; margin-top: 10px;"));
             leftPanel->addWidget(infoLabel);
 
-            // Кнопки примеров
             QLabel* exampleLabel = new QLabel(QStringLiteral("Быстрые примеры:"), parent);
             exampleLabel->setStyleSheet(QStringLiteral("font-weight: bold; margin-top: 15px;"));
             leftPanel->addWidget(exampleLabel);
@@ -616,12 +645,11 @@ PlayfairCipherRegister::PlayfairCipherRegister()
             leftPanel->addLayout(exampleLayout);
             leftPanel->addStretch();
 
-            // ============= ПРАВАЯ ПАНЕЛЬ =============
+            // Правая панель - таблица
             QLabel* tableTitleLabel = new QLabel(QStringLiteral("Сгенерированная таблица:"), parent);
             tableTitleLabel->setStyleSheet(QStringLiteral("font-weight: bold; font-size: 14px; margin-bottom: 10px;"));
             rightPanel->addWidget(tableTitleLabel);
 
-            // Контейнер для таблицы с рамкой и фоном
             QFrame* tableFrame = new QFrame(parent);
             tableFrame->setFrameStyle(QFrame::Box);
             tableFrame->setLineWidth(2);
@@ -643,7 +671,6 @@ PlayfairCipherRegister::PlayfairCipherRegister()
             frameLayout->addWidget(tableWidget);
             rightPanel->addWidget(tableFrame);
 
-            // Статистика таблицы
             QLabel* statsLabel = new QLabel(parent);
             statsLabel->setObjectName(QStringLiteral("statsLabel"));
             statsLabel->setStyleSheet(QStringLiteral("color: #7f8c8d; margin-top: 10px;"));
@@ -657,7 +684,18 @@ PlayfairCipherRegister::PlayfairCipherRegister()
                 [sizeCombo, sloganEdit, fillerEdit, tableWidget, infoLabel, statsLabel]() {
                     int sizeType = sizeCombo->currentData().toInt();
                     QString slogan = sloganEdit->text().trimmed().toUpper();
+
+                    // Получаем filler и нормализуем его
                     QString filler = fillerEdit->text().trimmed().toUpper();
+
+                    // Если пусто или латиница X, заменяем на кириллицу Х
+                    if (filler.isEmpty() || filler == "X" || filler == "x") {
+                        filler = QStringLiteral("Х");
+                        fillerEdit->setText(QStringLiteral("Х"));
+                    } else if (filler.length() > 1) {
+                        filler = filler.left(1);
+                        fillerEdit->setText(filler);
+                    }
 
                     if (slogan.isEmpty()) {
                         infoLabel->setText(QStringLiteral("⚠ Введите слово-лозунг"));
@@ -665,39 +703,28 @@ PlayfairCipherRegister::PlayfairCipherRegister()
                         return;
                     }
 
-                    if (filler.isEmpty()) {
-                        filler = QStringLiteral("Х");
-                        fillerEdit->setText(QStringLiteral("Х"));
-                    }
-
                     // Создаем временный объект шифра для генерации таблицы
                     PlayfairCipher cipher;
                     auto table = cipher.generateTable(slogan,
                         static_cast<PlayfairCipher::MatrixSize>(sizeType));
 
-                    // Отображаем таблицу
                     int rows = table.size();
                     int cols = table[0].size();
 
                     tableWidget->setRowCount(rows);
                     tableWidget->setColumnCount(cols);
 
-                    // Устанавливаем размер ячеек
                     for (int i = 0; i < rows; i++) {
                         for (int j = 0; j < cols; j++) {
                             QTableWidgetItem* item = new QTableWidgetItem(QString(table[i][j]));
                             item->setTextAlignment(Qt::AlignCenter);
                             item->setFont(QFont(QStringLiteral("Courier"), 16, QFont::Bold));
-                            item->setBackground(QBrush(QColor(236, 240, 241))); // Светло-серый фон
-                            item->setForeground(QBrush(QColor(44, 62, 80))); // Темно-синий текст
+                            item->setBackground(QBrush(QColor(236, 240, 241)));
+                            item->setForeground(QBrush(QColor(44, 62, 80)));
                             tableWidget->setItem(i, j, item);
                         }
                     }
 
-                    tableWidget->resizeColumnsToContents();
-                    tableWidget->resizeRowsToContents();
-
-                    // Устанавливаем минимальную ширину колонок
                     for (int j = 0; j < cols; j++) {
                         tableWidget->setColumnWidth(j, 50);
                     }
@@ -705,7 +732,6 @@ PlayfairCipherRegister::PlayfairCipherRegister()
                         tableWidget->setRowHeight(i, 50);
                     }
 
-                    // Обновляем статистику
                     QString sizeStr = (sizeType == 0) ? QStringLiteral("5×6 (30 букв)") : QStringLiteral("4×8 (32 буквы)");
                     statsLabel->setText(QString(QStringLiteral("Размер: %1 | Лозунг: %2 | Фиктивная буква: %3"))
                                         .arg(sizeStr).arg(slogan).arg(filler));
@@ -717,7 +743,7 @@ PlayfairCipherRegister::PlayfairCipherRegister()
 
             QObject::connect(example1Button, &QPushButton::clicked, parent,
                 [sizeCombo, sloganEdit, fillerEdit, generateButton]() {
-                    sizeCombo->setCurrentIndex(0); // 5x6
+                    sizeCombo->setCurrentIndex(0);
                     sloganEdit->setText(QStringLiteral("РЕСПУБЛИКА"));
                     fillerEdit->setText(QStringLiteral("Х"));
                     generateButton->click();
@@ -725,13 +751,12 @@ PlayfairCipherRegister::PlayfairCipherRegister()
 
             QObject::connect(example2Button, &QPushButton::clicked, parent,
                 [sizeCombo, sloganEdit, fillerEdit, generateButton]() {
-                    sizeCombo->setCurrentIndex(1); // 4x8
+                    sizeCombo->setCurrentIndex(1);
                     sloganEdit->setText(QStringLiteral("ЛОЗУНГ"));
                     fillerEdit->setText(QStringLiteral("Х"));
                     generateButton->click();
                 });
 
-            // Добавляем stretch в основной layout
             layout->addStretch();
         }
     );

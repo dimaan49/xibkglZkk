@@ -74,7 +74,7 @@ void AdvancedSettingsDialog::createAdvancedWidgets()
 
     // Создаем новый
     m_contentWidget = new QWidget(this);
-    m_contentWidget->setObjectName("advancedContentWidget");
+    m_contentWidget->setObjectName("advancedContentWidфget");
     m_contentLayout = new QVBoxLayout(m_contentWidget);
     m_contentLayout->setSpacing(10);
     m_contentLayout->setContentsMargins(0, 0, 0, 0);

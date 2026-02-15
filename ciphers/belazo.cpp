@@ -144,40 +144,6 @@ BelazoCipherRegister::BelazoCipherRegister()
             layout->addLayout(keyLayout);
 
             widgets["key"] = keyLineEdit;
-
-            // Расширенные параметры
-            QLabel* advancedLabel = new QLabel("Расширенные настройки:");
-            advancedLabel->setStyleSheet("font-weight: bold; margin-top: 10px;");
-            layout->addWidget(advancedLabel);
-
-            // Режим работы
-            QHBoxLayout* modeLayout = new QHBoxLayout();
-            QLabel* modeLabel = new QLabel("Режим:");
-            QComboBox* modeCombo = new QComboBox(parent);
-            modeCombo->addItem("Стандартный");
-            modeCombo->addItem("С автоключом");
-            modeCombo->setObjectName("mode");
-
-            modeLayout->addWidget(modeLabel);
-            modeLayout->addWidget(modeCombo);
-            modeLayout->addStretch();
-            layout->addLayout(modeLayout);
-
-            // Размер блока
-            QHBoxLayout* blockLayout = new QHBoxLayout();
-            QLabel* blockLabel = new QLabel("Размер блока:");
-            QSpinBox* blockSpin = new QSpinBox(parent);
-            blockSpin->setRange(1, 100);
-            blockSpin->setValue(5);
-            blockSpin->setObjectName("blockSize");
-
-            blockLayout->addWidget(blockLabel);
-            blockLayout->addWidget(blockSpin);
-            blockLayout->addStretch();
-            layout->addLayout(blockLayout);
-
-            widgets["mode"] = modeCombo;
-            widgets["blockSize"] = blockSpin;
         }
     );
 }
