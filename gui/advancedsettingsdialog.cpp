@@ -1,5 +1,14 @@
 #include "advancedsettingsdialog.h"
 #include "cipherwidgetfactory.h"
+#include "stylemanager.h"
+
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QDialogButtonBox>
+#include <QCloseEvent>
+#include <QResizeEvent>
 #include <QStyle>
 #include <QApplication>
 #include <QDebug>
@@ -16,16 +25,14 @@ AdvancedSettingsDialog::AdvancedSettingsDialog(const QString& cipherId, const QS
     , m_buttonBox(nullptr)
 {
     setModal(true);
+    setObjectName("AdvancedSettingsDialog");
     setupUI();
     createAdvancedWidgets();
 }
 
 AdvancedSettingsDialog::~AdvancedSettingsDialog()
 {
-    // Просто очищаем маппер указателей, НЕ удаляем виджеты!
-    // Виджеты удалятся автоматически вместе с m_contentWidget
     m_advancedWidgets.clear();
-
     qDebug() << "AdvancedSettingsDialog destroyed for cipher:" << m_cipherName;
 }
 
@@ -43,10 +50,16 @@ void AdvancedSettingsDialog::setupUI()
 
     // Заголовок
     m_titleLabel = new QLabel(tr("⚙ Расширенные параметры шифра"));
-    m_titleLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: #00c896; padding: 5px; border-bottom: 2px solid #3e3e3e;");
+    m_titleLabel->setObjectName("dialogTitle");
+    m_titleLabel->setStyleSheet(
+        "font-size: 16px; "
+        "font-weight: bold; "
+        "padding: 5px; "
+        "border-bottom: 2px solid #3e3e3e;"
+    );
     m_mainLayout->addWidget(m_titleLabel);
 
-    // m_contentWidget НЕ СОЗДАЕМ ЗДЕСЬ! Он будет создан в createAdvancedWidgets()
+    // Контент (будет создан в createAdvancedWidgets)
     m_contentWidget = nullptr;
     m_contentLayout = nullptr;
 
@@ -74,12 +87,12 @@ void AdvancedSettingsDialog::createAdvancedWidgets()
 
     // Создаем новый
     m_contentWidget = new QWidget(this);
-    m_contentWidget->setObjectName("advancedContentWidфget");
+    m_contentWidget->setObjectName("advancedContentWidget");
     m_contentLayout = new QVBoxLayout(m_contentWidget);
     m_contentLayout->setSpacing(10);
     m_contentLayout->setContentsMargins(0, 0, 0, 0);
 
-    // Добавляем в mainLayout
+    // Добавляем в mainLayout (перед кнопками)
     m_mainLayout->insertWidget(1, m_contentWidget, 1);
 
     // Очищаем хранилище
@@ -96,6 +109,7 @@ void AdvancedSettingsDialog::createAdvancedWidgets()
     // Заглушка
     if (m_advancedWidgets.isEmpty()) {
         QLabel* noWidgetsLabel = new QLabel(tr("Для данного шифра нет расширенных настроек."), m_contentWidget);
+        noWidgetsLabel->setObjectName("noWidgetsLabel");
         noWidgetsLabel->setStyleSheet("color: #888; font-style: italic; padding: 20px;");
         noWidgetsLabel->setAlignment(Qt::AlignCenter);
         m_contentLayout->addWidget(noWidgetsLabel);
@@ -114,14 +128,12 @@ void AdvancedSettingsDialog::setSettings(const QVariantMap& settings)
     CipherWidgetFactory::updateWidgets(m_advancedWidgets, settings);
 }
 
-// Добавляем обработчик reject для отладки
 void AdvancedSettingsDialog::reject()
 {
     qDebug() << "AdvancedSettingsDialog: reject() called for" << m_cipherName;
     QDialog::reject();
 }
 
-// Добавляем обработчик accept для отладки
 void AdvancedSettingsDialog::accept()
 {
     qDebug() << "AdvancedSettingsDialog: accept() called for" << m_cipherName;
@@ -131,6 +143,6 @@ void AdvancedSettingsDialog::accept()
 void AdvancedSettingsDialog::closeEvent(QCloseEvent* event)
 {
     qDebug() << "AdvancedSettingsDialog: closeEvent() for" << m_cipherName;
-    reject();  // Завершаем модальный цикл с результатом Rejected
-    event->accept();  // Говорим Qt, что событие обработано
+    reject();
+    event->accept();
 }

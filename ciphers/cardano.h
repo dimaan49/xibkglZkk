@@ -16,6 +16,19 @@ public:
     QString name() const override;
     QString description() const override;
 
+    // Публичные методы для доступа к данным (для виджетов)
+    std::vector<std::vector<bool>> getHoles() const;
+    int getRows() const { return m_rows; }
+    int getCols() const { return m_cols; }
+
+    // Публичные методы для преобразований решетки (нужны для виджетов)
+    std::vector<std::vector<bool>> rotate180(const std::vector<std::vector<bool>>& pattern) const;
+    std::vector<std::vector<bool>> mirrorX(const std::vector<std::vector<bool>>& pattern) const;
+    std::vector<std::vector<bool>> mirrorY(const std::vector<std::vector<bool>>& pattern) const;
+
+    // Публичный метод для подсчета отверстий
+    int countTotalHoles() const;
+
 private:
     QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
     std::vector<std::vector<bool>> m_holes; // Решетка
@@ -26,12 +39,8 @@ private:
     // Вспомогательные методы
     QChar getAlphabetChar(int index) const;
     void clearGrid();
-    int countTotalHoles() const;
 
-    // Методы для преобразований решетки
-    std::vector<std::vector<bool>> rotate180(const std::vector<std::vector<bool>>& pattern) const;
-    std::vector<std::vector<bool>> mirrorX(const std::vector<std::vector<bool>>& pattern) const;
-    std::vector<std::vector<bool>> mirrorY(const std::vector<std::vector<bool>>& pattern) const;
+    // Приватные методы для внутреннего использования
     std::vector<std::vector<bool>> getPosition(int positionNumber) const;
 
     // Создание решетки по умолчанию
@@ -43,6 +52,6 @@ public:
     CardanoCipherRegister();
 };
 
-static CardanoCipherRegister cardanoRegister;
+// static CardanoCipherRegister cardanoRegister;
 
 #endif // CARDANO_H

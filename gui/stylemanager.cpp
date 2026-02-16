@@ -1,4 +1,5 @@
 #include "stylemanager.h"
+#include <QApplication>
 
 // ==================== Вспомогательные функции ====================
 namespace {
@@ -619,10 +620,23 @@ namespace {
 
 // ==================== StyleManager Implementation ====================
 void StyleManager::applyTheme(QWidget* window, StyleTheme theme) {
-    QString stylesheet = getStylesheet(theme);
-    window->setStyleSheet(stylesheet);
-}
+    QString mainStylesheet = getStylesheet(theme);
 
+    // Добавляем стили для диалога расширенных настроек
+    QString advancedDialogStyles = getAdvancedDialogStylesheet(theme);
+
+    // Объединяем стили
+    QString fullStylesheet = mainStylesheet + "\n" + advancedDialogStyles;
+
+    window->setStyleSheet(fullStylesheet);
+
+    // Также применяем тему ко всем дочерним окнам (диалогам)
+    foreach(QWidget *widget, QApplication::topLevelWidgets()) {
+        if (widget != window && widget->inherits("AdvancedSettingsDialog")) {
+            widget->setStyleSheet(advancedDialogStyles);
+        }
+    }
+}
 QString StyleManager::getStylesheet(StyleTheme theme) {
     QString base;
     QString buttons;
@@ -917,4 +931,219 @@ QString StyleManager::getLogWindowStylesheet() {
             margin: 6px;
         }
     )";
+}
+
+
+QString StyleManager::getAdvancedDialogStylesheet(StyleTheme theme) {
+    QString styles;
+
+    switch(theme) {
+        case THEME_CYBER_MIDNIGHT:
+            styles = R"(
+                /* Advanced Dialog - Cyber Midnight */
+                QDialog#AdvancedSettingsDialog {
+                    background-color: #0f1923;
+                }
+
+                QDialog#AdvancedSettingsDialog QLabel#dialogTitle {
+                    color: #00c896;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#toggleMaximizeButton {
+                    background-color: transparent;
+                    color: #64d8cb;
+                    border: 1px solid #2a3a4d;
+                    border-radius: 4px;
+                    font-size: 18px;
+                    font-weight: bold;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#toggleMaximizeButton:hover {
+                    background-color: rgba(100, 216, 203, 0.1);
+                    border-color: #64d8cb;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#toggleMaximizeButton:pressed {
+                    background-color: rgba(100, 216, 203, 0.2);
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogOkButton {
+                    background-color: #00c896;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 6px 16px;
+                    font-weight: bold;
+                    min-width: 100px;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogOkButton:hover {
+                    background-color: #00d8a6;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogOkButton:pressed {
+                    background-color: #00a878;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogCancelButton {
+                    background-color: #2a3a4d;
+                    color: #b4bece;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 6px 16px;
+                    font-weight: bold;
+                    min-width: 100px;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogCancelButton:hover {
+                    background-color: #334155;
+                    color: white;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogCancelButton:pressed {
+                    background-color: #1f2b3a;
+                }
+            )";
+            break;
+
+        case THEME_DARK_PROFESSIONAL:
+            styles = R"(
+                /* Advanced Dialog - Dark Professional */
+                QDialog#AdvancedSettingsDialog {
+                    background-color: #121212;
+                }
+
+                QDialog#AdvancedSettingsDialog QLabel#dialogTitle {
+                    color: #3a7afe;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#toggleMaximizeButton {
+                    background-color: transparent;
+                    color: #3a7afe;
+                    border: 1px solid #2a2a2a;
+                    border-radius: 4px;
+                    font-size: 18px;
+                    font-weight: bold;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#toggleMaximizeButton:hover {
+                    background-color: rgba(58, 122, 254, 0.1);
+                    border-color: #3a7afe;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#toggleMaximizeButton:pressed {
+                    background-color: rgba(58, 122, 254, 0.2);
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogOkButton {
+                    background-color: #3a7afe;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 6px 16px;
+                    font-weight: bold;
+                    min-width: 100px;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogOkButton:hover {
+                    background-color: #4a8afe;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogOkButton:pressed {
+                    background-color: #2a6afe;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogCancelButton {
+                    background-color: #2d2d2d;
+                    color: #e0e0e0;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 6px 16px;
+                    font-weight: bold;
+                    min-width: 100px;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogCancelButton:hover {
+                    background-color: #3d3d3d;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogCancelButton:pressed {
+                    background-color: #252525;
+                }
+            )";
+            break;
+
+        case THEME_RELIABLE_ORANGE:
+            styles = R"(
+                /* Advanced Dialog - Reliable Orange */
+                QDialog#AdvancedSettingsDialog {
+                    background-color: #0c0905;
+                }
+
+                QDialog#AdvancedSettingsDialog QLabel#dialogTitle {
+                    color: #e65c00;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#toggleMaximizeButton {
+                    background-color: transparent;
+                    color: #e65c00;
+                    border: 1px solid #2a2319;
+                    border-radius: 4px;
+                    font-size: 18px;
+                    font-weight: bold;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#toggleMaximizeButton:hover {
+                    background-color: rgba(230, 92, 0, 0.1);
+                    border-color: #e65c00;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#toggleMaximizeButton:pressed {
+                    background-color: rgba(230, 92, 0, 0.2);
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogOkButton {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #e65c00, stop:1 #b34700);
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 6px 16px;
+                    font-weight: bold;
+                    min-width: 100px;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogOkButton:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #ff751a, stop:1 #d56000);
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogOkButton:pressed {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #cc4d00, stop:1 #8c3300);
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogCancelButton {
+                    background-color: #2a2319;
+                    color: #b8a992;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 6px 16px;
+                    font-weight: bold;
+                    min-width: 100px;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogCancelButton:hover {
+                    background-color: #3a3229;
+                    color: #f0e6d8;
+                }
+
+                QDialog#AdvancedSettingsDialog QPushButton#dialogCancelButton:pressed {
+                    background-color: #1f1a12;
+                }
+            )";
+            break;
+    }
+
+    return styles;
 }

@@ -2,12 +2,14 @@
 #define ADVANCEDSETTINGSDIALOG_H
 
 #include <QDialog>
-#include <QVBoxLayout>
 #include <QMap>
-#include <QPushButton>
-#include <QLabel>
-#include <QDialogButtonBox>
-#include <QCloseEvent>  // ВАЖНО!
+#include <QVariant>
+
+class QVBoxLayout;
+class QHBoxLayout;
+class QLabel;
+class QWidget;
+class QDialogButtonBox;
 
 class AdvancedSettingsDialog : public QDialog
 {
@@ -16,13 +18,15 @@ class AdvancedSettingsDialog : public QDialog
 public:
     explicit AdvancedSettingsDialog(const QString& cipherId, const QString& cipherName,
                                    QWidget* parent = nullptr);
-    ~AdvancedSettingsDialog() override;
+    ~AdvancedSettingsDialog();
 
     QVariantMap getSettings() const;
     void setSettings(const QVariantMap& settings);
 
 protected:
-    void closeEvent(QCloseEvent* event) override;  // ДОБАВЛЯЕМ!
+    void closeEvent(QCloseEvent* event) override;
+
+private slots:
     void reject() override;
     void accept() override;
 
@@ -32,14 +36,17 @@ private:
 
     QString m_cipherId;
     QString m_cipherName;
-    QMap<QString, QWidget*> m_advancedWidgets;
     QVariantMap m_initialSettings;
 
+    // UI Elements
     QVBoxLayout* m_mainLayout;
     QLabel* m_titleLabel;
     QWidget* m_contentWidget;
     QVBoxLayout* m_contentLayout;
     QDialogButtonBox* m_buttonBox;
+
+    // Хранилище виджетов
+    QMap<QString, QWidget*> m_advancedWidgets;
 };
 
 #endif // ADVANCEDSETTINGSDIALOG_H
