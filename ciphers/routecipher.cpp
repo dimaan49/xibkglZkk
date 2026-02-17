@@ -116,23 +116,62 @@ QVector<Direction> RouteCipher::getDefaultReadDirections(int cols) const
 
 CipherResult RouteCipher::encrypt(const QString& text, const QVariantMap& params)
 {
-    Q_UNUSED(params); // Параметры не используются
-
-    // Автоматически определяем размер таблицы
+    // Очищаем текст
     QString cleanText = CipherUtils::filterAlphabetOnly(text,
         QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"));
 
-    int rows = 0, cols = 0;
-    calculateOptimalSize(cleanText.length(), rows, cols);
+    // Получаем размеры из параметров
+    int rows = params.value("rows", 0).toInt();
+    int cols = params.value("cols", 0).toInt();
 
-    // Получаем направления по умолчанию
-    QVector<Direction> writeDirections = getDefaultWriteDirections(rows);
-    QVector<Direction> readDirections = getDefaultReadDirections(cols);
+    // Если размеры не указаны (0) - определяем автоматически
+    if (rows <= 0 || cols <= 0) {
+        calculateOptimalSize(cleanText.length(), rows, cols);
+    }
 
-    // Используем порядок по умолчанию
-    QVector<int> rowOrder, columnOrder;
+    // Получаем направления записи
+    QVector<Direction> writeDirections;
+    if (params.contains("writeDirections")) {
+        QVariantList dirList = params.value("writeDirections").toList();
+        for (const QVariant& v : dirList) {
+            writeDirections.append(static_cast<Direction>(v.toInt()));
+        }
+    } else {
+        writeDirections = getDefaultWriteDirections(rows);
+    }
 
-    return encryptImpl(cleanText, rows, cols, writeDirections, readDirections, rowOrder, columnOrder);
+    // Получаем направления чтения
+    QVector<Direction> readDirections;
+    if (params.contains("readDirections")) {
+        QVariantList dirList = params.value("readDirections").toList();
+        for (const QVariant& v : dirList) {
+            readDirections.append(static_cast<Direction>(v.toInt()));
+        }
+    } else {
+        readDirections = getDefaultReadDirections(cols);
+    }
+
+    // Получаем порядок строк
+    QVector<int> rowOrder;
+    if (params.contains("rowOrder")) {
+        QVariantList orderList = params.value("rowOrder").toList();
+        for (const QVariant& v : orderList) {
+            rowOrder.append(v.toInt());
+        }
+    }
+
+    // Получаем порядок столбцов
+    QVector<int> columnOrder;
+    if (params.contains("columnOrder")) {
+        QVariantList orderList = params.value("columnOrder").toList();
+        for (const QVariant& v : orderList) {
+            columnOrder.append(v.toInt());
+        }
+    }
+
+    // Выполняем шифрование с полученными параметрами
+    return encryptImpl(cleanText, rows, cols, writeDirections, readDirections,
+                      rowOrder, columnOrder);
 }
 
 CipherResult RouteCipher::decrypt(const QString& text, const QVariantMap& params)
@@ -397,14 +436,19 @@ RouteCipherRegister::RouteCipherRegister()
         "route",
         // Основной виджет
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
+            // Здесь можно добавить базовые параметры, если нужно
         },
-        // Расширенный виджет - ТЕПЕРЬ ИСПОЛЬЗУЕМ НАСТОЯЩИЙ КЛАСС
+        // Расширенный виджет
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             RouteCipherAdvancedWidget* advancedWidget = new RouteCipherAdvancedWidget(parent);
             layout->addWidget(advancedWidget);
-
-            // Сохраняем виджет для доступа к параметрам
             widgets["routeAdvancedWidget"] = advancedWidget;
+
+            // Подключаем сигнал изменения параметров
+            QObject::connect(advancedWidget, &RouteCipherAdvancedWidget::parametersChanged,
+                            [advancedWidget]() {
+                // Можно добавить логику при изменении
+            });
         }
     );
 }

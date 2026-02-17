@@ -1243,3 +1243,47 @@ void RouteCipherAdvancedWidget::onColsChanged(int value)
 
     m_updating = false;
 }
+
+// Добавьте этот метод в routecipherwidget.cpp
+QVariantMap RouteCipherAdvancedWidget::getParameters() const
+{
+    QVariantMap params;
+
+    // Размеры таблицы
+    params["rows"] = getRows();
+    params["cols"] = getCols();
+
+    // Направления записи
+    QVariantList writeDirs;
+    QVector<Direction> writeVec = getWriteDirections();
+    for (Direction d : writeVec) {
+        writeDirs.append(static_cast<int>(d));
+    }
+    params["writeDirections"] = writeDirs;
+
+    // Направления чтения
+    QVariantList readDirs;
+    QVector<Direction> readVec = getReadDirections();
+    for (Direction d : readVec) {
+        readDirs.append(static_cast<int>(d));
+    }
+    params["readDirections"] = readDirs;
+
+    // Порядок строк
+    QVariantList rowOrderList;
+    QVector<int> rowVec = getRowOrder();
+    for (int v : rowVec) {
+        rowOrderList.append(v);
+    }
+    params["rowOrder"] = rowOrderList;
+
+    // Порядок столбцов
+    QVariantList colOrderList;
+    QVector<int> colVec = getColumnOrder();
+    for (int v : colVec) {
+        colOrderList.append(v);
+    }
+    params["columnOrder"] = colOrderList;
+
+    return params;
+}

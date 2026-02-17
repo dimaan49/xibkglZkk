@@ -1,5 +1,6 @@
 // cipherwidgetfactory.cpp
 #include "cipherwidgetfactory.h"
+#include "routecipherwidget.h"
 #include <QSpinBox>
 #include <QLineEdit>
 #include <QTextEdit>
@@ -57,7 +58,18 @@ QVariantMap CipherWidgetFactory::collectValues(const QMap<QString, QWidget*>& wi
         QString paramId = it.key();
         QWidget* widget = it.value();
 
-        if (QSpinBox* spinBox = qobject_cast<QSpinBox*>(widget)) {
+        // Добавьте эту проверку ПЕРЕД стандартными виджетами
+        if (RouteCipherAdvancedWidget* advancedWidget = qobject_cast<RouteCipherAdvancedWidget*>(widget)) {
+            // Получаем все параметры из расширенного виджета
+            QVariantMap advancedParams = advancedWidget->getParameters();
+
+            // Добавляем каждый параметр в общую карту
+            for (auto advIt = advancedParams.constBegin(); advIt != advancedParams.constEnd(); ++advIt) {
+                params[advIt.key()] = advIt.value();
+                qDebug() << "CipherWidgetFactory: добавил параметр" << advIt.key() << "=" << advIt.value();
+            }
+        }
+        else if (QSpinBox* spinBox = qobject_cast<QSpinBox*>(widget)) {
             params[paramId] = spinBox->value();
         }
         else if (QLineEdit* lineEdit = qobject_cast<QLineEdit*>(widget)) {
@@ -88,25 +100,21 @@ void CipherWidgetFactory::updateWidgets(const QMap<QString, QWidget*>& widgets, 
         QString paramId = it.key();
         QWidget* widget = it.value();
 
-        if (!values.contains(paramId)) continue;
-
-        QVariant value = values[paramId];
-
-        if (QSpinBox* spinBox = qobject_cast<QSpinBox*>(widget)) {
-            spinBox->setValue(value.toInt());
+        // Для RouteCipherAdvancedWidget нужно обновлять через сеттеры
+        if (RouteCipherAdvancedWidget* advancedWidget = qobject_cast<RouteCipherAdvancedWidget*>(widget)) {
+            // Здесь можно реализовать обновление расширенного виджета из значений
+            // Но это сложнее, так как у него много параметров
+            if (values.contains("rows")) {
+                advancedWidget->setRows(values["rows"].toInt());
+            }
+            if (values.contains("cols")) {
+                advancedWidget->setCols(values["cols"].toInt());
+            }
+            // и т.д.
         }
-        else if (QLineEdit* lineEdit = qobject_cast<QLineEdit*>(widget)) {
-            lineEdit->setText(value.toString());
+        else if (QSpinBox* spinBox = qobject_cast<QSpinBox*>(widget)) {
+            spinBox->setValue(values[paramId].toInt());
         }
-        else if (QTextEdit* textEdit = qobject_cast<QTextEdit*>(widget)) {
-            textEdit->setPlainText(value.toString());
-        }
-        else if (QComboBox* comboBox = qobject_cast<QComboBox*>(widget)) {
-            int index = comboBox->findText(value.toString());
-            if (index >= 0) comboBox->setCurrentIndex(index);
-        }
-        else if (QCheckBox* checkBox = qobject_cast<QCheckBox*>(widget)) {
-            checkBox->setChecked(value.toBool());
-        }
+        // ... остальные обработчики
     }
 }

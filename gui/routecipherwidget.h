@@ -40,6 +40,7 @@ public:
     void setReadDirections(const QVector<Direction>& dirs);
     void setRowOrder(const QVector<int>& order);
     void setColumnOrder(const QVector<int>& order);
+    QVariantMap getParameters() const;
 
     // Валидация параметров
     bool validate(QString& errorMessage) const;
