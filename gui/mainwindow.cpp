@@ -370,6 +370,8 @@ void MainWindow::setupUI()
     // DEFAULT TEXT
     connect(defaultTextButton, &QPushButton::clicked,
             this, &MainWindow::onDefaultTextClicked);
+
+     connect(inputTextEdit, &QTextEdit::textChanged, this, &MainWindow::onInputTextChanged);
 }
 
 
@@ -468,6 +470,16 @@ void MainWindow::onCipherChanged(int index)
     // Обновляем видимость кнопки расширенных настроек
     updateAdvancedSettingsButton();
 
+    m_currentPreviewText = inputTextEdit->toPlainText();
+    // Устанавливаем алфавит для текущего шифра
+    if (cipherId == "route") {
+        m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+    } else {
+        // Для других шифров можно установить другой алфавит
+        m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+    }
+
+
     logToConsole(">>> Выбран шифр: " + displayName);
     statusLabel->setText("Выбран: " + displayName + " - готов к работе");
 }
@@ -493,12 +505,17 @@ void MainWindow::onAdvancedSettingsClicked()
     QString displayName = cipherComboBox->currentText();
     qDebug() << "=== Opening Advanced Settings for" << displayName << "===";
 
-    // Создаем на стеке - гарантированное уничтожение
     AdvancedSettingsDialog dialog(m_currentCipherId, displayName, this);
 
     if (m_cipherAdvancedSettings.contains(m_currentCipherId)) {
         dialog.setSettings(m_cipherAdvancedSettings[m_currentCipherId]);
     }
+    // ФИЛЬТРУЕМ ТЕКСТ ПЕРЕД ПЕРЕДАЧЕЙ
+    QString rawText = inputTextEdit->toPlainText();
+    QString filteredText = CipherUtils::filterAlphabetOnly(rawText, m_alphabet);
+    dialog.setPreviewText(filteredText);
+
+    //dialog.setPreviewText(inputTextEdit->toPlainText());
 
     int result = dialog.exec();
     qDebug() << "  Dialog exec returned:" << result;
@@ -507,10 +524,15 @@ void MainWindow::onAdvancedSettingsClicked()
         QVariantMap advancedSettings = dialog.getSettings();
         m_cipherAdvancedSettings[m_currentCipherId] = advancedSettings;
         logToConsole("✓ Сохранены расширенные настройки для " + displayName);
-    }
 
-    qDebug() << "=== Dialog will be destroyed ===";
-    // dialog уничтожится здесь
+        // Получаем указатель на виджет и обновляем предпросмотр
+        if (m_currentCipherId == "route") {
+            RouteCipherAdvancedWidget* widget = dialog.getRouteAdvancedWidget();
+            if (widget) {
+                widget->setPreviewText(inputTextEdit->toPlainText());
+            }
+        }
+    }
 }
 
 void MainWindow::createCipherWidgets(const QString& cipherId)
@@ -920,4 +942,9 @@ void MainWindow::handleSuccess(const QString& successMessage)
 {
     setStatusText("✅ " + successMessage, "success");
     logToConsole("✅ " + successMessage);
+}
+
+
+void MainWindow::onInputTextChanged()
+{
 }

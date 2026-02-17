@@ -436,19 +436,14 @@ RouteCipherRegister::RouteCipherRegister()
         "route",
         // Основной виджет
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
-            // Здесь можно добавить базовые параметры, если нужно
+            // может быть пусто
         },
         // Расширенный виджет
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             RouteCipherAdvancedWidget* advancedWidget = new RouteCipherAdvancedWidget(parent);
             layout->addWidget(advancedWidget);
             widgets["routeAdvancedWidget"] = advancedWidget;
-
-            // Подключаем сигнал изменения параметров
-            QObject::connect(advancedWidget, &RouteCipherAdvancedWidget::parametersChanged,
-                            [advancedWidget]() {
-                // Можно добавить логику при изменении
-            });
+            qDebug() << "RouteCipherAdvancedWidget created and registered";
         }
     );
 }

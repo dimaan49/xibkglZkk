@@ -1,6 +1,7 @@
 #ifndef ADVANCEDSETTINGSDIALOG_H
 #define ADVANCEDSETTINGSDIALOG_H
 
+#include "routecipherwidget.h"
 #include <QDialog>
 #include <QMap>
 #include <QVariant>
@@ -22,6 +23,8 @@ public:
 
     QVariantMap getSettings() const;
     void setSettings(const QVariantMap& settings);
+    RouteCipherAdvancedWidget* getRouteAdvancedWidget() const;
+    void setPreviewText(const QString& text);
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -47,6 +50,7 @@ private:
 
     // Хранилище виджетов
     QMap<QString, QWidget*> m_advancedWidgets;
+    QString m_previewText;
 };
 
 #endif // ADVANCEDSETTINGSDIALOG_H

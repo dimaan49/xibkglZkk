@@ -76,6 +76,7 @@ public slots:
     // ... существующие слоты ...
     void onRowSpinChanged(int value);
     void onColSpinChanged(int value);
+    void setPreviewText(const QString& text);
 
 private:
     void setupUI();
@@ -154,6 +155,8 @@ private:
     QPushButton* m_fillExampleBtn;
     QPushButton* m_randomizeAllBtn;
     QPushButton* m_resetBtn;
+
+    QString m_previewText;
 
     // Константы
     static const int MAX_VISIBLE_ROWS = 100;

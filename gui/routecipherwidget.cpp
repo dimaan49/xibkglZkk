@@ -467,21 +467,17 @@ void RouteCipherAdvancedWidget::updateTablePreview()
 {
     if (!m_previewTable) return;
 
-    // Показываем все строки и столбцы (используем PREVIEW_MAX_SIZE)
+    // Показываем все строки и столбцы
     int rows = qMin(m_currentRows, PREVIEW_MAX_SIZE);
     int cols = qMin(m_currentCols, PREVIEW_MAX_SIZE);
 
     m_previewTable->setRowCount(rows);
     m_previewTable->setColumnCount(cols);
 
-    // Динамически подбираем размер ячеек
+    // Размер ячеек (как было)
     int cellSize = 35;
-    if (rows > 12 || cols > 12) {
-        cellSize = 30;
-    }
-    if (rows > 16 || cols > 16) {
-        cellSize = 25;
-    }
+    if (rows > 12 || cols > 12) cellSize = 30;
+    if (rows > 16 || cols > 16) cellSize = 25;
 
     for (int i = 0; i < rows; ++i) {
         m_previewTable->setRowHeight(i, cellSize);
@@ -490,42 +486,103 @@ void RouteCipherAdvancedWidget::updateTablePreview()
         m_previewTable->setColumnWidth(j, cellSize);
     }
 
-    // Заполняем ячейки
+    // Получаем направления и порядок
+    QVector<Direction> writeDirs = getWriteDirections();
+    QVector<int> rowOrder = getRowOrder();      // например, [2,1,3] значит: сначала строка 2, потом 1, потом 3
+    QVector<int> colOrder = getColumnOrder();   // например, [3,1,2] значит: сначала столбец 3, потом 1, потом 2
+
+    // Подготавливаем текст для заполнения
+    QString text = m_previewText;
+    if (text.isEmpty()) {
+        text = "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";  // Заглушка если нет текста
+    }
+
+    // Создаем временную таблицу для заполнения
+    std::vector<std::vector<QChar>> tempTable(rows, std::vector<QChar>(cols, QChar()));
+    int textIndex = 0;
+
+    // Заполняем таблицу в порядке строк (rowOrder)
+    for (int orderPos = 0; orderPos < rows && textIndex < text.length(); ++orderPos) {
+        // Какая строка идет в этом порядке
+        int rowIdx = rowOrder[orderPos] - 1;  // rowOrder хранит номера строк (1..N)
+
+        if (rowIdx >= rows) continue;
+
+        // Направление для этой строки
+        Direction dir = LEFT_TO_RIGHT;
+        if (rowIdx < writeDirs.size()) {
+            dir = writeDirs[rowIdx];
+        }
+
+        // Заполняем строку
+        if (dir == LEFT_TO_RIGHT) {
+            for (int j = 0; j < cols && textIndex < text.length(); ++j) {
+                tempTable[rowIdx][j] = text[textIndex++];
+            }
+        } else { // RIGHT_TO_LEFT
+            for (int j = cols - 1; j >= 0 && textIndex < text.length(); --j) {
+                tempTable[rowIdx][j] = text[textIndex++];
+            }
+        }
+    }
+
+    // Заполняем таблицу предпросмотра
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
-            QString cellText = QString("%1%2").arg(QChar('A' + (i % 26))).arg(j + 1);
             QTableWidgetItem* item = m_previewTable->item(i, j);
             if (!item) {
-                item = new QTableWidgetItem(cellText);
+                item = new QTableWidgetItem();
                 m_previewTable->setItem(i, j, item);
-            } else {
-                item->setText(cellText);
             }
-            item->setTextAlignment(Qt::AlignCenter);
-            item->setForeground(QBrush(QColor("#f0f5ff")));
 
-            // Подсветка
+            // Устанавливаем текст
+            QChar ch = tempTable[i][j];
+            if (ch.isNull()) {
+                item->setText("·");  // Пустая ячейка
+                item->setForeground(QBrush(QColor("#888888")));
+            } else {
+                item->setText(ch);
+                item->setForeground(QBrush(QColor("#f0f5ff")));
+            }
+
+            item->setTextAlignment(Qt::AlignCenter);
+
+            // Подсветка строк (как было)
             if (i < m_writeDirectionCombos.size()) {
                 Direction dir = static_cast<Direction>(m_writeDirectionCombos[i]->currentData().toInt());
                 if (dir == LEFT_TO_RIGHT) {
-                    item->setBackground(QColor(0, 150, 255, 40));
+                    item->setBackground(QColor(0, 150, 255, 40));  // Синяя для →
                 } else {
-                    item->setBackground(QColor(255, 100, 0, 40));
+                    item->setBackground(QColor(255, 100, 0, 40));  // Оранжевая для ←
                 }
             }
         }
     }
 
-    // Заголовки
+    // Заголовки строк (как было)
     QStringList rowHeaders;
     for (int i = 0; i < rows; ++i) {
         rowHeaders << QString::number(i + 1);
     }
     m_previewTable->setVerticalHeaderLabels(rowHeaders);
 
+    // Заголовки столбцов с отображением порядка чтения
     QStringList colHeaders;
     for (int j = 0; j < cols; ++j) {
-        colHeaders << QString::number(j + 1);
+        // Создаем карту: номер столбца -> его позиция в порядке чтения
+        int readOrder = 0;
+        for (int pos = 0; pos < colOrder.size(); ++pos) {
+            if (colOrder[pos] == j + 1) {
+                readOrder = pos + 1;
+                break;
+            }
+        }
+
+        if (readOrder > 0) {
+            colHeaders << QString("%1 (%2)").arg(j + 1).arg(readOrder);
+        } else {
+            colHeaders << QString::number(j + 1);
+        }
     }
     m_previewTable->setHorizontalHeaderLabels(colHeaders);
 
@@ -1286,4 +1343,10 @@ QVariantMap RouteCipherAdvancedWidget::getParameters() const
     params["columnOrder"] = colOrderList;
 
     return params;
+}
+
+void RouteCipherAdvancedWidget::setPreviewText(const QString& text)
+{
+    m_previewText = text;
+    updateTablePreview();  // Обновить предпросмотр с новым текстом
 }

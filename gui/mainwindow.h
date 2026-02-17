@@ -67,6 +67,8 @@ private slots:
     void handleError(const QString& errorMessage);
     void handleSuccess(const QString& successMessage);
 
+    void onInputTextChanged();
+
 private:
     // UI элементы
     //clear
@@ -101,6 +103,9 @@ private:
 
     QTimer* m_statusResetTimer;
     QString m_originalStatusStyle;
+
+    QString m_currentPreviewText;
+    QString m_alphabet;
 
     void updateAdvancedSettingsButton();
 

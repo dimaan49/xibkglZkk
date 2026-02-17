@@ -106,6 +106,15 @@ void AdvancedSettingsDialog::createAdvancedWidgets()
         m_advancedWidgets
     );
 
+    // ПЕРЕДАЕМ ОТФИЛЬТРОВАННЫЙ ТЕКСТ В ВИДЖЕТ
+    if (m_cipherId == "route" && m_advancedWidgets.contains("routeAdvancedWidget")) {
+        RouteCipherAdvancedWidget* widget =
+            qobject_cast<RouteCipherAdvancedWidget*>(m_advancedWidgets["routeAdvancedWidget"]);
+        if (widget && !m_previewText.isEmpty()) {
+            widget->setPreviewText(m_previewText);
+        }
+    }
+
     // Заглушка
     if (m_advancedWidgets.isEmpty()) {
         QLabel* noWidgetsLabel = new QLabel(tr("Для данного шифра нет расширенных настроек."), m_contentWidget);
@@ -145,4 +154,28 @@ void AdvancedSettingsDialog::closeEvent(QCloseEvent* event)
     qDebug() << "AdvancedSettingsDialog: closeEvent() for" << m_cipherName;
     reject();
     event->accept();
+}
+
+
+RouteCipherAdvancedWidget* AdvancedSettingsDialog::getRouteAdvancedWidget() const
+{
+    if (m_advancedWidgets.contains("routeAdvancedWidget")) {
+        return qobject_cast<RouteCipherAdvancedWidget*>(m_advancedWidgets["routeAdvancedWidget"]);
+    }
+    return nullptr;
+}
+
+
+void AdvancedSettingsDialog::setPreviewText(const QString& text)
+{
+    m_previewText = text;
+
+    // Если виджет уже создан, передаем текст ему
+    if (m_advancedWidgets.contains("routeAdvancedWidget")) {
+        RouteCipherAdvancedWidget* widget =
+            qobject_cast<RouteCipherAdvancedWidget*>(m_advancedWidgets["routeAdvancedWidget"]);
+        if (widget) {
+            widget->setPreviewText(text);
+        }
+    }
 }
