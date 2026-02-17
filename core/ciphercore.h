@@ -61,20 +61,6 @@ namespace CipherUtils {
 }
 
 
-// КАРДАНО
-struct GridRotationStep {
-    int rotationNumber;
-    std::vector<std::vector<bool>> grid;
-    QString placedChars;
-    QString description;
-
-    GridRotationStep(int num = 0,
-                    const std::vector<std::vector<bool>>& g = {},
-                    const QString& chars = QString(),
-                    const QString& desc = QString())
-        : rotationNumber(num), grid(g), placedChars(chars), description(desc) {}
-};
-
 
 enum Direction {
     LEFT_TO_RIGHT,    // Слева направо

@@ -41,6 +41,7 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     gui/logger.cpp \
     gui/logwindow.cpp \
     gui/mainwindow.cpp \
+    gui/routecipherwidget.cpp \
     gui/stylemanager.cpp
 HEADERS += $$files($$PWD/*/*.h) \    \
     ciphers/atbash.h \
@@ -67,6 +68,7 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     gui/logger.h \
     gui/logwindow.h \
     gui/mainwindow.h \
+    gui/routecipherwidget.h \
     gui/stylemanager.h
 
 

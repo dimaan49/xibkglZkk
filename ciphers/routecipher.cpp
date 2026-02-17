@@ -1,6 +1,7 @@
 #include "routecipher.h"
 #include "cipherfactory.h"
 #include "cipherwidgetfactory.h"
+#include "routecipherwidget.h"
 #include <algorithm>
 #include <cmath>
 #include <QDebug>
@@ -394,27 +395,19 @@ RouteCipherRegister::RouteCipherRegister()
 
     CipherWidgetFactory::instance().registerCipherWidgets(
         "route",
+        // Основной виджет
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
-            Q_UNUSED(parent);
-            Q_UNUSED(widgets);
+        },
+        // Расширенный виджет - ТЕПЕРЬ ИСПОЛЬЗУЕМ НАСТОЯЩИЙ КЛАСС
+        [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
+            RouteCipherAdvancedWidget* advancedWidget = new RouteCipherAdvancedWidget(parent);
+            layout->addWidget(advancedWidget);
 
-            QLabel* infoLabel = new QLabel(
-                "🔄 Автоматическая маршрутная перестановка\n\n"
-                "• Размер таблицы определяется автоматически\n"
-                "• Запись: змейкой (↱↰ чередование)\n"
-                "• Чтение: сверху вниз (↓)\n"
-                "• Без параметров"
-            );
-            infoLabel->setWordWrap(true);
-            infoLabel->setStyleSheet(
-                "QLabel {"
-                "    padding: 10px;"
-                "    background-color: rgba(0, 150, 255, 0.1);"
-                "    border: 1px solid rgba(0, 150, 255, 0.3);"
-                "    border-radius: 6px;"
-                "}"
-            );
-            layout->addWidget(infoLabel);
+            // Сохраняем виджет для доступа к параметрам
+            widgets["routeAdvancedWidget"] = advancedWidget;
         }
     );
 }
+
+// Статический регистратор
+static RouteCipherRegister routeCipherRegister;

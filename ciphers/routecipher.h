@@ -45,11 +45,10 @@ private:
     QVector<Direction> getDefaultReadDirections(int cols) const;
 };
 
-class RouteCipherRegister {
+class RouteCipherRegister
+{
 public:
     RouteCipherRegister();
 };
-
-static RouteCipherRegister routeCipherRegister;
 
 #endif // ROUTECIPHER_H

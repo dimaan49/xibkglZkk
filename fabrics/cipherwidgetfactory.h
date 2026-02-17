@@ -6,6 +6,12 @@
 #include <QVBoxLayout>
 #include <QMap>
 #include <functional>
+#include <QListWidget>
+#include <QListwidgetItem>
+#include <QTableWidget>
+#include <QTableWidgetItem>
+#include <QPushButton>
+
 
 class CipherWidgetFactory
 {
