@@ -44,7 +44,7 @@ CipherResult RouteCipher::encryptImpl(const QString& text,
     // Шаг 3: Заполнение таблицы
     QVector<CipherStep> fillSteps;
     std::vector<std::vector<QChar>> table = fillTable(cleanText, writeDirections,
-                                                     normalizedRowOrder, fillSteps);
+                                                     normalizedRowOrder, cols, fillSteps);
 
     // Добавляем шаги заполнения
     for (const auto& step : fillSteps) {
@@ -192,28 +192,102 @@ CipherResult RouteCipher::decrypt(const QString& text, const QVariantMap& params
 // Вспомогательные методы
 void RouteCipher::calculateOptimalSize(int textLength, int& optimalRows, int& optimalCols) const {
     if (optimalRows > 0 && optimalCols > 0) {
+        qDebug() << "=== calculateOptimalSize: параметры уже заданы ===";
+        qDebug() << "Заданные rows:" << optimalRows << "cols:" << optimalCols;
+        qDebug() << "Произведение:" << optimalRows * optimalCols << ">= textLength:" << textLength;
+        qDebug() << "============================================\n";
         return;
     }
 
+    qDebug() << "\n*** calculateOptimalSize: поиск оптимального размера сетки ***";
+    qDebug() << "Исходные данные: textLength =" << textLength;
+
     int bestRows = 0, bestCols = 0;
     int minWaste = INT_MAX;
+    double minDistanceToSqrt = std::numeric_limits<double>::max(); // минимальное расстояние до квадратного корня
 
-    for (int r = 2; r <= textLength; ++r) {
-        for (int c = 2; c <= textLength; ++c) {
+    // Вычисляем квадратный корень
+    double sqrtVal = std::sqrt(textLength);
+    int start = static_cast<int>(sqrtVal);
+
+    qDebug() << "Квадратный корень из" << textLength << "=" << sqrtVal;
+    qDebug() << "Начинаем поиск с r =" << start << "\n";
+
+    qDebug() << "Перебираем варианты:";
+    qDebug() << "----------------------------------------------------------------------------------------";
+    qDebug() << "r\tc\tcapacity\twaste\tсреднее(r,c)\t|среднее-√N|\tприоритет\t\t\tстатус";
+    qDebug() << "----------------------------------------------------------------------------------------";
+
+    // Перебираем значения вокруг квадратного корня
+    for (int offset = 0; offset <= textLength; ++offset) {
+        // Проверяем r = start - offset и r = start + offset
+        for (int r : {start - offset, start + offset}) {
+            if (r < 1 || r > textLength) continue;
+
+            int c = (textLength + r - 1) / r; // ceil(textLength / r)
             int capacity = r * c;
-            if (capacity >= textLength) {
-                int waste = capacity - textLength;
-                if (waste < minWaste || (waste == minWaste && abs(r - c) < abs(bestRows - bestCols))) {
-                    minWaste = waste;
-                    bestRows = r;
-                    bestCols = c;
+            int waste = capacity - textLength;
+
+            double avg = (r + c) / 2.0; // среднее арифметическое между r и c
+            double distanceToSqrt = std::abs(avg - sqrtVal);
+
+            QString priority;
+            bool isBetter = false;
+
+            // Проверяем, является ли этот вариант лучше текущего лучшего
+            if (bestRows == 0) {
+                // Первый найденный вариант
+                priority = "ПЕРВЫЙ";
+                isBetter = true;
+            } else {
+                double bestAvg = (bestRows + bestCols) / 2.0;
+                double bestDistanceToSqrt = std::abs(bestAvg - sqrtVal);
+
+                if (std::abs(distanceToSqrt - bestDistanceToSqrt) < 0.000001) { // равное расстояние
+                    if (waste < minWaste) {
+                        priority = "ЛУЧШЕ (меньше потерь при равной близости)";
+                        isBetter = true;
+                    } else {
+                        priority = "хуже (больше потерь при равной близости)";
+                    }
+                } else if (distanceToSqrt < bestDistanceToSqrt) {
+                    priority = "ЛУЧШЕ (ближе к √N)";
+                    isBetter = true;
+                } else {
+                    priority = "хуже (дальше от √N)";
                 }
             }
+
+            QString status = isBetter ? "НОВЫЙ ЛУЧШИЙ ✓" : "пропускаем ✗";
+
+            qDebug() << r << "\t" << c << "\t" << capacity << "\t\t" << waste
+                     << "\t" << QString::number(avg, 'f', 2)
+                     << "\t\t" << QString::number(distanceToSqrt, 'f', 2)
+                     << "\t\t" << priority.leftJustified(30)
+                     << "\t" << status;
+
+            if (isBetter) {
+                minWaste = waste;
+                minDistanceToSqrt = distanceToSqrt;
+                bestRows = r;
+                bestCols = c;
+            }
+        }
+
+        // Если уже нашли вариант на этом offset и расстояние увеличивается, можно остановиться
+        if (bestRows != 0 && offset > std::abs(bestRows - start) + 2) {
+            qDebug() << "----------------------------------------------------------------------------------------";
+            qDebug() << "Останавливаем поиск (найден оптимум)";
+            break;
         }
     }
 
+    qDebug() << "----------------------------------------------------------------------------------------\n";
+
+    // Если ничего не нашли, используем квадрат
     if (bestRows == 0 || bestCols == 0) {
-        optimalRows = optimalCols = static_cast<int>(std::ceil(std::sqrt(textLength)));
+        qDebug() << "!!! Решение не найдено, используем запасной вариант !!!";
+        optimalRows = optimalCols = static_cast<int>(std::ceil(sqrtVal));
         if (optimalRows * optimalCols < textLength) {
             optimalCols++;
         }
@@ -221,6 +295,15 @@ void RouteCipher::calculateOptimalSize(int textLength, int& optimalRows, int& op
         optimalRows = bestRows;
         optimalCols = bestCols;
     }
+
+    double finalAvg = (optimalRows + optimalCols) / 2.0;
+    qDebug() << "\n*** РЕЗУЛЬТАТ ***";
+    qDebug() << "Оптимальные размеры: rows =" << optimalRows << "cols =" << optimalCols;
+    qDebug() << "Произведение:" << optimalRows * optimalCols << ">= textLength:" << textLength;
+    qDebug() << "Потери (waste):" << optimalRows * optimalCols - textLength;
+    qDebug() << "Среднее (rows+cols)/2:" << QString::number(finalAvg, 'f', 2) << "√N:" << QString::number(sqrtVal, 'f', 2);
+    qDebug() << "Расстояние до √N:" << QString::number(std::abs(finalAvg - sqrtVal), 'f', 2);
+    qDebug() << "****************************************\n";
 }
 
 QString RouteCipher::tableToString(const std::vector<std::vector<QChar>>& table) const {
@@ -285,16 +368,10 @@ QVector<int> RouteCipher::normalizeOrder(const QVector<int>& order, int size,
 std::vector<std::vector<QChar>> RouteCipher::fillTable(const QString& text,
                                                       const QVector<Direction>& writeDirections,
                                                       const QVector<int>& rowOrder,
+                                                      int cols,
                                                       QVector<CipherStep>& steps) const {
     int rows = rowOrder.size();
     if (rows == 0) return std::vector<std::vector<QChar>>();
-
-    int cols = 0;
-    if (rows > 0) {
-        // Определяем cols из размера таблицы (нужно передавать отдельно или вычислять)
-        // Временно используем длину текста / rows
-        cols = static_cast<int>(std::ceil(static_cast<double>(text.length()) / rows));
-    }
 
     std::vector<std::vector<QChar>> table(rows, std::vector<QChar>(cols, QChar()));
     int textIndex = 0;
@@ -450,3 +527,9 @@ RouteCipherRegister::RouteCipherRegister()
 
 // Статический регистратор
 static RouteCipherRegister routeCipherRegister;
+
+
+void RouteCipher::getOptimalSize(int textLength, int& rows, int& cols) const
+{
+    calculateOptimalSize(textLength, rows, cols);
+}

@@ -77,6 +77,7 @@ public slots:
     void onRowSpinChanged(int value);
     void onColSpinChanged(int value);
     void setPreviewText(const QString& text);
+    void updateAutoSizeDisplay(int textLength);
 
 private:
     void setupUI();

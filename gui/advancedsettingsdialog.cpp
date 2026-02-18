@@ -176,6 +176,8 @@ void AdvancedSettingsDialog::setPreviewText(const QString& text)
             qobject_cast<RouteCipherAdvancedWidget*>(m_advancedWidgets["routeAdvancedWidget"]);
         if (widget) {
             widget->setPreviewText(text);
+            // Автоматически обновляем размер на основе длины текста
+            widget->updateAutoSizeDisplay(text.length());
         }
     }
 }

@@ -1306,9 +1306,15 @@ QVariantMap RouteCipherAdvancedWidget::getParameters() const
 {
     QVariantMap params;
 
-    // Размеры таблицы
-    params["rows"] = getRows();
-    params["cols"] = getCols();
+    // Размеры таблицы - для авторазмера не сохраняем 0, а вообще не добавляем эти ключи
+    if (!m_autoSizeCheck->isChecked()) {
+        params["rows"] = m_currentRows;
+        params["cols"] = m_currentCols;
+        qDebug() << "getParameters: фиксированный размер" << m_currentRows << "x" << m_currentCols;
+    } else {
+        qDebug() << "getParameters: автоопределение размера (не сохраняем rows/cols)";
+        // Не добавляем rows и cols в params при автоопределении
+    }
 
     // Направления записи
     QVariantList writeDirs;
@@ -1342,6 +1348,8 @@ QVariantMap RouteCipherAdvancedWidget::getParameters() const
     }
     params["columnOrder"] = colOrderList;
 
+    qDebug() << "getParameters final:" << params;
+
     return params;
 }
 
@@ -1349,4 +1357,40 @@ void RouteCipherAdvancedWidget::setPreviewText(const QString& text)
 {
     m_previewText = text;
     updateTablePreview();  // Обновить предпросмотр с новым текстом
+}
+
+
+void RouteCipherAdvancedWidget::updateAutoSizeDisplay(int textLength)
+{
+    if (!m_autoSizeCheck->isChecked()) return;  // Работаем только в режиме автоопределения
+
+    // Используем длину текста из m_previewText, если она есть
+    int length = textLength;
+    if (length <= 0 && !m_previewText.isEmpty()) {
+        length = m_previewText.length();
+    }
+
+    if (length <= 0) return;  // Нет текста для расчета
+
+    // Создаем временный экземпляр шифра для расчета размера
+    RouteCipher cipher;
+    int rows = 0, cols = 0;
+    cipher.getOptimalSize(length, rows, cols);
+
+    // Обновляем отображение в spinbox'ах (они заблокированы, но показываем реальный размер)
+    m_rowsSpin->setValue(rows);
+    m_colsSpin->setValue(cols);
+
+    // Обновляем внутренние переменные для предпросмотра
+    m_currentRows = rows;
+    m_currentCols = cols;
+
+    // Обновляем видимость элементов управления
+    updateDirectionControlsState();
+    updateOrderControlsState();
+
+    // Обновляем предпросмотр
+    updateTablePreview();
+
+    qDebug() << "Auto size updated:" << rows << "x" << cols << "for text length:" << length;
 }

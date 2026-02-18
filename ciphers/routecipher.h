@@ -17,6 +17,8 @@ public:
     QString name() const override;
     QString description() const override;
 
+    void getOptimalSize(int textLength, int& rows, int& cols) const;
+
 private:
     // Внутренние методы остаются прежними
     CipherResult encryptImpl(const QString& text,
@@ -29,6 +31,7 @@ private:
     std::vector<std::vector<QChar>> fillTable(const QString& text,
                                              const QVector<Direction>& writeDirections,
                                              const QVector<int>& rowOrder,
+                                             int cols,
                                              QVector<CipherStep>& steps) const;
 
     QString readTable(const std::vector<std::vector<QChar>>& table,
