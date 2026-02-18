@@ -20,13 +20,6 @@ public:
     void getOptimalSize(int textLength, int& rows, int& cols) const;
 
 private:
-    // Внутренние методы остаются прежними
-    CipherResult encryptImpl(const QString& text,
-                            int rows, int cols,
-                            const QVector<Direction>& writeDirections,
-                            const QVector<Direction>& readDirections,
-                            const QVector<int>& rowOrder,
-                            const QVector<int>& columnOrder);
 
     std::vector<std::vector<QChar>> fillTable(const QString& text,
                                              const QVector<Direction>& writeDirections,
@@ -43,6 +36,15 @@ private:
     void calculateOptimalSize(int textLength, int& optimalRows, int& optimalCols) const;
     QVector<int> normalizeOrder(const QVector<int>& order, int size, const QString& orderName) const;
 
+
+protected:
+    // Внутренние методы остаются прежними
+    CipherResult encryptImpl(const QString& text,
+                            int rows, int cols,
+                            const QVector<Direction>& writeDirections,
+                            const QVector<Direction>& readDirections,
+                            const QVector<int>& rowOrder,
+                            const QVector<int>& columnOrder);
     // Фиксированные настройки по умолчанию
     QVector<Direction> getDefaultWriteDirections(int rows) const;
     QVector<Direction> getDefaultReadDirections(int cols) const;

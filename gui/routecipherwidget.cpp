@@ -611,8 +611,26 @@ void RouteCipherAdvancedWidget::onAutoSizeToggled(bool checked)
 
     if (checked) {
         m_sizeInfoLabel->setText("Размер будет определен автоматически");
-        m_currentRows = 4;
-        m_currentCols = 4;
+
+        // Пересчитываем размер на основе текущего текста
+        if (!m_previewText.isEmpty()) {
+            RouteCipher cipher;
+            int rows = 0, cols = 0;
+            cipher.getOptimalSize(m_previewText.length(), rows, cols);
+
+            m_currentRows = rows;
+            m_currentCols = cols;
+
+            // Обновляем значения в spinbox'ах (они заблокированы, но показываем реальный размер)
+            m_rowsSpin->setValue(rows);
+            m_colsSpin->setValue(cols);
+        } else {
+            // Если текста нет, показываем заглушку 4x4
+            m_currentRows = 4;
+            m_currentCols = 4;
+            m_rowsSpin->setValue(4);
+            m_colsSpin->setValue(4);
+        }
     } else {
         m_sizeInfoLabel->setText(QString("Фиксированный размер: %1×%2")
                                  .arg(m_rowsSpin->value())

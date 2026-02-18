@@ -153,35 +153,30 @@ void MainWindow::setupUI()
     parametersLayout->setSpacing(8);
     parametersLayout->setContentsMargins(10, 15, 10, 10);
 
-    // === ИСПРАВЛЕНО: Правильное размещение кнопки расширенных настроек ===
-    // Создаем горизонтальный layout для заголовка и кнопки
+    // === ИСПРАВЛЕНО: Горизонтальное расположение кнопки и описания ===
+    // Создаем горизонтальный layout для заголовка
     QHBoxLayout* parametersHeaderLayout = new QHBoxLayout();
 
-    // Заголовок (можно оставить пустой или добавить текст)
-    QLabel* parametersTitle = new QLabel("Параметры шифра");
-    parametersTitle->setStyleSheet("font-weight: bold; color: #2c3e50;");
-    parametersHeaderLayout->addWidget(parametersTitle);
-    parametersHeaderLayout->addStretch();
-
-    // Кнопка расширенных настроек - улучшенная версия
+    // Кнопка расширенных настроек справа
     m_advancedSettingsButton = new QPushButton("⚙ Расширенные", parametersGroup);
-     m_advancedSettingsButton->setObjectName("advancedSettingsButton");
-     m_advancedSettingsButton->setToolTip("Открыть расширенные настройки шифра\n"
-                                          "Дополнительные параметры и режимы работы");
-     m_advancedSettingsButton->setCursor(Qt::PointingHandCursor);
-     m_advancedSettingsButton->setMinimumHeight(28);
-     m_advancedSettingsButton->setMinimumWidth(120);
+    m_advancedSettingsButton->setObjectName("advancedSettingsButton");
+    m_advancedSettingsButton->setToolTip("Открыть расширенные настройки шифра\n"
+                                         "Дополнительные параметры и режимы работы");
+    m_advancedSettingsButton->setCursor(Qt::PointingHandCursor);
+    m_advancedSettingsButton->setMinimumHeight(28);
+    m_advancedSettingsButton->setMinimumWidth(120);
+    m_advancedSettingsButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed); // Фиксированный размер
 
-     // УБИРАЕМ лишние эффекты - они будут определяться стилями
-     // Не устанавливаем flat режим, не добавляем тени
+    // Сначала добавляем место для описания (будет добавляться динамически)
+    // Просто создаем пустой layout, куда потом добавится описание
 
-     // Добавляем кнопку в header layout
-     parametersHeaderLayout->addWidget(m_advancedSettingsButton);
-
-     // Вставляем header layout в начало parametersLayout
-     parametersLayout->insertLayout(0, parametersHeaderLayout);
-    // Добавляем кнопку в header layout
+    // Добавляем кнопку в header layout (справа)
+    parametersHeaderLayout->addStretch(); // Растяжение слева от кнопки
     parametersHeaderLayout->addWidget(m_advancedSettingsButton);
+
+    // Вставляем header layout в начало parametersLayout
+    parametersLayout->insertLayout(0, parametersHeaderLayout);
+
 
     // Эффект стекла для группы
     QGraphicsDropShadowEffect* groupShadow = new QGraphicsDropShadowEffect();
@@ -371,7 +366,7 @@ void MainWindow::setupUI()
     connect(defaultTextButton, &QPushButton::clicked,
             this, &MainWindow::onDefaultTextClicked);
 
-     connect(inputTextEdit, &QTextEdit::textChanged, this, &MainWindow::onInputTextChanged);
+    connect(inputTextEdit, &QTextEdit::textChanged, this, &MainWindow::onInputTextChanged);
 }
 
 
@@ -435,7 +430,7 @@ void MainWindow::onCipherChanged(int index)
 
     QString displayName = cipherComboBox->currentText();
     QString cipherId = CipherFactory::instance().idFromDisplayName(displayName);
-    m_currentCipherId = cipherId;  // Сохраняем ID
+    m_currentCipherId = cipherId;
 
     if (cipherId.isEmpty()) {
         logToConsole("ОШИБКА: Шифр не найден: " + displayName);
@@ -453,11 +448,34 @@ void MainWindow::onCipherChanged(int index)
     // Очищаем параметры
     clearParameters();
 
-    // Добавляем описание шифра
-    QLabel* infoLabel = new QLabel(m_currentCipher->description());
-    infoLabel->setObjectName("descriptionLabel");
-    infoLabel->setWordWrap(true);
-    parametersLayout->addWidget(infoLabel);
+    // Получаем указатель на header layout (первый элемент в parametersLayout)
+    if (parametersLayout && parametersLayout->count() > 0) {
+        QLayoutItem* headerItem = parametersLayout->itemAt(0);
+        if (headerItem && headerItem->layout()) {
+            QHBoxLayout* headerLayout = qobject_cast<QHBoxLayout*>(headerItem->layout());
+
+            if (headerLayout) {
+                // Удаляем старое описание, если оно есть (индекс 0, перед stretch)
+                if (headerLayout->count() > 1) { // Если есть stretch и кнопка
+                    QLayoutItem* oldDescItem = headerLayout->takeAt(0);
+                    if (oldDescItem && oldDescItem->widget()) {
+                        oldDescItem->widget()->deleteLater();
+                    }
+                    delete oldDescItem;
+                }
+
+                // Создаем и добавляем новое описание слева
+                QLabel* infoLabel = new QLabel(m_currentCipher->description());
+                infoLabel->setObjectName("descriptionLabel");
+                infoLabel->setWordWrap(true);
+                infoLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+                infoLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred); // Растягивается
+
+                // Вставляем описание в начало (индекс 0)
+                headerLayout->insertWidget(0, infoLabel);
+            }
+        }
+    }
 
     // Создаем виджеты для основных параметров
     CipherWidgetFactory::instance().createMainWidgets(
@@ -471,14 +489,11 @@ void MainWindow::onCipherChanged(int index)
     updateAdvancedSettingsButton();
 
     m_currentPreviewText = inputTextEdit->toPlainText();
-    // Устанавливаем алфавит для текущего шифра
     if (cipherId == "route") {
         m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
     } else {
-        // Для других шифров можно установить другой алфавит
         m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
     }
-
 
     logToConsole(">>> Выбран шифр: " + displayName);
     statusLabel->setText("Выбран: " + displayName + " - готов к работе");
