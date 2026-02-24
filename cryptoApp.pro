@@ -31,6 +31,7 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     ciphers/playfair.cpp \
     ciphers/polibiusquare.cpp \
     ciphers/routecipher.cpp \
+    ciphers/shannonpad.cpp \
     ciphers/trithemius.cpp \
     ciphers/vigenere_auto.cpp \
     ciphers/vigenere_ciphertext.cpp \
@@ -59,6 +60,7 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     ciphers/playfair.h \
     ciphers/polibiusquare.h \
     ciphers/routecipher.h \
+    ciphers/shannonpad.h \
     ciphers/trithemius.h \
     ciphers/vigenere_auto.h \
     ciphers/vigenere_ciphertext.h \

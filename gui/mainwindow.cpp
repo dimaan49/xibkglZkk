@@ -623,6 +623,7 @@ void MainWindow::onEncryptClicked()
         if (hasError) {
             // Формируем сообщение об ошибке
             QString errorMsg;
+            outputTextEdit->clear();
             if (resultText.isEmpty()) {
                 errorMsg = "Пустой результат шифрования";
             } else if (resultText.length() > 100) {
@@ -710,6 +711,7 @@ void MainWindow::onDecryptClicked()
 
         if (hasError) {
             // Формируем сообщение об ошибке
+            outputTextEdit->clear();
             QString errorMsg;
             if (resultText.isEmpty()) {
                 errorMsg = "Пустой результат дешифрования";
