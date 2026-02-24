@@ -190,6 +190,7 @@ CipherResult RouteCipher::decrypt(const QString& text, const QVariantMap& params
 }
 
 // Вспомогательные методы
+// неравенство коши
 void RouteCipher::calculateOptimalSize(int textLength, int& optimalRows, int& optimalCols) const {
     if (optimalRows > 0 && optimalCols > 0) {
         return;

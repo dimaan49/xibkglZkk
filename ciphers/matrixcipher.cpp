@@ -97,15 +97,18 @@ CipherResult MatrixCipher::encrypt(const QString& text, const QVariantMap& param
 
         // Шаг 4: Преобразование текста в числа
         QString cleanText = CipherUtils::filterAlphabetOnly(text, ALPHABET);
+
         if (cleanText.isEmpty()) {
             steps.append(CipherStep(4, QChar(), "Ошибка: текст не содержит букв алфавита", "Преобразование текста"));
             return CipherResult("", steps, "Матричный шифр (ошибка)", name(), true);
         }
 
-        QVector<int> numbers = textToNumbers(cleanText);
+        QVector<int> numbers = textToNumbers(cleanText); // Здесь А=0, Б=1, ..., Я=31
+
+        // Для вывода показываем числа как А=1, Б=2, ..., Я=32
         QString numbersStr;
         for (int i = 0; i < numbers.size(); i++) {
-            numbersStr += QString::number(numbers[i] + 1); // +1 т.к. А=1 в выводе
+            numbersStr += QString::number(numbers[i] + 1);
             if (i < numbers.size() - 1) numbersStr += " ";
         }
 
@@ -117,13 +120,20 @@ CipherResult MatrixCipher::encrypt(const QString& text, const QVariantMap& param
         int remainder = numbers.size() % size;
         int paddingCount = (remainder == 0) ? 0 : (size - remainder);
 
-        for (int i = 0; i < paddingCount; i++) {
-            numbers.append(0); // А=0
-        }
-
         if (paddingCount > 0) {
+            // Берем последнюю букву исходного текста
+            int lastChar = numbers.isEmpty() ? 0 : numbers.last();
+
+            // Определяем букву для дополнения: (lastChar + 1) % 32
+            int paddingChar = (lastChar + 1) % ALPHABET_SIZE;
+
+            for (int i = 0; i < paddingCount; i++) {
+                numbers.append(paddingChar); // Добавляем ОДНУ И ТУ ЖЕ букву
+            }
+
+            QString paddingLetter = ALPHABET[paddingChar];
             steps.append(CipherStep(5, QChar(),
-                QString("Добавлено %1 нулей (буква А) для выравнивания").arg(paddingCount),
+                QString("Добавлено %1 букв '%2' для выравнивания").arg(paddingCount).arg(paddingLetter),
                 "Дополнение блока"));
         }
 
@@ -132,13 +142,16 @@ CipherResult MatrixCipher::encrypt(const QString& text, const QVariantMap& param
         int blockCount = numbers.size() / size;
 
         for (int block = 0; block < blockCount; block++) {
-            // Извлекаем блок
+            // Извлекаем блок для математических операций (индексы 0-31)
             QVector<int> blockVector;
             QString blockStr = "Блок " + QString::number(block + 1) + ": [";
+
             for (int i = 0; i < size; i++) {
-                int num = numbers[block * size + i];
-                blockVector.append(num);
-                blockStr += QString::number(num + 1); // +1 для вывода
+                int num = numbers[block * size + i]; // num в диапазоне 0-31
+                // ДЛЯ УМНОЖЕНИЯ ИСПОЛЬЗУЕМ num + 1 (А=1, Б=2, ...)
+                blockVector.append(num + 1); // ← ИСПРАВЛЕНО: добавляем 1 для умножения
+                // Для вывода показываем num + 1
+                blockStr += QString::number(num + 1);
                 if (i < size - 1) blockStr += " ";
             }
             blockStr += "]";
@@ -147,7 +160,7 @@ CipherResult MatrixCipher::encrypt(const QString& text, const QVariantMap& param
                 blockStr,
                 QString("Блок %1 (вектор B%2)").arg(block + 1).arg(block + 1)));
 
-            // Умножаем матрицу на вектор
+            // Умножаем матрицу на вектор (используем индексы 1-32)
             QVector<int> encryptedBlock = multiplyMatrixVector(matrix, blockVector);
 
             QString encryptedStr = "→ [";
@@ -199,6 +212,7 @@ CipherResult MatrixCipher::decrypt(const QString& text, const QVariantMap& param
 {
     QVector<CipherStep> steps;
     steps.append(CipherStep(0, QChar(), "Начало дешифрования", "Инициализация"));
+
 
     try {
         // Шаг 1: Получение и проверка матрицы
@@ -335,8 +349,10 @@ CipherResult MatrixCipher::decrypt(const QString& text, const QVariantMap& param
 
             QString decryptedStr = "→ [";
             for (int i = 0; i < size; i++) {
-                decryptedNumbers.append(decryptedBlock[i]);
-                decryptedStr += QString::number(decryptedBlock[i] + 1); // +1 для вывода
+                // ВАЖНО: Вычитаем 1, чтобы получить индексы 0-31 для преобразования в текст
+                decryptedNumbers.append(decryptedBlock[i] - 1); // ← ИСПРАВЛЕНО: вычитаем 1
+                // Для вывода показываем как есть (без вычитания)
+                decryptedStr += QString::number(decryptedBlock[i]);
                 if (i < size - 1) decryptedStr += " ";
             }
             decryptedStr += "] (после округления)";
@@ -348,37 +364,34 @@ CipherResult MatrixCipher::decrypt(const QString& text, const QVariantMap& param
 
         // Шаг 6: Преобразование чисел в текст
         QString decryptedText = numbersToText(decryptedNumbers);
+        QChar lastChar;
+        int paddingRemoved = 0;
+        if (!decryptedText.isEmpty() && decryptedText.length() > 1) {
+            // Запоминаем последнюю букву (которая может быть добавленной)
+            QChar lastChar = decryptedText[decryptedText.length() - 1];
 
-        // Убираем дополнение (нули в конце)
-        int originalLength = decryptedText.length();
-        while (!decryptedText.isEmpty() && decryptedText.back() == ALPHABET[0]) {
-            decryptedText.chop(1);
+            // Удаляем ВСЕ вхождения ЭТОЙ буквы с конца
+            while (decryptedText.endsWith(lastChar) && decryptedText.length() > 1) {
+                decryptedText.chop(1);
+                paddingRemoved++;
+            }
         }
-        int paddingRemoved = originalLength - decryptedText.length();
 
-        if (paddingRemoved > 0) {
-            steps.append(CipherStep(5 + blockCount * 2, QChar(),
-                QString("Удалено %1 добавленных букв А").arg(paddingRemoved),
-                "Удаление дополнения"));
-        }
-
-        steps.append(CipherStep(6 + blockCount * 2, QChar(),
-            "Расшифрованный текст: " + decryptedText,
+        steps.append(CipherStep(9, QChar(),
+            QString("Расшифрованный текст: %1 (удалено %2 добавленных букв '%3')")
+                .arg(decryptedText).arg(paddingRemoved).arg(lastChar),
             "Преобразование чисел в текст"));
-
         // Формируем описание
         QString description = QString("Дешифрование матричного шифра\n"
                                     "════════════════════════════════════════\n"
                                     "Размер матрицы: %1x%1\n"
                                     "Определитель: %2\n"
                                     "Блоков: %3\n"
-                                    "Получено букв: %4\n"
-                                    "Удалено дополнений: %5")
+                                    "Получено букв: %4\n")
                             .arg(size)
                             .arg(det)
                             .arg(blockCount)
-                            .arg(decryptedText.length())
-                            .arg(paddingRemoved);
+                            .arg(decryptedText.length());
 
         return CipherResult(decryptedText, steps, description, name() + " (дешифрование)", false);
 
@@ -389,7 +402,6 @@ CipherResult MatrixCipher::decrypt(const QString& text, const QVariantMap& param
         return CipherResult("", steps, "Матричный шифр (дешифрование, ошибка)", name() + " (дешифрование)", false);
     }
 }
-
 QString MatrixCipher::name() const {
     return QStringLiteral(u"Матричный шифр");
 }
@@ -556,6 +568,8 @@ QVector<int> MatrixCipher::multiplyMatrixVector(const QVector<QVector<int>>& mat
     int size = matrix.size();
     QVector<int> result(size, 0);
 
+    // Правильное умножение: result[i] = sum(matrix[i][j] * vector[j])
+    // Это и есть умножение матрицы на вектор-столбец
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             result[i] += matrix[i][j] * vector[j];
@@ -565,11 +579,12 @@ QVector<int> MatrixCipher::multiplyMatrixVector(const QVector<QVector<int>>& mat
     return result;
 }
 
-// Умножение на обратную матрицу (double)
+// ИСПРАВЛЕННАЯ версия для double
 QVector<double> MatrixCipher::multiplyMatrixVectorDouble(const QVector<QVector<double>>& matrix, const QVector<int>& vector) {
     int size = matrix.size();
     QVector<double> result(size, 0.0);
 
+    // То же самое умножение для обратной матрицы
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
             result[i] += matrix[i][j] * vector[j];
@@ -933,3 +948,4 @@ MatrixCipherRegister::MatrixCipherRegister()
 
 // Статический регистратор
 static MatrixCipherRegister matrixCipherRegister;
+

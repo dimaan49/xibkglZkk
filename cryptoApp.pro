@@ -24,6 +24,7 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     ciphers/caesar.cpp \
     ciphers/cardano.cpp \
     ciphers/columntranspositioncipher.cpp \
+    ciphers/feistel.cpp \
     ciphers/magmasblock.cpp \
     ciphers/magmasblock16.cpp \
     ciphers/matrixcipher.cpp \
@@ -50,6 +51,7 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     ciphers/caesar.h \
     ciphers/cardano.h \
     ciphers/columntranspositioncipher.h \
+    ciphers/feistel.h \
     ciphers/magmasblock.h \
     ciphers/magmasblock16.h \
     ciphers/matrixcipher.h \

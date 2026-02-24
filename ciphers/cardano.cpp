@@ -15,6 +15,8 @@
 #include <QGroupBox>
 #include <QTableWidgetItem>
 #include <QTimer>
+#include <QTime>
+#include <random>
 
 CardanoCipher::CardanoCipher()
 {
@@ -190,16 +192,23 @@ CipherResult CardanoCipher::encrypt(const QString& text, const QVariantMap& para
         }
     }
 
-    // Заполняем оставшиеся клетки
+    // Заполняем оставшиеся клетки СЛУЧАЙНЫМИ буквами
     QString result;
-    int alphabetIndex = 0;
+
+    // Инициализируем генератор случайных чисел (если еще не инициализирован)
+    static bool seeded = false;
+    if (!seeded) {
+        srand(QTime::currentTime().msec());
+        seeded = true;
+    }
 
     for (int i = 0; i < m_rows; ++i) {
         for (int j = 0; j < m_cols; ++j) {
             if (m_grid[i][j].isNull()) {
-                QChar ch = getAlphabetChar(alphabetIndex);
+                // Генерируем случайный индекс в алфавите
+                int randomIndex = rand() % m_alphabet.size();
+                QChar ch = m_alphabet[randomIndex];
                 m_grid[i][j] = ch;
-                alphabetIndex++;
             }
             result += m_grid[i][j];
         }
@@ -209,7 +218,7 @@ CipherResult CardanoCipher::encrypt(const QString& text, const QVariantMap& para
         5,
         QChar(),
         result,
-        QString("Итоговая матрица %1×%2").arg(m_rows).arg(m_cols)
+        QString("Итоговая матрица %1×%2 (пустые клетки заполнены случайно)").arg(m_rows).arg(m_cols)
     ));
 
     return CipherResult(result, steps, "Решетка Кардано 6×10", name(), false);

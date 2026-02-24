@@ -14,6 +14,7 @@ public:
     QString name() const override;
     QString description() const override;
     CipherResult encrypt(const QString& text, const QVariantMap& params) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params) override;
 
     // Метод для преобразования ключа в порядок столбцов
     static QVector<int> keyToColumnOrder(const QString& key, int columnCount, QString& errorMessage);
@@ -23,6 +24,13 @@ protected:
     using RouteCipher::getDefaultWriteDirections;
     using RouteCipher::getDefaultReadDirections;
     using RouteCipher::encryptImpl;
+    CipherResult decryptImpl(const QString& text,
+                            int rows, int cols,
+                            const QVector<Direction>& writeDirections,
+                            const QVector<Direction>& readDirections,
+                            const QVector<int>& rowOrder,
+                            const QVector<int>& columnOrder);
+
 
 private:
     static const QString RUSSIAN_ALPHABET;

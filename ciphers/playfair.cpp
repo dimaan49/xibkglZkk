@@ -80,16 +80,47 @@ QStringList PlayfairCipher::splitIntoBigrams(const QString& text, QChar filler)
     int i = 0;
     while (i < text.length()) {
         if (i + 1 >= text.length()) {
-            // Последний символ - добавляем фиктивную букву
+            // Последний символ - добавляем фиктивную букву, отличную от последней
+            QChar actualFiller = filler;
+
+            // Если фиктивная буква совпадает с последней, выбираем другую
+            if (text[i] == actualFiller) {
+                // Выбираем следующую букву из алфавита
+                QString alphabet = getAlphabet(Size5x6); // Используем алфавит 5x6 по умолчанию
+                int index = alphabet.indexOf(actualFiller);
+                if (index != -1) {
+                    actualFiller = alphabet[(index + 1) % alphabet.length()];
+                } else {
+                    // Если не нашли, просто берем первую букву алфавита
+                    actualFiller = alphabet[0];
+                }
+            }
+
             processed.append(text[i]);
-            processed.append(filler);
+            processed.append(actualFiller);
             i++;
         }
         else if (text[i] == text[i + 1]) {
             // Две одинаковые буквы подряд
+            // Выбираем фиктивную букву, отличную от повторяющейся
+            QChar actualFiller = filler;
+
+            // Если фиктивная буква совпадает с повторяющейся, выбираем другую
+            if (text[i] == actualFiller) {
+                // Выбираем следующую букву из алфавита
+                QString alphabet = getAlphabet(Size5x6); // Используем алфавит 5x6 по умолчанию
+                int index = alphabet.indexOf(actualFiller);
+                if (index != -1) {
+                    actualFiller = alphabet[(index + 1) % alphabet.length()];
+                } else {
+                    // Если не нашли, просто берем первую букву алфавита
+                    actualFiller = alphabet[0];
+                }
+            }
+
             processed.append(text[i]);  // первая буква
-            processed.append(filler);    // фиктивная буква между ними
-            i++; // переходим ко второй букве
+            processed.append(actualFiller);  // фиктивная буква, отличная от повторяющейся
+            i++; // переходим ко второй букве (она останется для следующей итерации)
         }
         else {
             // Нормальная биграмма
@@ -121,6 +152,37 @@ QVector<QVector<QChar>> PlayfairCipher::createTable(const QString& slogan, Matri
 
     // Сначала добавляем буквы из лозунга (без повторов)
     QString upperSlogan = slogan.toUpper();
+
+    // Проверка на повторяющиеся буквы в лозунге
+    QSet<QChar> duplicateCheck;
+    QStringList duplicates;
+
+    for (const QChar& ch : upperSlogan) {
+        QChar normalized = normalizeChar(ch, size);
+        if (alphabet.contains(normalized)) {
+            if (duplicateCheck.contains(normalized) && !duplicates.contains(QString(normalized))) {
+                duplicates.append(QString(normalized));
+            } else {
+                duplicateCheck.insert(normalized);
+            }
+        }
+    }
+
+    // Если есть повторяющиеся буквы, показываем сообщение и возвращаем пустую таблицу
+    if (!duplicates.isEmpty()) {
+        QString errorMsg = QStringLiteral("В слове-лозунге обнаружены повторяющиеся буквы: %1.\n\n"
+                                         "В шифре Плейфера буквы в лозунге не должны повторяться.\n"
+                                         "Пожалуйста, исправьте лозунг и попробуйте снова.")
+                              .arg(duplicates.join(", "));
+
+        // Показываем сообщение об ошибке
+        QMessageBox::critical(nullptr, "Ошибка в слове-лозунге", errorMsg);
+
+        // Возвращаем пустую таблицу
+        return QVector<QVector<QChar>>();
+    }
+
+    // Добавляем буквы из лозунга (теперь они точно уникальны)
     for (const QChar& ch : upperSlogan) {
         QChar normalized = normalizeChar(ch, size);
         if (alphabet.contains(normalized) && !used.contains(normalized)) {
@@ -232,27 +294,81 @@ QStringList PlayfairCipher::parseEncryptedText(const QString& text)
     return result;
 }
 
-bool PlayfairCipher::isFillerAndRemovable(const QString& text, int index, QChar filler) const
+bool PlayfairCipher::isFillerAndRemovable(const QString& text, int index, QChar filler, MatrixSize size) const
 {
-    if (index >= text.length() || text[index] != filler) return false;
+    if (index >= text.length()) return false;
 
-    // Проверяем, является ли эта буква фиктивной
-    if (index == text.length() - 1) {
+    QChar currentChar = text[index];
+    QString alphabet = getAlphabet(size);
+
+    // Проверяем три случая, когда буква может быть фиктивной:
+
+    // 1. Буква равна стандартному filler'у И находится в позиции, где может быть фиктивной
+    if (currentChar == filler) {
         // Последняя буква
-        return true;
+        if (index == text.length() - 1) {
+            return true;
+        }
+
+        // Между двумя одинаковыми буквами (шаблон: A + filler + A)
+        if (index > 0 && index < text.length() - 1 && text[index - 1] == text[index + 1]) {
+            return true;
+        }
     }
 
-    if (index > 0 && index < text.length() - 1 && text[index - 1] == text[index + 1]) {
-        // Между одинаковыми буквами
-        return true;
+    // 2. Буква НЕ равна стандартному filler'у, но могла быть вставлена как альтернатива
+    // Проверяем, является ли эта буква следующей в алфавите после filler'а
+    // и находится в позиции, где ожидается фиктивная буква
+
+    int fillerIndex = alphabet.indexOf(filler);
+    int currentIndex = alphabet.indexOf(currentChar);
+
+    // Если currentChar - это следующая буква после filler'а в алфавите (по модулю)
+    bool isNextInAlphabet = false;
+    if (fillerIndex != -1 && currentIndex != -1) {
+        isNextInAlphabet = (currentIndex == (fillerIndex + 1) % alphabet.length());
     }
 
-    // Проверка для случая, когда фиктивная буква вставлена между одинаковыми
-    // и после неё идёт такая же буква
-    if (index < text.length() - 1 && index > 0 &&
-        text[index - 1] == text[index + 1] &&
-        text[index] == filler) {
-        return true;
+    if (isNextInAlphabet) {
+        // Последняя буква
+        if (index == text.length() - 1) {
+            // Проверяем, что предыдущая буква есть и она не равна этой букве
+            if (index > 0 && text[index - 1] != currentChar) {
+                return true;
+            }
+        }
+
+        // Между двумя одинаковыми буквами, причем эти буквы равны filler'у
+        // или равны какой-то другой букве, но тогда currentChar должен быть следующей после filler'а
+        if (index > 0 && index < text.length() - 1) {
+            QChar prevChar = text[index - 1];
+            QChar nextChar = text[index + 1];
+
+            // Случай 1: Одинаковые буквы равны filler'у, а между ними следующая буква
+            if (prevChar == nextChar && prevChar == filler) {
+                return true;
+            }
+
+            // Случай 2: Одинаковые буквы равны какой-то другой букве X, а filler равен X,
+            // и мы вставили следующую букву после X
+            if (prevChar == nextChar) {
+                int prevIndex = alphabet.indexOf(prevChar);
+                if (prevIndex != -1 && currentIndex == (prevIndex + 1) % alphabet.length()) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    // 3. Дополнительная проверка для случая, когда filler не найден в алфавите
+    if (fillerIndex == -1 && currentIndex != -1) {
+        // Если filler не из алфавита, а currentChar из алфавита, и он в позиции фиктивной буквы
+        if (index == text.length() - 1) {
+            return true;
+        }
+        if (index > 0 && index < text.length() - 1 && text[index - 1] == text[index + 1]) {
+            return true;
+        }
     }
 
     return false;
@@ -474,7 +590,7 @@ CipherResult PlayfairCipher::decrypt(const QString& text, const QVariantMap& par
                 .arg(encryptedBigrams.size()).arg(bigramsStr),
             QStringLiteral("Разбор биграмм")));
 
-        // Шаг 4: Дешифрование каждой биграммы
+        // Шаг 4: Расшифрование каждой биграммы
         QStringList decryptedBigrams;
 
         for (int i = 0; i < encryptedBigrams.size(); i++) {
@@ -510,7 +626,7 @@ CipherResult PlayfairCipher::decrypt(const QString& text, const QVariantMap& par
         // Убираем фиктивные буквы
         QString result;
         for (int i = 0; i < combined.length(); i++) {
-            if (!isFillerAndRemovable(combined, i, filler)) {
+            if (!isFillerAndRemovable(combined, i, filler, size)) {
                 result.append(combined[i]);
             }
         }
@@ -707,6 +823,17 @@ PlayfairCipherRegister::PlayfairCipherRegister()
                     PlayfairCipher cipher;
                     auto table = cipher.generateTable(slogan,
                         static_cast<PlayfairCipher::MatrixSize>(sizeType));
+
+                    // Проверяем, не пустая ли таблица (возможно из-за ошибки)
+                    if (table.isEmpty()) {
+                        // Таблица уже была очищена в createTable, просто обновляем UI
+                        tableWidget->setRowCount(0);
+                        tableWidget->setColumnCount(0);
+                        statsLabel->setText(QStringLiteral("Размер таблицы: —"));
+                        infoLabel->setText(QStringLiteral("⚠ Не удалось сгенерировать таблицу"));
+                        infoLabel->setStyleSheet(QStringLiteral("color: #e74c3c; font-style: normal;"));
+                        return;
+                    }
 
                     int rows = table.size();
                     int cols = table[0].size();

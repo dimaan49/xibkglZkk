@@ -84,7 +84,7 @@ QVariantMap CipherWidgetFactory::collectValues(const QMap<QString, QWidget*>& wi
             params[paramId] = textEdit->toPlainText();
         }
         else if (QComboBox* comboBox = qobject_cast<QComboBox*>(widget)) {
-            params[paramId] = comboBox->currentText();
+            params[paramId] = comboBox->currentData();
         }
         else if (QCheckBox* checkBox = qobject_cast<QCheckBox*>(widget)) {
             params[paramId] = checkBox->isChecked();

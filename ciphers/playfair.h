@@ -64,7 +64,7 @@ private:
     QStringList parseEncryptedText(const QString& text);
 
     // Проверка, является ли буква фиктивной и может быть удалена
-    bool isFillerAndRemovable(const QString& text, int index, QChar filler) const;
+    bool isFillerAndRemovable(const QString& text, int index, QChar filler, MatrixSize size) const;
 };
 
 // Регистратор

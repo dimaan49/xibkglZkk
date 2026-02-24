@@ -16,6 +16,8 @@ public:
     virtual QString name() const = 0;
     virtual QString description() const = 0;
 
+
+
 };
 
 #endif // CIPHERINTERFACE_H

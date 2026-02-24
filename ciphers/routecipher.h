@@ -31,10 +31,7 @@ private:
                      const QVector<Direction>& readDirections,
                      const QVector<int>& columnOrder,
                      QVector<CipherStep>& steps) const;
-
-    QString tableToString(const std::vector<std::vector<QChar>>& table) const;
     void calculateOptimalSize(int textLength, int& optimalRows, int& optimalCols) const;
-    QVector<int> normalizeOrder(const QVector<int>& order, int size, const QString& orderName) const;
 
 
 protected:
@@ -48,6 +45,8 @@ protected:
     // Фиксированные настройки по умолчанию
     QVector<Direction> getDefaultWriteDirections(int rows) const;
     QVector<Direction> getDefaultReadDirections(int cols) const;
+    QVector<int> normalizeOrder(const QVector<int>& order, int size, const QString& orderName) const;
+    QString tableToString(const std::vector<std::vector<QChar>>& table) const;
 };
 
 class RouteCipherRegister
