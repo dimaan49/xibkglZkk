@@ -19,18 +19,22 @@ INCLUDEPATH += \
 
 
 SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
+    ciphers/a51.cpp \
+    ciphers/a52.cpp \
     ciphers/atbash.cpp \
     ciphers/belazo.cpp \
     ciphers/caesar.cpp \
     ciphers/cardano.cpp \
     ciphers/columntranspositioncipher.cpp \
     ciphers/feistel.cpp \
+    ciphers/magmagamma.cpp \
     ciphers/magmasblock.cpp \
     ciphers/magmasblock16.cpp \
     ciphers/matrixcipher.cpp \
     ciphers/playfair.cpp \
     ciphers/polibiusquare.cpp \
     ciphers/routecipher.cpp \
+    ciphers/rsa.cpp \
     ciphers/shannonpad.cpp \
     ciphers/trithemius.cpp \
     ciphers/vigenere_auto.cpp \
@@ -47,12 +51,15 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     gui/routecipherwidget.cpp \
     gui/stylemanager.cpp
 HEADERS += $$files($$PWD/*/*.h) \    \
+    ciphers/a51.h \
+    ciphers/a52.h \
     ciphers/atbash.h \
     ciphers/belazo.h \
     ciphers/caesar.h \
     ciphers/cardano.h \
     ciphers/columntranspositioncipher.h \
     ciphers/feistel.h \
+    ciphers/magmagamma.h \
     ciphers/magmasblock.h \
     ciphers/magmasblock16.h \
     ciphers/matrixcipher.h \
@@ -60,6 +67,7 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     ciphers/playfair.h \
     ciphers/polibiusquare.h \
     ciphers/routecipher.h \
+    ciphers/rsa.h \
     ciphers/shannonpad.h \
     ciphers/trithemius.h \
     ciphers/vigenere_auto.h \
