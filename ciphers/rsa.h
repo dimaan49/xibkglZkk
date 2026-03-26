@@ -22,12 +22,12 @@ public:
     virtual CipherResult encrypt(const QString& text, const QVariantMap& params) override;
     virtual CipherResult decrypt(const QString& text, const QVariantMap& params) override;
 
-    // Статические методы для генерации ключей (доступны извне)
+    // Статические методы для генерации ключей
     static uint64_t generatePrimeStatic(int bits = 16);
     static uint64_t generateEStatic(uint64_t phi);
-    uint64_t generatePrime(int bits = 16) const;
-    uint64_t generateE(uint64_t phi) const;
     static bool isPrimeStatic(uint64_t n, int k = 5);
+    static uint64_t modPowStatic(uint64_t base, uint64_t exp, uint64_t mod);
+    static uint64_t gcdStatic(uint64_t a, uint64_t b);
 
 private:
     // Алфавит для преобразования текста в числа

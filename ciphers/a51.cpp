@@ -517,29 +517,28 @@ A51CipherRegister::A51CipherRegister()
 {
     CipherFactory::instance().registerCipher(
         "a51",
-        "A5/1 (GSM)",
+        "A5/1 ",
         []() -> CipherInterface* { return new A51Cipher(); }
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
         "a51",
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
+
+        },
+        [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QWidget* paramsContainer = new QWidget(parent);
             QVBoxLayout* mainLayout = new QVBoxLayout(paramsContainer);
             mainLayout->setSpacing(8);
             mainLayout->setContentsMargins(0, 5, 0, 5);
 
-            // Выбор типа ключа в одной строке с полем ввода
+            // Выбор типа ключа
             QHBoxLayout* typeRow = new QHBoxLayout();
-            typeRow->setSpacing(10);
-
             QLabel* typeLabel = new QLabel("Тип ключа:");
-            typeLabel->setFixedWidth(80);
+            typeLabel->setFixedWidth(100);
             QComboBox* typeCombo = new QComboBox();
             typeCombo->addItem("Двоичный (64 бита)", "binary");
             typeCombo->addItem("Текстовый (13 букв)", "text");
-            typeCombo->setFixedWidth(150);
-
             typeRow->addWidget(typeLabel);
             typeRow->addWidget(typeCombo);
             typeRow->addStretch();
@@ -547,16 +546,14 @@ A51CipherRegister::A51CipherRegister()
 
             // Стек для переключения
             QStackedWidget* stackedWidget = new QStackedWidget();
-            stackedWidget->setFixedHeight(50);
 
-            // Двоичный ключ
+            // Двоичный ключ - используем BinaryKeyEdit
             QWidget* binaryWidget = new QWidget();
             QHBoxLayout* binaryLayout = new QHBoxLayout(binaryWidget);
             binaryLayout->setContentsMargins(0, 0, 0, 0);
-            binaryLayout->setSpacing(10);
             QLabel* binaryLabel = new QLabel("Ключ (64 бита):");
-            binaryLabel->setFixedWidth(80);
-            BinaryKeyEdit* binaryEdit = new BinaryKeyEdit();
+            binaryLabel->setFixedWidth(100);
+            BinaryKeyEdit* binaryEdit = new BinaryKeyEdit();  // используем BinaryKeyEdit
             binaryEdit->setObjectName("binaryKey");
             binaryEdit->setText("1010101010101010101010101010101010101010101010101010101010101010");
             binaryLayout->addWidget(binaryLabel);
@@ -564,15 +561,15 @@ A51CipherRegister::A51CipherRegister()
             binaryLayout->addStretch();
             stackedWidget->addWidget(binaryWidget);
 
-            // Текстовый ключ
+            // Текстовый ключ - используем TextKeyEdit
             QWidget* textWidget = new QWidget();
             QHBoxLayout* textLayout = new QHBoxLayout(textWidget);
             textLayout->setContentsMargins(0, 0, 0, 0);
-            textLayout->setSpacing(10);
             QLabel* textLabel = new QLabel("Ключ (13 букв):");
-            textLabel->setFixedWidth(80);
+            textLabel->setFixedWidth(100);
             TextKeyEdit* textEdit = new TextKeyEdit();
             textEdit->setObjectName("textKey");
+            textEdit->setAlphabet(QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"));
             textEdit->setText("АБВГДЕЖЗИЙКЛ");
             textLayout->addWidget(textLabel);
             textLayout->addWidget(textEdit);
@@ -587,7 +584,6 @@ A51CipherRegister::A51CipherRegister()
                 "R1: x^19 + x^18 + x^17 + x^14 + 1 (19 бит)\n"
                 "R2: x^22 + x^21 + 1 (22 бита)\n"
                 "R3: x^23 + x^22 + x^21 + x^8 + 1 (23 бита)\n"
-                "Управление тактированием: majority function\n"
                 "Ключ: 64 бита (двоичный или 13 букв по 5 бит)"
             );
             infoLabel->setStyleSheet("color: #666; font-style: italic; padding: 5px; background-color: #f5f5f5; border-radius: 3px;");
@@ -601,13 +597,11 @@ A51CipherRegister::A51CipherRegister()
             widgets["textKey"] = textEdit;
             widgets["stackedWidget"] = stackedWidget;
 
-            // Подключаем сигнал для переключения
             QObject::connect(typeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
                 [stackedWidget](int index) {
                     stackedWidget->setCurrentIndex(index);
                 });
-        },
-        nullptr
+        }
     );
 }
 

@@ -26,6 +26,8 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     ciphers/caesar.cpp \
     ciphers/cardano.cpp \
     ciphers/columntranspositioncipher.cpp \
+    ciphers/ecc.cpp \
+    ciphers/elgamal.cpp \
     ciphers/feistel.cpp \
     ciphers/magmagamma.cpp \
     ciphers/magmasblock.cpp \
@@ -58,6 +60,8 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     ciphers/caesar.h \
     ciphers/cardano.h \
     ciphers/columntranspositioncipher.h \
+    ciphers/ecc.h \
+    ciphers/elgamal.h \
     ciphers/feistel.h \
     ciphers/magmagamma.h \
     ciphers/magmasblock.h \

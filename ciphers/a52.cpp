@@ -474,12 +474,18 @@ A52CipherRegister::A52CipherRegister()
 {
     CipherFactory::instance().registerCipher(
         "a52",
-        "A5/2 (GSM)",
+        "A5/2 ",
         []() -> CipherInterface* { return new A52Cipher(); }
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
         "a52",
+        [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
+            // Пустые основные виджеты - ничего не добавляем
+            Q_UNUSED(parent);
+            Q_UNUSED(layout);
+            Q_UNUSED(widgets);
+        },
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QWidget* paramsContainer = new QWidget(parent);
             QVBoxLayout* mainLayout = new QVBoxLayout(paramsContainer);
@@ -488,15 +494,11 @@ A52CipherRegister::A52CipherRegister()
 
             // Выбор типа ключа
             QHBoxLayout* typeRow = new QHBoxLayout();
-            typeRow->setSpacing(10);
-
             QLabel* typeLabel = new QLabel("Тип ключа:");
-            typeLabel->setFixedWidth(80);
+            typeLabel->setFixedWidth(100);
             QComboBox* typeCombo = new QComboBox();
             typeCombo->addItem("Двоичный (64 бита)", "binary");
             typeCombo->addItem("Текстовый (13 букв)", "text");
-            typeCombo->setFixedWidth(150);
-
             typeRow->addWidget(typeLabel);
             typeRow->addWidget(typeCombo);
             typeRow->addStretch();
@@ -510,9 +512,8 @@ A52CipherRegister::A52CipherRegister()
             QWidget* binaryWidget = new QWidget();
             QHBoxLayout* binaryLayout = new QHBoxLayout(binaryWidget);
             binaryLayout->setContentsMargins(0, 0, 0, 0);
-            binaryLayout->setSpacing(10);
             QLabel* binaryLabel = new QLabel("Ключ (64 бита):");
-            binaryLabel->setFixedWidth(80);
+            binaryLabel->setFixedWidth(100);
             A52BinaryKeyEdit* binaryEdit = new A52BinaryKeyEdit();
             binaryEdit->setObjectName("binaryKey");
             binaryEdit->setText("1010101010101010101010101010101010101010101010101010101010101010");
@@ -525,11 +526,11 @@ A52CipherRegister::A52CipherRegister()
             QWidget* textWidget = new QWidget();
             QHBoxLayout* textLayout = new QHBoxLayout(textWidget);
             textLayout->setContentsMargins(0, 0, 0, 0);
-            textLayout->setSpacing(10);
             QLabel* textLabel = new QLabel("Ключ (13 букв):");
-            textLabel->setFixedWidth(80);
+            textLabel->setFixedWidth(100);
             A52TextKeyEdit* textEdit = new A52TextKeyEdit();
             textEdit->setObjectName("textKey");
+            textEdit->setAlphabet(QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"));
             textEdit->setText("АБВГДЕЖЗИЙКЛ");
             textLayout->addWidget(textLabel);
             textLayout->addWidget(textEdit);
@@ -537,20 +538,6 @@ A52CipherRegister::A52CipherRegister()
             stackedWidget->addWidget(textWidget);
 
             mainLayout->addWidget(stackedWidget);
-
-            // Информационная панель
-            QLabel* infoLabel = new QLabel(
-                "A5/2 (GSM) — упрощенная версия A5/1:\n"
-                "• R1: 19 бит (x^19 + x^18 + x^17 + x^14 + 1)\n"
-                "• R2: 22 бита (x^22 + x^21 + 1)\n"
-                "• R3: 23 бита (x^23 + x^22 + x^21 + x^8 + 1)\n"
-                "• R4: 17 бит (x^17 + x^12 + 1) — управление тактированием\n"
-                "• Управление: majority от битов R4(3,7,10)\n"
-                "• Выход: XOR старших битов + F* от каждого регистра"
-            );
-            infoLabel->setStyleSheet("color: #666; font-style: italic; padding: 5px; background-color: #f5f5f5; border-radius: 3px;");
-            infoLabel->setWordWrap(true);
-            mainLayout->addWidget(infoLabel);
 
             layout->addWidget(paramsContainer);
 
@@ -563,9 +550,9 @@ A52CipherRegister::A52CipherRegister()
                 [stackedWidget](int index) {
                     stackedWidget->setCurrentIndex(index);
                 });
-        },
-        nullptr
+        }
     );
 }
+
 
 static A52CipherRegister a52Register;

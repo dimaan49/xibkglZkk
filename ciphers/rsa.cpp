@@ -105,6 +105,42 @@ bool RSACipher::isPrime(uint64_t n, int k) const
     return true;
 }
 
+bool RSACipher::isPrimeStatic(uint64_t n, int k)
+{
+    if (n <= 1) return false;
+    if (n <= 3) return true;
+    if (n % 2 == 0) return false;
+
+    uint64_t d = n - 1;
+    int r = 0;
+    while (d % 2 == 0) {
+        d /= 2;
+        r++;
+    }
+
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_int_distribution<uint64_t> dist(2, n - 2);
+
+    for (int i = 0; i < k; ++i) {
+        uint64_t a = dist(gen);
+        uint64_t x = modPowStatic(a, d, n);
+
+        if (x == 1 || x == n - 1) continue;
+
+        bool composite = true;
+        for (int j = 0; j < r - 1; ++j) {
+            x = modPowStatic(x, 2, n);
+            if (x == n - 1) {
+                composite = false;
+                break;
+            }
+        }
+        if (composite) return false;
+    }
+    return true;
+}
+
 uint64_t RSACipher::gcd(uint64_t a, uint64_t b) const
 {
     while (b != 0) {
@@ -115,7 +151,31 @@ uint64_t RSACipher::gcd(uint64_t a, uint64_t b) const
     return a;
 }
 
+uint64_t RSACipher::gcdStatic(uint64_t a, uint64_t b)
+{
+    while (b != 0) {
+        uint64_t temp = b;
+        b = a % b;
+        a = temp;
+    }
+    return a;
+}
+
 uint64_t RSACipher::modPow(uint64_t base, uint64_t exp, uint64_t mod) const
+{
+    uint64_t result = 1;
+    base %= mod;
+    while (exp > 0) {
+        if (exp & 1) {
+            result = (result * base) % mod;
+        }
+        base = (base * base) % mod;
+        exp >>= 1;
+    }
+    return result;
+}
+
+uint64_t RSACipher::modPowStatic(uint64_t base, uint64_t exp, uint64_t mod)
 {
     uint64_t result = 1;
     base %= mod;
@@ -211,7 +271,7 @@ uint64_t RSACipher::decryptNumber(uint64_t c, uint64_t d, uint64_t n) const
     return modPow(c, d, n);
 }
 
-uint64_t RSACipher::generatePrime(int bits) const
+uint64_t RSACipher::generatePrimeStatic(int bits)
 {
     std::random_device rd;
     std::mt19937_64 gen(rd());
@@ -221,12 +281,14 @@ uint64_t RSACipher::generatePrime(int bits) const
     do {
         candidate = dist(gen);
         if (candidate % 2 == 0) candidate++;
-    } while (!isPrime(candidate, 10));
+    } while (!isPrimeStatic(candidate, 10));
 
     return candidate;
 }
 
-uint64_t RSACipher::generateE(uint64_t phi) const
+
+
+uint64_t RSACipher::generateEStatic(uint64_t phi)
 {
     std::random_device rd;
     std::mt19937_64 gen(rd());
@@ -235,7 +297,7 @@ uint64_t RSACipher::generateE(uint64_t phi) const
     uint64_t e;
     do {
         e = dist(gen);
-    } while (gcd(e, phi) != 1);
+    } while (gcdStatic(e, phi) != 1);
 
     return e;
 }
@@ -485,6 +547,7 @@ CipherResult RSACipher::decrypt(const QString& text, const QVariantMap& params)
 
 // ==================== RSACipherRegister Implementation ====================
 
+// В регистраторе RSA (в конце rsa.cpp)
 RSACipherRegister::RSACipherRegister()
 {
     CipherFactory::instance().registerCipher(
@@ -496,6 +559,8 @@ RSACipherRegister::RSACipherRegister()
     CipherWidgetFactory::instance().registerCipherWidgets(
         "rsa",
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
+        },
+        [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QWidget* paramsContainer = new QWidget(parent);
             QVBoxLayout* mainLayout = new QVBoxLayout(paramsContainer);
             mainLayout->setSpacing(8);
@@ -504,7 +569,7 @@ RSACipherRegister::RSACipherRegister()
             // Строка P
             QHBoxLayout* pRow = new QHBoxLayout();
             QLabel* pLabel = new QLabel("P (простое число):");
-            pLabel->setFixedWidth(120);
+            pLabel->setFixedWidth(130);
             NumberLineEdit* pEdit = new NumberLineEdit();
             pEdit->setObjectName("p");
             pEdit->setPlaceholderText("Простое число (например, 61)");
@@ -516,7 +581,7 @@ RSACipherRegister::RSACipherRegister()
             // Строка Q
             QHBoxLayout* qRow = new QHBoxLayout();
             QLabel* qLabel = new QLabel("Q (простое число):");
-            qLabel->setFixedWidth(120);
+            qLabel->setFixedWidth(130);
             NumberLineEdit* qEdit = new NumberLineEdit();
             qEdit->setObjectName("q");
             qEdit->setPlaceholderText("Простое число (например, 53)");
@@ -528,7 +593,7 @@ RSACipherRegister::RSACipherRegister()
             // Строка E
             QHBoxLayout* eRow = new QHBoxLayout();
             QLabel* eLabel = new QLabel("E (открытая экспонента):");
-            eLabel->setFixedWidth(120);
+            eLabel->setFixedWidth(130);
             NumberLineEdit* eEdit = new NumberLineEdit();
             eEdit->setObjectName("e");
             eEdit->setPlaceholderText("Взаимно простое с φ(N) (например, 17)");
@@ -538,7 +603,7 @@ RSACipherRegister::RSACipherRegister()
             mainLayout->addLayout(eRow);
 
             // Кнопка генерации ключей
-            QPushButton* generateButton = new QPushButton("Сгенерировать ключи");
+            QPushButton* generateButton = new QPushButton("Сгенерировать ключи (16 бит)");
             generateButton->setObjectName("generateButton");
             generateButton->setCursor(Qt::PointingHandCursor);
             mainLayout->addWidget(generateButton);
@@ -550,10 +615,9 @@ RSACipherRegister::RSACipherRegister()
                 "• φ(N) = (P-1) × (Q-1)\n"
                 "• D = E⁻¹ mod φ(N) (закрытый ключ)\n"
                 "• Шифрование: C = M^E mod N\n"
-                "• Дешифрование: M = C^D mod N\n"
                 "• P и Q должны быть простыми и разными\n"
                 "• E должен быть взаимно прост с φ(N)\n"
-                "• Текст разбивается на блоки по 2 буквы"
+                "• Каждая буква → число 0-31"
             );
             infoLabel->setStyleSheet("color: #666; font-style: italic; padding: 5px; background-color: #f5f5f5; border-radius: 3px;");
             infoLabel->setWordWrap(true);
@@ -566,13 +630,12 @@ RSACipherRegister::RSACipherRegister()
             widgets["e"] = eEdit;
             widgets["generateButton"] = generateButton;
 
-            // Подключаем генерацию ключей
+            // Подключаем генерацию ключей - используем СТАТИЧЕСКИЕ методы
             QObject::connect(generateButton, &QPushButton::clicked, [pEdit, qEdit, eEdit]() {
-                RSACipher temp;
-                uint64_t p = temp.generatePrime(16);
-                uint64_t q = temp.generatePrime(16);
+                uint64_t p = RSACipher::generatePrimeStatic(16);   // статический метод
+                uint64_t q = RSACipher::generatePrimeStatic(16);   // статический метод
                 uint64_t phi = (p - 1) * (q - 1);
-                uint64_t e = temp.generateE(phi);
+                uint64_t e = RSACipher::generateEStatic(phi);      // статический метод
 
                 pEdit->setValue(p);
                 qEdit->setValue(q);
@@ -588,8 +651,7 @@ RSACipherRegister::RSACipherRegister()
                         .arg(p).arg(q).arg(e)
                         .arg(p * q).arg(phi));
             });
-        },
-        nullptr
+        }
     );
 }
 

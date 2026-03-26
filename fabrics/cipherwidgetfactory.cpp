@@ -1,6 +1,7 @@
 // cipherwidgetfactory.cpp
 #include "cipherwidgetfactory.h"
 #include "routecipherwidget.h"
+#include "ecc.h"
 #include <QSpinBox>
 #include <QLineEdit>
 #include <QTextEdit>
@@ -88,6 +89,14 @@ QVariantMap CipherWidgetFactory::collectValues(const QMap<QString, QWidget*>& wi
         }
         else if (QCheckBox* checkBox = qobject_cast<QCheckBox*>(widget)) {
             params[paramId] = checkBox->isChecked();
+        }
+        else if (ECCPointEdit* pointEdit = qobject_cast<ECCPointEdit*>(widget)) {
+            ECPoint point = pointEdit->getPoint();
+            if (!point.isInfinity) {
+                params[paramId] = QString("(%1,%2)").arg(point.x).arg(point.y);
+            } else {
+                params[paramId] = "inf";
+            }
         }
     }
 
