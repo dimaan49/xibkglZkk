@@ -1,6 +1,7 @@
 #include "shannonpad.h"
 #include "cipherfactory.h"
 #include "cipherwidgetfactory.h"
+#include "RestrictedSpinBox.h"
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QSpinBox>
@@ -96,6 +97,16 @@ bool ShannonPadCipher::validateParameters(int t0, int a, int c, QString& errorMe
     // Проверка 4: b кратно 4, если m кратно 4 (m=32 кратно 4)
     if (b % 4 != 0) {
         errorMessage = "Параметр 'a' должен удовлетворять условию: (a-1) кратно 4 (так как модуль 32 кратен 4)";
+        return false;
+    }
+
+    if (a==1) {
+        errorMessage = "Параметр 'a' не может быть равен 1";
+        return false;
+    }
+
+    if (a==0) {
+        errorMessage = "Параметр 'a' не может быть равен 0";
         return false;
     }
 
@@ -233,7 +244,7 @@ ShannonPadCipherRegister::ShannonPadCipherRegister()
             // T0 - начальное значение (подпись слева)
             QLabel* t0Label = new QLabel("T₀:");
             t0Label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-            QSpinBox* t0SpinBox = new QSpinBox();
+            RestrictedSpinBox* t0SpinBox = new RestrictedSpinBox();
             t0SpinBox->setRange(0, 31);
             t0SpinBox->setValue(1);
             t0SpinBox->setToolTip("Начальное значение генератора (0-31)");
@@ -251,7 +262,7 @@ ShannonPadCipherRegister::ShannonPadCipherRegister()
             // a - множитель (подпись слева)
             QLabel* aLabel = new QLabel("a:");
             aLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-            QSpinBox* aSpinBox = new QSpinBox();
+            RestrictedSpinBox* aSpinBox = new RestrictedSpinBox();
             aSpinBox->setRange(1, 100);
             aSpinBox->setValue(5);
             aSpinBox->setToolTip("Множитель (должен быть нечетным)");
@@ -269,7 +280,7 @@ ShannonPadCipherRegister::ShannonPadCipherRegister()
             // c - приращение (подпись слева)
             QLabel* cLabel = new QLabel("c:");
             cLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-            QSpinBox* cSpinBox = new QSpinBox();
+            RestrictedSpinBox* cSpinBox = new RestrictedSpinBox();
             cSpinBox->setRange(1, 100);
             cSpinBox->setValue(3);
             cSpinBox->setToolTip("Приращение (должно быть нечетным и взаимно простым с 32)");

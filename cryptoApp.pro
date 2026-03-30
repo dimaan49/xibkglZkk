@@ -21,6 +21,7 @@ INCLUDEPATH += \
 SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     ciphers/a51.cpp \
     ciphers/a52.cpp \
+    ciphers/aes.cpp \
     ciphers/atbash.cpp \
     ciphers/belazo.cpp \
     ciphers/caesar.cpp \
@@ -29,8 +30,9 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     ciphers/ecc.cpp \
     ciphers/elgamal.cpp \
     ciphers/feistel.cpp \
-    ciphers/magmagamma.cpp \
-    ciphers/magmasblock.cpp \
+    ciphers/kuznechik.cpp \
+    ciphers/magma_ctr.cpp \
+    ciphers/magma_ecb.cpp \
     ciphers/magmasblock16.cpp \
     ciphers/matrixcipher.cpp \
     ciphers/playfair.cpp \
@@ -55,6 +57,7 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
 HEADERS += $$files($$PWD/*/*.h) \    \
     ciphers/a51.h \
     ciphers/a52.h \
+    ciphers/aes.h \
     ciphers/atbash.h \
     ciphers/belazo.h \
     ciphers/caesar.h \
@@ -63,8 +66,9 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     ciphers/ecc.h \
     ciphers/elgamal.h \
     ciphers/feistel.h \
-    ciphers/magmagamma.h \
-    ciphers/magmasblock.h \
+    ciphers/kuznechik.h \
+    ciphers/magma_ctr.h \
+    ciphers/magma_ecb.h \
     ciphers/magmasblock16.h \
     ciphers/matrixcipher.h \
     ciphers/matrixcipherregister.h \

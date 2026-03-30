@@ -400,7 +400,7 @@ CipherResult ECCCipher::decrypt(const QString& text, const QVariantMap& params)
     result.isNumeric = false;
 
     QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), "Начало дешифрования ECC (Эль-Гамаль)", "Инициализация"));
+    steps.append(CipherStep(0, QChar(), "Начало расшифрования ECC (Эль-Гамаль)", "Инициализация"));
 
     // Получаем параметры
     uint64_t a = params.value("a", 0).toULongLong();
@@ -446,7 +446,7 @@ CipherResult ECCCipher::decrypt(const QString& text, const QVariantMap& params)
         return result;
     }
 
-    // Дешифрование:
+    // расшифрование:
     // Q = [Cb]R = (x, y)
     ECPoint Q = pointMultiply(R, cB, a, p);
     // M = e * x^(-1) mod p
@@ -454,11 +454,11 @@ CipherResult ECCCipher::decrypt(const QString& text, const QVariantMap& params)
     uint64_t M = modMul(e, xInv, p);
 
     steps.append(CipherStep(3, QChar(),
-        QString("Дешифрование:\n  Q = [Cb]R = [%1]%2 = %3\n  x^(-1) = %4^(-1) mod %5 = %6\n  M = e * x^(-1) mod p = %7 * %8 mod %9 = %10")
+        QString("расшифрование:\n  Q = [Cb]R = [%1]%2 = %3\n  x^(-1) = %4^(-1) mod %5 = %6\n  M = e * x^(-1) mod p = %7 * %8 mod %9 = %10")
             .arg(cB).arg(pointToString(R)).arg(pointToString(Q))
             .arg(Q.x).arg(p).arg(xInv)
             .arg(e).arg(xInv).arg(p).arg(M),
-        "Дешифрование"));
+        "расшифрование"));
 
     steps.append(CipherStep(4, QChar(),
         QString("Результат: M = %1").arg(M),
@@ -570,7 +570,7 @@ ECCCipherRegister::ECCCipherRegister()
                 "• Кривая: y² = x³ + a·x + b mod p\n"
                 "• Открытый ключ: DB = [Cb]G\n"
                 "• Шифрование: R = [k]G, P = [k]DB, e = M·x_P mod p\n"
-                "• Дешифрование: M = e·(x_Q)⁻¹ mod p, где Q = [Cb]R\n"
+                "• расшифрование: M = e·(x_Q)⁻¹ mod p, где Q = [Cb]R\n"
                 "• Вход/выход: одно число"
             );
             infoLabel->setStyleSheet("color: #666; font-style: italic; padding: 5px; background-color: #f5f5f5; border-radius: 3px;");

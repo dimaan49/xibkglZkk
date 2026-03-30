@@ -213,6 +213,8 @@ uint64_t RSACipher::modInverse(uint64_t e, uint64_t phi) const
 
 bool RSACipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, QString& errorMessage) const
 {
+    const uint64_t ALPHABET_SIZE = 32;
+
     // Проверка 1: p и q должны быть простыми
     if (!isPrime(p)) {
         errorMessage = QString("P = %1 не является простым числом").arg(p);
@@ -229,16 +231,25 @@ bool RSACipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, QString& 
         return false;
     }
 
-    // Проверка 3: вычисляем φ(N)
+    // Проверка 3: N = P × Q должно быть больше мощности алфавита
+    uint64_t n = p * q;
+    if (n <= ALPHABET_SIZE) {
+        errorMessage = QString("N = P × Q = %1 должно быть больше %2 (мощности алфавита). "
+                               "Увеличьте P и Q или выберите другие простые числа.")
+                           .arg(n).arg(ALPHABET_SIZE);
+        return false;
+    }
+
+    // Проверка 4: вычисляем φ(N)
     uint64_t phi = (p - 1) * (q - 1);
 
-    // Проверка 4: 1 < e < φ(N)
+    // Проверка 5: 1 < e < φ(N)
     if (e <= 1 || e >= phi) {
         errorMessage = QString("E должно быть в диапазоне 1 < E < φ(N) = %1").arg(phi);
         return false;
     }
 
-    // Проверка 5: e и φ(N) взаимно просты
+    // Проверка 6: e и φ(N) взаимно просты
     if (gcd(e, phi) != 1) {
         errorMessage = QString("E и φ(N) = %1 не являются взаимно простыми").arg(phi);
         return false;
@@ -350,6 +361,11 @@ CipherResult RSACipher::encrypt(const QString& text, const QVariantMap& params)
     uint64_t q = params.value("q", 0).toULongLong();
     uint64_t e = params.value("e", 0).toULongLong();
 
+    if (p == 0 || q == 0 || e == 0) {
+        result.result = "ОШИБКА: Для шифрования необходимо ввести P, Q и E";
+        return result;
+    }
+
     // Проверяем параметры
     QString validationError;
     if (!validateParameters(p, q, e, validationError)) {
@@ -364,6 +380,22 @@ CipherResult RSACipher::encrypt(const QString& text, const QVariantMap& params)
     uint64_t n = p * q;
     uint64_t phi = (p - 1) * (q - 1);
     uint64_t d = modInverse(e, phi);
+
+    if (e == d) {
+         result.result = "ОШИБКА: Открытый ключ E равен закрытому ключу D! "
+                         "Выберите другие простые числа P и Q или другую экспоненту E.\n"
+                         "Это происходит, когда E² ≡ 1 (mod φ(N)).";
+         return result;
+     }
+
+
+    const uint64_t ALPHABET_SIZE = 32;
+    if (n <= ALPHABET_SIZE) {
+        result.result = QString("ОШИБКА: N = P × Q = %1 должно быть больше мощности алфавита (%2). "
+                                "Увеличьте P и Q или выберите другие простые числа.")
+                            .arg(n).arg(ALPHABET_SIZE);
+        return result;
+    }
 
     steps.append(CipherStep(2, QChar(),
         QString("N=%1, φ(N)=%2, D=%3").arg(n).arg(phi).arg(d),
@@ -440,7 +472,7 @@ CipherResult RSACipher::encrypt(const QString& text, const QVariantMap& params)
     return result;
 }
 
-// Дешифрование
+// расшифрование
 CipherResult RSACipher::decrypt(const QString& text, const QVariantMap& params)
 {
     CipherResult result;
@@ -449,31 +481,21 @@ CipherResult RSACipher::decrypt(const QString& text, const QVariantMap& params)
     result.isNumeric = false;
 
     QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), "Начало дешифрования RSA", "Инициализация"));
+    steps.append(CipherStep(0, QChar(), "Начало расшифрования RSA", "Инициализация"));
 
-    // Получаем параметры
-    uint64_t p = params.value("p", 0).toULongLong();
-    uint64_t q = params.value("q", 0).toULongLong();
-    uint64_t e = params.value("e", 0).toULongLong();
+    // Получаем параметры - для расшифрования нужны N и D
+    uint64_t n = params.value("n", 0).toULongLong();
+    uint64_t d = params.value("d", 0).toULongLong();
 
-    // Проверяем параметры
-    QString validationError;
-    if (!validateParameters(p, q, e, validationError)) {
-        result.result = "ОШИБКА: " + validationError;
+    // Проверяем наличие ключей
+    if (n == 0 || d == 0) {
+        result.result = "ОШИБКА: Не указаны закрытый ключ D и модуль N";
         return result;
     }
 
     steps.append(CipherStep(1, QChar(),
-        QString("Параметры: P=%1, Q=%2, E=%3").arg(p).arg(q).arg(e),
+        QString("Параметры: N=%1, D=%2").arg(n).arg(d),
         "Проверка параметров"));
-
-    uint64_t n = p * q;
-    uint64_t phi = (p - 1) * (q - 1);
-    uint64_t d = modInverse(e, phi);
-
-    steps.append(CipherStep(2, QChar(),
-        QString("N=%1, D=%2").arg(n).arg(d),
-        "Вычисление закрытого ключа"));
 
     // Разбираем входные числа (разделены пробелами или запятыми)
     QString inputText = text.trimmed();
@@ -491,11 +513,11 @@ CipherResult RSACipher::decrypt(const QString& text, const QVariantMap& params)
         }
     }
 
-    steps.append(CipherStep(3, QChar(),
-        QString("Получено %1 чисел для дешифрования").arg(encryptedNumbers.size()),
+    steps.append(CipherStep(2, QChar(),
+        QString("Получено %1 чисел для расшифрования").arg(encryptedNumbers.size()),
         "Подготовка данных"));
 
-    // Дешифруем каждое число
+    // Расшифровываем каждое число
     QVector<uint64_t> decryptedNumbers;
     QVector<QString> stepDetails;
 
@@ -510,31 +532,31 @@ CipherResult RSACipher::decrypt(const QString& text, const QVariantMap& params)
             .arg(decrypted));
     }
 
-    // Показываем дешифрованные числа
+    // Показываем расшифрованные числа
     QString decryptedStr;
     for (int i = 0; i < decryptedNumbers.size() && i < 20; ++i) {
         decryptedStr += QString::number(decryptedNumbers[i]) + " ";
     }
     if (decryptedNumbers.size() > 20) decryptedStr += "...";
 
-    steps.append(CipherStep(4, QChar(),
-        QString("Дешифрованные числа: %1").arg(decryptedStr),
-        "Дешифрованные числа"));
+    steps.append(CipherStep(3, QChar(),
+        QString("Расшифрованные числа: %1").arg(decryptedStr),
+        "Расшифрованные числа"));
 
     // Преобразуем числа обратно в текст
     QString resultText = numbersToText(decryptedNumbers);
 
-    steps.append(CipherStep(5, QChar(),
+    steps.append(CipherStep(4, QChar(),
         QString("Результат: %1").arg(resultText),
         "Завершение"));
 
     // Добавляем детальные шаги (первые 10)
     for (int i = 0; i < stepDetails.size() && i < 10; ++i) {
-        steps.append(CipherStep(6 + i, QChar(), stepDetails[i], QString("Шаг %1").arg(i + 1)));
+        steps.append(CipherStep(5 + i, QChar(), stepDetails[i], QString("Шаг %1").arg(i + 1)));
     }
 
     if (stepDetails.size() > 10) {
-        steps.append(CipherStep(6 + stepDetails.size(), QChar(),
+        steps.append(CipherStep(5 + stepDetails.size(), QChar(),
             QString("... и еще %1 шагов").arg(stepDetails.size() - 10),
             "Пропущенные шаги"));
     }
@@ -590,9 +612,9 @@ RSACipherRegister::RSACipherRegister()
             qRow->addStretch();
             mainLayout->addLayout(qRow);
 
-            // Строка E
+            // Строка E (открытый ключ для шифрования)
             QHBoxLayout* eRow = new QHBoxLayout();
-            QLabel* eLabel = new QLabel("E (открытая экспонента):");
+            QLabel* eLabel = new QLabel("E (открытый ключ):");
             eLabel->setFixedWidth(130);
             NumberLineEdit* eEdit = new NumberLineEdit();
             eEdit->setObjectName("e");
@@ -601,6 +623,35 @@ RSACipherRegister::RSACipherRegister()
             eRow->addWidget(eEdit);
             eRow->addStretch();
             mainLayout->addLayout(eRow);
+
+            // Разделитель
+            QFrame* line1 = new QFrame();
+            line1->setFrameShape(QFrame::HLine);
+            mainLayout->addWidget(line1);
+
+            // Строка N (модуль) - для расшифрования
+            QHBoxLayout* nRow = new QHBoxLayout();
+            QLabel* nLabel = new QLabel("N (модуль):");
+            nLabel->setFixedWidth(130);
+            NumberLineEdit* nEdit = new NumberLineEdit();
+            nEdit->setObjectName("n");
+            nEdit->setPlaceholderText("N = P × Q (для расшифрования)");
+            nRow->addWidget(nLabel);
+            nRow->addWidget(nEdit);
+            nRow->addStretch();
+            mainLayout->addLayout(nRow);
+
+            // Строка D (закрытый ключ) - для расшифрования
+            QHBoxLayout* dRow = new QHBoxLayout();
+            QLabel* dLabel = new QLabel("D (закрытый ключ):");
+            dLabel->setFixedWidth(130);
+            NumberLineEdit* dEdit = new NumberLineEdit();
+            dEdit->setObjectName("d");
+            dEdit->setPlaceholderText("D = E⁻¹ mod φ(N)");
+            dRow->addWidget(dLabel);
+            dRow->addWidget(dEdit);
+            dRow->addStretch();
+            mainLayout->addLayout(dRow);
 
             // Кнопка генерации ключей
             QPushButton* generateButton = new QPushButton("Сгенерировать ключи (16 бит)");
@@ -631,25 +682,32 @@ RSACipherRegister::RSACipherRegister()
             widgets["generateButton"] = generateButton;
 
             // Подключаем генерацию ключей - используем СТАТИЧЕСКИЕ методы
-            QObject::connect(generateButton, &QPushButton::clicked, [pEdit, qEdit, eEdit]() {
-                uint64_t p = RSACipher::generatePrimeStatic(16);   // статический метод
-                uint64_t q = RSACipher::generatePrimeStatic(16);   // статический метод
+            QObject::connect(generateButton, &QPushButton::clicked, [pEdit, qEdit, eEdit, nEdit, dEdit]() {
+                uint64_t p = RSACipher::generatePrimeStatic(16);
+                uint64_t q = RSACipher::generatePrimeStatic(16);
                 uint64_t phi = (p - 1) * (q - 1);
-                uint64_t e = RSACipher::generateEStatic(phi);      // статический метод
+                uint64_t e = RSACipher::generateEStatic(phi);
+
+                // Вычисляем D (закрытый ключ)
+                uint64_t n = p * q;
+                RSACipher temp;
+                uint64_t d = temp.modInverse(e, phi);
 
                 pEdit->setValue(p);
                 qEdit->setValue(q);
                 eEdit->setValue(e);
+                nEdit->setValue(n);
+                dEdit->setValue(d);
 
                 QMessageBox::information(nullptr, "Ключи сгенерированы",
                     QString("Сгенерированы ключи:\n\n"
                             "P = %1\n"
                             "Q = %2\n"
-                            "E = %3\n\n"
-                            "N = %4\n"
-                            "φ(N) = %5")
-                        .arg(p).arg(q).arg(e)
-                        .arg(p * q).arg(phi));
+                            "N = %3\n"
+                            "E = %4 (открытый)\n"
+                            "D = %5 (закрытый)\n\n"
+                            "φ(N) = %6")
+                        .arg(p).arg(q).arg(n).arg(e).arg(d).arg(phi));
             });
         }
     );

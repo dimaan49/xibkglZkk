@@ -230,10 +230,19 @@ bool ElGamalCipher::isPrimitiveRoot(uint64_t g, uint64_t p) const
 
 bool ElGamalCipher::validateParameters(uint64_t p, uint64_t g, uint64_t x, QString& errorMessage) const
 {
+    const uint64_t ALPHABET_SIZE = 32;
 
     // Проверка 1: p - простое число
     if (!isPrime(p)) {
         errorMessage = QString("P = %1 не является простым числом").arg(p);
+        return false;
+    }
+
+    // ДОБАВИТЬ ЭТУ ПРОВЕРКУ:
+    if (p <= ALPHABET_SIZE) {
+        errorMessage = QString("P = %1 должно быть больше %2 (мощности алфавита). "
+                               "Выберите большее простое число P.")
+                           .arg(p).arg(ALPHABET_SIZE);
         return false;
     }
 
@@ -243,26 +252,16 @@ bool ElGamalCipher::validateParameters(uint64_t p, uint64_t g, uint64_t x, QStri
         return false;
     }
 
-    // Проверка 3: 1 < x < p-1 (а не просто < p)
+    // Проверка 3: 1 < x < p-1
     if (x <= 1 || x >= p - 1) {
         errorMessage = QString("X должно быть в диапазоне 1 < X < P-1 (P=%1)").arg(p);
         return false;
     }
 
-    // Проверка 4: порядок g должен делить p-1 (g не должен быть 1 или p-1)
-    // Вместо проверки на первообразный корень, проверяем, что g не равен 1 и не равен p-1
-    // и что g не слишком маленький (для безопасности)
+    // Проверка 4: g не должен быть 1 или p-1
     if (g == 1 || g == p - 1) {
         errorMessage = QString("G = %1 не подходит (не должно быть 1 или P-1)").arg(g);
         return false;
-    }
-
-    // Дополнительная проверка: g^((p-1)/2) mod p != 1 (чтобы избежать квадратичных вычетов)
-    // Это необязательно, но повышает безопасность
-    uint64_t halfOrder = modPow(g, (p - 1) / 2, p);
-    if (halfOrder == 1) {
-        // Предупреждение, но не ошибка
-        qDebug() << "Предупреждение: G является квадратичным вычетом по модулю P";
     }
 
     return true;
@@ -546,6 +545,14 @@ CipherResult ElGamalCipher::encrypt(const QString& text, const QVariantMap& para
         QString("Открытый ключ Y = G^X mod P = %1^%2 mod %3 = %4").arg(g).arg(x).arg(p).arg(y),
         "Вычисление открытого ключа"));
 
+    const uint64_t ALPHABET_SIZE = 32;
+    if (p <= ALPHABET_SIZE) {
+        result.result = QString("ОШИБКА: P = %1 должно быть больше мощности алфавита (%2). "
+                                "Выберите большее простое число P.")
+                            .arg(p).arg(ALPHABET_SIZE);
+        return result;
+    }
+
     // Фильтруем текст
     QString filteredText = CipherUtils::filterAlphabetOnly(text, m_alphabet);
 
@@ -689,7 +696,7 @@ CipherResult ElGamalCipher::encrypt(const QString& text, const QVariantMap& para
     return result;
 }
 
-// Дешифрование
+// расшифрование
 CipherResult ElGamalCipher::decrypt(const QString& text, const QVariantMap& params)
 {
     CipherResult result;
@@ -698,7 +705,7 @@ CipherResult ElGamalCipher::decrypt(const QString& text, const QVariantMap& para
     result.isNumeric = false;
 
     QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), "Начало дешифрования ElGamal", "Инициализация"));
+    steps.append(CipherStep(0, QChar(), "Начало расшифрования ElGamal", "Инициализация"));
 
     // Получаем параметры
     uint64_t p = params.value("p", 0).toULongLong();
@@ -739,10 +746,10 @@ CipherResult ElGamalCipher::decrypt(const QString& text, const QVariantMap& para
     }
 
     steps.append(CipherStep(2, QChar(),
-        QString("Получено %1 пар (a,b) для дешифрования").arg(encryptedPairs.size()),
+        QString("Получено %1 пар (a,b) для расшифрования").arg(encryptedPairs.size()),
         "Подготовка данных"));
 
-    // Дешифруем каждую пару
+    // расшифруем каждую пару
     QVector<uint64_t> decryptedNumbers;
     QVector<QString> stepDetails;
 
@@ -881,7 +888,7 @@ ElGamalCipherRegister::ElGamalCipherRegister()
                 "ElGamal — асимметричный шифр на основе дискретного логарифмирования:\n"
                 "• Y = G^X mod P (открытый ключ)\n"
                 "• Шифрование: a = G^K mod P, b = Y^K × M mod P\n"
-                "• Дешифрование: M = b × (a^X)^-1 mod P\n"
+                "• расшифрование: M = b × (a^X)^-1 mod P\n"
                 "• P должно быть простым, 1 < G < P, 1 < X < P-1\n"
                 "• K должен быть взаимно прост с P-1\n"
                 "• Каждая буква → число 0-31\n"

@@ -15,6 +15,7 @@ class RSACipher : public CipherInterface
 public:
     RSACipher();
     virtual ~RSACipher() = default;
+    uint64_t modInverse(uint64_t e, uint64_t phi) const;
 
     // CipherInterface interface
     virtual QString name() const override { return "RSA"; }
@@ -37,7 +38,6 @@ private:
     bool isPrime(uint64_t n, int k = 5) const;
     uint64_t gcd(uint64_t a, uint64_t b) const;
     uint64_t modPow(uint64_t base, uint64_t exp, uint64_t mod) const;
-    uint64_t modInverse(uint64_t e, uint64_t phi) const;
 
     // Проверка параметров RSA
     bool validateParameters(uint64_t p, uint64_t q, uint64_t e, QString& errorMessage) const;
