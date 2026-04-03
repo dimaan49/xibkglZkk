@@ -573,7 +573,7 @@ CipherResult RSACipher::decrypt(const QString& text, const QVariantMap& params)
 RSACipherRegister::RSACipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "rsa",
+        21,
         "RSA",
         []() -> CipherInterface* { return new RSACipher(); }
     );

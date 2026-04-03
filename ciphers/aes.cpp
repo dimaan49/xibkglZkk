@@ -539,7 +539,7 @@ CipherResult AESCipher::decrypt(const QString& text, const QVariantMap& params)
 AESCipherRegister::AESCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "aes",
+        19,
         "AES",
         []() -> CipherInterface* { return new AESCipher(); }
     );

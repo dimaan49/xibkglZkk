@@ -800,7 +800,7 @@ CipherResult ElGamalCipher::decrypt(const QString& text, const QVariantMap& para
 ElGamalCipherRegister::ElGamalCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "elgamal",
+        22,
         "ElGamal",
         []() -> CipherInterface* { return new ElGamalCipher(); }
     );

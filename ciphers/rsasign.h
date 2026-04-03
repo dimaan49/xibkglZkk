@@ -44,8 +44,7 @@ public:
                "при расшифровании подпись проверяется.";
     }
 
-    // Вспомогательные методы
-    bool isAvailable() const{ return true; }
+
 
     // Статические методы для генерации ключей
     static uint64_t generatePrimeStatic(int bits);

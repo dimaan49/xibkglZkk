@@ -587,7 +587,7 @@ CipherResult GOST341094Cipher::decrypt(const QString& text, const QVariantMap& p
 GOST341094CipherRegister::GOST341094CipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "gost341094",
+        26,
         "ГОСТ Р 34.10-94 (ЭЦП)",
         []() -> CipherInterface* { return new GOST341094Cipher(); }
     );

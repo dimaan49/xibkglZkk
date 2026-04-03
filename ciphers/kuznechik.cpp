@@ -493,7 +493,7 @@ CipherResult KuznechikCipher::decrypt(const QString& text, const QVariantMap& pa
 KuznechikCipherRegister::KuznechikCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "kuznechik",
+        20,
         "Кузнечик (ГОСТ Р 34.12-2015)",
         []() -> CipherInterface* { return new KuznechikCipher(); }
     );

@@ -95,8 +95,8 @@ CipherResult VigenereCiphertextCipher::process(const QString& text, QChar keyLet
 VigenereCiphertextCipherRegister::VigenereCiphertextCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "vigenere_ciphertext",
-        "Виженер (шифротекст)",
+        7,
+        "Виженер с ключом-шифротекстом",
         []() -> CipherInterface* { return new VigenereCiphertextCipher(); }
     );
 

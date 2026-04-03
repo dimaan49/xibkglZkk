@@ -731,7 +731,7 @@ BigInt GOST34102012Cipher::generateRandomStatic(const BigInt& max) {
 GOST34102012CipherRegister::GOST34102012CipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "gost34102012",
+        27,
         "ГОСТ Р 34.10-2012 (ЭЦП на эллиптических кривых)",
         []() -> CipherInterface* { return new GOST34102012Cipher(); }
     );

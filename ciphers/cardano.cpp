@@ -374,7 +374,7 @@ void displayCardanoGrid(QTableWidget* tableWidget, const std::vector<std::vector
 CardanoCipherRegister::CardanoCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "cardano",
+        12,
         "Кардано",
         []() -> CipherInterface* { return new CardanoCipher(); }
     );

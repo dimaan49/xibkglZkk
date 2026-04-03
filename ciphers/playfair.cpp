@@ -659,7 +659,7 @@ CipherResult PlayfairCipher::decrypt(const QString& text, const QVariantMap& par
 PlayfairCipherRegister::PlayfairCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "playfair",
+        10,
         "Шифр Плейфера",
         []() -> CipherInterface* { return new PlayfairCipher(); }
     );

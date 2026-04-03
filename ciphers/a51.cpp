@@ -516,7 +516,7 @@ void A51Cipher::reset()
 A51CipherRegister::A51CipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "a51",
+        16,
         "A5/1 ",
         []() -> CipherInterface* { return new A51Cipher(); }
     );

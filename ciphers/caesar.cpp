@@ -76,7 +76,7 @@ CaesarCipherRegister::CaesarCipherRegister()
 {
     // Регистрируем шифр в фабрике
     CipherFactory::instance().registerCipher(
-        "caesar",
+        2,
         "Шифр Цезаря",
         []() -> CipherInterface* { return new CaesarCipher(); }
     );

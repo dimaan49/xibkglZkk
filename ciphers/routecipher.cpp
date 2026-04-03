@@ -451,6 +451,12 @@ QString RouteCipher::readTable(const std::vector<std::vector<QChar>>& table,
     return result;
 }
 
+void RouteCipher::getOptimalSize(int textLength, int& rows, int& cols) const
+{
+    calculateOptimalSize(textLength, rows, cols);
+}
+
+
 QString RouteCipher::name() const {
     return QStringLiteral(u"RouteCipher");
 }
@@ -463,7 +469,7 @@ QString RouteCipher::description() const {
 RouteCipherRegister::RouteCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "route",
+        29,
         "Маршрутная перестановка",
         []() -> CipherInterface* { return new RouteCipher(); }
     );
@@ -484,11 +490,6 @@ RouteCipherRegister::RouteCipherRegister()
     );
 }
 
-// Статический регистратор
 static RouteCipherRegister routeCipherRegister;
 
 
-void RouteCipher::getOptimalSize(int textLength, int& rows, int& cols) const
-{
-    calculateOptimalSize(textLength, rows, cols);
-}

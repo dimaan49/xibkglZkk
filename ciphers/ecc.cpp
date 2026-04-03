@@ -475,7 +475,7 @@ CipherResult ECCCipher::decrypt(const QString& text, const QVariantMap& params)
 ECCCipherRegister::ECCCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "ecc",
+        23,
         "ECC (Эль-Гамаль)",
         []() -> CipherInterface* { return new ECCCipher(); }
     );

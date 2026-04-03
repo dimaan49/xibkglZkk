@@ -684,7 +684,7 @@ bool MatrixCipher::checkMatrix(const QString& matrixStr, QString& resultMessage,
 MatrixCipherRegister::MatrixCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "matrix",
+        9,
         "Матричный шифр",
         []() -> CipherInterface* { return new MatrixCipher(); }
     );

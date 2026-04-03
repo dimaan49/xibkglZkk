@@ -25,8 +25,6 @@ public:
                "при расшифровании подпись проверяется.";
     }
 
-    bool isAvailable() const { return true; }
-
     // Статические методы для генерации ключей
     static uint64_t generatePrimeStatic(int bits);
     static uint64_t generatePrimitiveRootStatic(uint64_t p);

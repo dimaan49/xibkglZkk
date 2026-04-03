@@ -576,7 +576,7 @@ CipherResult ElGamalSignCipher::decrypt(const QString& text, const QVariantMap& 
 ElGamalSignCipherRegister::ElGamalSignCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "elgamal_sign",
+        25,
         "ElGamal с цифровой подписью",
         []() -> CipherInterface* { return new ElGamalSignCipher(); }
     );

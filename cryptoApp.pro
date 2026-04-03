@@ -27,9 +27,13 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     ciphers/caesar.cpp \
     ciphers/cardano.cpp \
     ciphers/columntranspositioncipher.cpp \
+    ciphers/diffiehellman.cpp \
     ciphers/ecc.cpp \
     ciphers/elgamal.cpp \
+    ciphers/elgamalsign.cpp \
     ciphers/feistel.cpp \
+    ciphers/gost34102012.cpp \
+    ciphers/gost341094.cpp \
     ciphers/kuznechik.cpp \
     ciphers/magma_ctr.cpp \
     ciphers/magma_ecb.cpp \
@@ -39,6 +43,7 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     ciphers/polibiusquare.cpp \
     ciphers/routecipher.cpp \
     ciphers/rsa.cpp \
+    ciphers/rsasign.cpp \
     ciphers/shannonpad.cpp \
     ciphers/trithemius.cpp \
     ciphers/vigenere_auto.cpp \
@@ -63,9 +68,13 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     ciphers/caesar.h \
     ciphers/cardano.h \
     ciphers/columntranspositioncipher.h \
+    ciphers/diffiehellman.h \
     ciphers/ecc.h \
     ciphers/elgamal.h \
+    ciphers/elgamalsign.h \
     ciphers/feistel.h \
+    ciphers/gost34102012.h \
+    ciphers/gost341094.h \
     ciphers/kuznechik.h \
     ciphers/magma_ctr.h \
     ciphers/magma_ecb.h \
@@ -76,6 +85,7 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     ciphers/polibiusquare.h \
     ciphers/routecipher.h \
     ciphers/rsa.h \
+    ciphers/rsasign.h \
     ciphers/shannonpad.h \
     ciphers/trithemius.h \
     ciphers/vigenere_auto.h \

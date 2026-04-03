@@ -111,8 +111,8 @@ CipherResult TrithemiusCipher::decrypt(const QString& text, const QVariantMap& p
 TrithemiusCipherRegister::TrithemiusCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "trithemius",
-        "Тритемий",
+        4,
+        "Шифр Тритемия",
         []() -> CipherInterface* { return new TrithemiusCipher(); }
     );
 

@@ -611,7 +611,7 @@ CipherResult RSASignCipher::decrypt(const QString& text, const QVariantMap& para
 RSASignCipherRegister::RSASignCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "rsa_sign",
+        24,
         "RSA с цифровой подписью",
         []() -> CipherInterface* { return new RSASignCipher(); }
     );

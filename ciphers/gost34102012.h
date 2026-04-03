@@ -87,8 +87,6 @@ public:
                "на основе эллиптических кривых (ECDSA).";
     }
 
-    bool isAvailable() const { return true; }
-
     // Статические методы для генерации ключей
     static BigInt generatePrimeStatic(int bits);
     static BigInt generateRandomStatic(const BigInt& max);

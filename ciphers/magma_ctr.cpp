@@ -380,7 +380,7 @@ CipherResult MagmaCTRCipher::decrypt(const QString& text, const QVariantMap& par
 MagmaCTRCipherRegister::MagmaCTRCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "magma_ctr",
+        15,
         "Магма CTR",
         []() -> CipherInterface* { return new MagmaCTRCipher(); }
     );

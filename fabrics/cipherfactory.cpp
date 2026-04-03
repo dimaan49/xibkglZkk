@@ -6,44 +6,73 @@ CipherFactory& CipherFactory::instance()
     return instance;
 }
 
-void CipherFactory::registerCipher(const QString& id,
+void CipherFactory::registerCipher(int id,
                                   const QString& displayName,
-                                  std::function<CipherInterface*()> creator)
+                                  std::function<CipherInterface*()> creator,
+                                  CipherCategory category)
 {
     if (m_ciphers.contains(id)) {
         qWarning() << "Шифр с ID" << id << "уже зарегистрирован";
         return;
     }
 
+    if (m_displayNameToId.contains(displayName)) {
+        qWarning() << "Шифр с именем" << displayName << "уже зарегистрирован";
+        return;
+    }
+
     // Создаем временный экземпляр для получения описания
     std::unique_ptr<CipherInterface> cipher(creator());
     CipherInfo info;
+    info.id = id;
     info.displayName = displayName;
     info.creator = creator;
     info.description = cipher ? cipher->description() : "";
+    info.category = category;
 
     m_ciphers.insert(id, info);
     m_displayNameToId.insert(displayName, id);
 
-    qDebug() << "Зарегистрирован шифр:" << displayName << "(" << id << ")";
-}
-
-QStringList CipherFactory::availableCiphers() const
-{
-    return m_ciphers.keys();
+    qDebug() << "Зарегистрирован шифр:" << displayName << "(ID:" << id
+             << ") - категория:" << info.categoryName();
 }
 
 QStringList CipherFactory::displayNames() const
 {
     QStringList names;
-    for (const auto& info : m_ciphers) {
-        names.append(info.displayName);
+
+    // Сортируем по числовому ID
+    QList<int> ids = m_ciphers.keys();
+    std::sort(ids.begin(), ids.end());
+
+    for (int id : ids) {
+        names.append(m_ciphers[id].displayName);
     }
-    std::sort(names.begin(), names.end());
+
     return names;
 }
 
-std::unique_ptr<CipherInterface> CipherFactory::createCipher(const QString& id)
+QList<int> CipherFactory::availableCipherIds() const
+{
+    QList<int> ids = m_ciphers.keys();
+    std::sort(ids.begin(), ids.end());
+    return ids;
+}
+
+int CipherFactory::idFromDisplayName(const QString& displayName) const
+{
+    return m_displayNameToId.value(displayName, -1);
+}
+
+QString CipherFactory::displayNameFromId(int id) const
+{
+    if (m_ciphers.contains(id)) {
+        return m_ciphers[id].displayName;
+    }
+    return QString();
+}
+
+std::unique_ptr<CipherInterface> CipherFactory::createCipher(int id)
 {
     if (!m_ciphers.contains(id)) {
         qWarning() << "Шифр с ID" << id << "не найден";
@@ -53,15 +82,54 @@ std::unique_ptr<CipherInterface> CipherFactory::createCipher(const QString& id)
     return std::unique_ptr<CipherInterface>(m_ciphers[id].creator());
 }
 
-QString CipherFactory::idFromDisplayName(const QString& displayName) const
+std::unique_ptr<CipherInterface> CipherFactory::createCipher(const QString& displayName)
 {
-    return m_displayNameToId.value(displayName, "");
+    int id = idFromDisplayName(displayName);
+    if (id == -1) {
+        qWarning() << "Шифр с именем" << displayName << "не найден";
+        return nullptr;
+    }
+    return createCipher(id);
 }
 
-QString CipherFactory::cipherDescription(const QString& id) const
+QString CipherFactory::cipherDescription(int id) const
 {
     if (m_ciphers.contains(id)) {
         return m_ciphers[id].description;
     }
-    return "";
+    return QString();
+}
+
+CipherCategory CipherFactory::cipherCategory(int id) const
+{
+    if (m_ciphers.contains(id)) {
+        return m_ciphers[id].category;
+    }
+    return CipherCategory::Other;
+}
+
+QMap<CipherCategory, QList<int>> CipherFactory::getCiphersByCategory() const
+{
+    QMap<CipherCategory, QList<int>> result;
+
+    for (auto it = m_ciphers.begin(); it != m_ciphers.end(); ++it) {
+        result[it.value().category].append(it.key());
+    }
+
+    // Сортируем ID в каждой категории
+    for (auto& list : result) {
+        std::sort(list.begin(), list.end());
+    }
+
+    return result;
+}
+
+bool CipherFactory::hasCipher(int id) const
+{
+    return m_ciphers.contains(id);
+}
+
+bool CipherFactory::hasCipher(const QString& displayName) const
+{
+    return m_displayNameToId.contains(displayName);
 }

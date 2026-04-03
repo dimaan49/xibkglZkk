@@ -226,7 +226,7 @@ ShannonPadCipherRegister::ShannonPadCipherRegister()
 {
     // Регистрируем шифр в основной фабрике
     CipherFactory::instance().registerCipher(
-        "shannon_pad",
+        14,
         "Одноразовый блокнот Шеннона",
         []() -> CipherInterface* { return new ShannonPadCipher(); }
     );

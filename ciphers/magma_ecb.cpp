@@ -435,8 +435,8 @@ CipherResult MagmaECBCipher::decrypt(const QString& text, const QVariantMap& par
 MagmaECBCipherRegister::MagmaECBCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "magma_ecb",
-        "Магма (ГОСТ) - ECB",
+        18,
+        "Магма ECB",
         []() -> CipherInterface* { return new MagmaECBCipher(); }
     );
 

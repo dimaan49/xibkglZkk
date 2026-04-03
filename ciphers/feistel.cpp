@@ -374,8 +374,8 @@ CipherResult FeistelCipher::decrypt(const QString& text, const QVariantMap& para
 FeistelCipherRegister::FeistelCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "feistel",
-        "сеть фейстеля",
+        13,
+        "Cеть фейстеля МАГМА",
         []() -> CipherInterface* { return new FeistelCipher(); }
     );
 

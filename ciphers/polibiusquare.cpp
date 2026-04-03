@@ -144,7 +144,7 @@ CipherResult PolybiusSquareCipher::decrypt(const QString& text, const QVariantMa
 PolybiusSquareCipherRegister::PolybiusSquareCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "polybius",
+        3,
         "Квадрат Полибия",
         []() -> CipherInterface* { return new PolybiusSquareCipher(); }
     );

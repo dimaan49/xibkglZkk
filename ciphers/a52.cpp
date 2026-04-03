@@ -473,7 +473,7 @@ CipherResult A52Cipher::decrypt(const QString& text, const QVariantMap& params)
 A52CipherRegister::A52CipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "a52",
+        17,
         "A5/2 ",
         []() -> CipherInterface* { return new A52Cipher(); }
     );

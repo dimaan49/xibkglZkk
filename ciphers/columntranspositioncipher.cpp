@@ -356,7 +356,7 @@ public:
     ColumnTranspositionCipherRegister()
     {
         CipherFactory::instance().registerCipher(
-            "columntransposition",
+           11,
             "Вертикальная перестановка",
             []() -> CipherInterface* { return new ColumnTranspositionCipher(); }
         );

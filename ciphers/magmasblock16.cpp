@@ -209,8 +209,8 @@ CipherResult MagmaSBlock16Cipher::decrypt(const QString& text, const QVariantMap
 MagmaSBlock16CipherRegister::MagmaSBlock16CipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "magma16",
-        "МАГМА16 (HEX)",
+        8,
+        "S-блок замены МАГМА",
         []() -> CipherInterface* { return new MagmaSBlock16Cipher(); }
     );
 

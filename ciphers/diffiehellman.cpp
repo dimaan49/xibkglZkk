@@ -190,7 +190,7 @@ CipherResult DiffieHellmanCipher::decrypt(const QString& text, const QVariantMap
 DiffieHellmanCipherRegister::DiffieHellmanCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "diffiehellman",
+        28,
         "Диффи-Хеллман (обмен ключами)",
         []() -> CipherInterface* { return new DiffieHellmanCipher(); }
     );

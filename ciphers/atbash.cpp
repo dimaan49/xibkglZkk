@@ -53,8 +53,8 @@ CipherResult AtbashCipher::encrypt(const QString& text, const QVariantMap& param
 AtbashCipherRegister::AtbashCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "atbash",
-        "Атбаш",
+        1,
+        "Шифр АТБАШ",
         []() -> CipherInterface* { return new AtbashCipher(); }
     );
 

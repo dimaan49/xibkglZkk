@@ -138,8 +138,8 @@ CipherResult VigenereAutoCipher::decrypt(const QString& text, const QVariantMap&
 VigenereAutoCipherRegister::VigenereAutoCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "vigenere_auto",
-        "Виженер (самоключ)",
+       6,
+        "Виженер с самоключом",
         []() -> CipherInterface* { return new VigenereAutoCipher(); }
     );
 

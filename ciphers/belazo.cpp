@@ -122,8 +122,8 @@ CipherResult BelazoCipher::decrypt(const QString& text, const QVariantMap& param
 BelazoCipherRegister::BelazoCipherRegister()
 {
     CipherFactory::instance().registerCipher(
-        "belazo",
-        "Белазо",
+        5,
+        "Шифр Белазо",
         []() -> CipherInterface* { return new BelazoCipher(); }
     );
 

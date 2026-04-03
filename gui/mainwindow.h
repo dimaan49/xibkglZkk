@@ -99,7 +99,7 @@ private:
     QMap<QString, QWidget*> m_paramWidgets;
     QPushButton* m_advancedSettingsButton;  // Кнопка-шестеренка
     QMap<QString, QVariantMap> m_cipherAdvancedSettings;  // Хранилище настроек для каждого шифра
-    QString m_currentCipherId;  // Сохраняем текущий ID шифра
+    int m_currentCipherId;  // Сохраняем текущий ID шифра
 
     QTimer* m_statusResetTimer;
     QString m_originalStatusStyle;

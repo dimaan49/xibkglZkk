@@ -23,7 +23,6 @@ public:
                "через незащищенный канал связи.";
     }
 
-    bool isAvailable() const { return true; }
 
     // Статические методы для генерации
     static uint64_t generatePrimeStatic(int bits);

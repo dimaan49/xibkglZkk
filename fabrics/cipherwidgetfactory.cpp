@@ -109,21 +109,60 @@ void CipherWidgetFactory::updateWidgets(const QMap<QString, QWidget*>& widgets, 
         QString paramId = it.key();
         QWidget* widget = it.value();
 
-        // Для RouteCipherAdvancedWidget нужно обновлять через сеттеры
+        // Для RouteCipherAdvancedWidget
         if (RouteCipherAdvancedWidget* advancedWidget = qobject_cast<RouteCipherAdvancedWidget*>(widget)) {
-            // Здесь можно реализовать обновление расширенного виджета из значений
-            // Но это сложнее, так как у него много параметров
             if (values.contains("rows")) {
                 advancedWidget->setRows(values["rows"].toInt());
             }
             if (values.contains("cols")) {
                 advancedWidget->setCols(values["cols"].toInt());
             }
-            // и т.д.
+            // ... остальные параметры
         }
         else if (QSpinBox* spinBox = qobject_cast<QSpinBox*>(widget)) {
-            spinBox->setValue(values[paramId].toInt());
+            if (values.contains(paramId)) {
+                spinBox->setValue(values[paramId].toInt());
+            }
         }
-        // ... остальные обработчики
+        // ============ ДОБАВИТЬ ЭТУ ВЕТКУ ============
+        else if (QLineEdit* lineEdit = qobject_cast<QLineEdit*>(widget)) {
+            if (values.contains(paramId)) {
+                lineEdit->setText(values[paramId].toString());
+            }
+        }
+        // ==========================================
+        else if (QTextEdit* textEdit = qobject_cast<QTextEdit*>(widget)) {
+            if (values.contains(paramId)) {
+                textEdit->setPlainText(values[paramId].toString());
+            }
+        }
+        else if (QComboBox* comboBox = qobject_cast<QComboBox*>(widget)) {
+            if (values.contains(paramId)) {
+                int idx = comboBox->findData(values[paramId]);
+                if (idx >= 0) comboBox->setCurrentIndex(idx);
+            }
+        }
+        else if (QCheckBox* checkBox = qobject_cast<QCheckBox*>(widget)) {
+            if (values.contains(paramId)) {
+                checkBox->setChecked(values[paramId].toBool());
+            }
+        }
+        else if (ECCPointEdit* pointEdit = qobject_cast<ECCPointEdit*>(widget)) {
+            if (values.contains(paramId)) {
+                // Разбираем строку вида "(x,y)"
+                QString str = values[paramId].toString();
+                if (str == "inf") {
+                    pointEdit->setPoint(ECPoint());
+                } else {
+                    QRegularExpression regex("\\((\\d+),(\\d+)\\)");
+                    QRegularExpressionMatch match = regex.match(str);
+                    if (match.hasMatch()) {
+                        ECPoint point(match.captured(1).toULongLong(),
+                                      match.captured(2).toULongLong());
+                        pointEdit->setPoint(point);
+                    }
+                }
+            }
+        }
     }
 }
