@@ -192,7 +192,8 @@ DiffieHellmanCipherRegister::DiffieHellmanCipherRegister()
     CipherFactory::instance().registerCipher(
         28,
         "Диффи-Хеллман (обмен ключами)",
-        []() -> CipherInterface* { return new DiffieHellmanCipher(); }
+        []() -> CipherInterface* { return new DiffieHellmanCipher(); },
+        CipherCategory::KeyExchange
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

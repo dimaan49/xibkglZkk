@@ -477,7 +477,8 @@ ECCCipherRegister::ECCCipherRegister()
     CipherFactory::instance().registerCipher(
         23,
         "ECC (Эль-Гамаль)",
-        []() -> CipherInterface* { return new ECCCipher(); }
+        []() -> CipherInterface* { return new ECCCipher(); },
+        CipherCategory::Asymmetric
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

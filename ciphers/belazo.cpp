@@ -124,7 +124,8 @@ BelazoCipherRegister::BelazoCipherRegister()
     CipherFactory::instance().registerCipher(
         5,
         "Шифр Белазо",
-        []() -> CipherInterface* { return new BelazoCipher(); }
+        []() -> CipherInterface* { return new BelazoCipher(); },
+        CipherCategory::Polyalphabetic
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

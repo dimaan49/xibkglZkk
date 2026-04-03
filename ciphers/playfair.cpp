@@ -661,7 +661,8 @@ PlayfairCipherRegister::PlayfairCipherRegister()
     CipherFactory::instance().registerCipher(
         10,
         "Шифр Плейфера",
-        []() -> CipherInterface* { return new PlayfairCipher(); }
+        []() -> CipherInterface* { return new PlayfairCipher(); },
+        CipherCategory::BlockSubstitution
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

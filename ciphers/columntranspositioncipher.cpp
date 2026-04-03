@@ -358,7 +358,8 @@ public:
         CipherFactory::instance().registerCipher(
            11,
             "Вертикальная перестановка",
-            []() -> CipherInterface* { return new ColumnTranspositionCipher(); }
+            []() -> CipherInterface* { return new ColumnTranspositionCipher(); },
+            CipherCategory::Permutation
         );
 
         CipherWidgetFactory::instance().registerCipherWidgets(

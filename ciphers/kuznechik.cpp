@@ -495,7 +495,8 @@ KuznechikCipherRegister::KuznechikCipherRegister()
     CipherFactory::instance().registerCipher(
         20,
         "Кузнечик (ГОСТ Р 34.12-2015)",
-        []() -> CipherInterface* { return new KuznechikCipher(); }
+        []() -> CipherInterface* { return new KuznechikCipher(); },
+        CipherCategory::Combinatorial
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

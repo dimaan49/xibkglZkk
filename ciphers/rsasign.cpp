@@ -613,7 +613,8 @@ RSASignCipherRegister::RSASignCipherRegister()
     CipherFactory::instance().registerCipher(
         24,
         "RSA с цифровой подписью",
-        []() -> CipherInterface* { return new RSASignCipher(); }
+        []() -> CipherInterface* { return new RSASignCipher(); },
+        CipherCategory::DigitalSignature
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

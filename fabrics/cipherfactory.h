@@ -1,3 +1,4 @@
+// cipherfactory.h
 #ifndef CIPHERFACTORY_H
 #define CIPHERFACTORY_H
 
@@ -12,16 +13,18 @@
 #include <QTextEdit>
 #include <QSpinBox>
 
-// Категории шифров
+// Категории шифров (обновленные)
 enum class CipherCategory {
-    Stream,           // Поточные
-    Block,            // Блочные
-    Transposition,    // Перестановочные (комбинационные)
-    Substitution,     // Подстановочные
-    Asymmetric,       // Асимметричные
-    Signature,        // Цифровые подписи
-    Hash,             // Хеш-функции
-    Other             // Прочие
+    KeyExchange,        // Алгоритмы обмена ключами
+    DigitalSignature,   // Алгоритмы цифровой подписи
+    Asymmetric,         // Асимметричные
+    Combinatorial,      // Комбинационные
+    Stream,             // Поточные
+    Gamma,              // Шифры гаммирования
+    Permutation,        // Шифры перестановки
+    BlockSubstitution,  // Шифры блочной замены
+    Polyalphabetic,     // Шифры многозначной замены
+    Monoalphabetic      // Шифры однозначной замены
 };
 
 // Структура информации о шифре
@@ -34,14 +37,34 @@ struct CipherInfo {
 
     QString categoryName() const {
         switch(category) {
-            case CipherCategory::Stream: return "Поточные";
-            case CipherCategory::Block: return "Блочные";
-            case CipherCategory::Transposition: return "Перестановочные";
-            case CipherCategory::Substitution: return "Подстановочные";
+            case CipherCategory::KeyExchange: return "Алгоритмы обмена ключами";
+            case CipherCategory::DigitalSignature: return "Алгоритмы цифровой подписи";
             case CipherCategory::Asymmetric: return "Асимметричные";
-            case CipherCategory::Signature: return "Цифровые подписи";
-            case CipherCategory::Hash: return "Хеш-функции";
+            case CipherCategory::Combinatorial: return "Комбинационные";
+            case CipherCategory::Stream: return "Поточные";
+            case CipherCategory::Gamma: return "Шифры гаммирования";
+            case CipherCategory::Permutation: return "Шифры перестановки";
+            case CipherCategory::BlockSubstitution: return "Шифры блочной замены";
+            case CipherCategory::Polyalphabetic: return "Шифры многозначной замены";
+            case CipherCategory::Monoalphabetic: return "Шифры однозначной замены";
             default: return "Прочие";
+        }
+    }
+
+    // Для получения иконки категории (опционально)
+    QString categoryIcon() const {
+        switch(category) {
+            case CipherCategory::KeyExchange: return "🔑";
+            case CipherCategory::DigitalSignature: return "✍️";
+            case CipherCategory::Asymmetric: return "🔐";
+            case CipherCategory::Combinatorial: return "🧩";
+            case CipherCategory::Stream: return "🌊";
+            case CipherCategory::Gamma: return "🎲";
+            case CipherCategory::Permutation: return "🔄";
+            case CipherCategory::BlockSubstitution: return "🧱";
+            case CipherCategory::Polyalphabetic: return "📚";
+            case CipherCategory::Monoalphabetic: return "🔡";
+            default: return "📦";
         }
     }
 };
@@ -55,10 +78,13 @@ public:
     void registerCipher(int id,
                        const QString& displayName,
                        std::function<CipherInterface*()> creator,
-                       CipherCategory category = CipherCategory::Other);
+                       CipherCategory category = CipherCategory::Asymmetric);
 
     // Получение списка displayName в порядке возрастания ID
     QStringList displayNames() const;
+
+    // Получение списка displayName с фильтром по категориям
+    QStringList displayNames(const QList<CipherCategory>& categories) const;
 
     // Получение списка всех ID (отсортированных)
     QList<int> availableCipherIds() const;
@@ -86,6 +112,15 @@ public:
 
     // Группировка шифров по категориям
     QMap<CipherCategory, QList<int>> getCiphersByCategory() const;
+
+    // Получение всех категорий с их названиями
+    QList<CipherCategory> getAllCategories() const;
+
+    // Получение названия категории
+    static QString getCategoryName(CipherCategory category);
+
+    // Получение иконки категории
+    static QString getCategoryIcon(CipherCategory category);
 
     // Проверка существования шифра
     bool hasCipher(int id) const;

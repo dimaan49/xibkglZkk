@@ -518,7 +518,8 @@ A51CipherRegister::A51CipherRegister()
     CipherFactory::instance().registerCipher(
         16,
         "A5/1 ",
-        []() -> CipherInterface* { return new A51Cipher(); }
+        []() -> CipherInterface* { return new A51Cipher(); },
+        CipherCategory::Stream
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

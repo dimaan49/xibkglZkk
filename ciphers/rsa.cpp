@@ -575,7 +575,8 @@ RSACipherRegister::RSACipherRegister()
     CipherFactory::instance().registerCipher(
         21,
         "RSA",
-        []() -> CipherInterface* { return new RSACipher(); }
+        []() -> CipherInterface* { return new RSACipher(); },
+        CipherCategory::Asymmetric
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

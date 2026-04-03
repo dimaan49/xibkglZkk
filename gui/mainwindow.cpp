@@ -4,6 +4,7 @@
 #include "formatter.h"
 #include "stylemanager.h"
 #include "advancedsettingsdialog.h"
+#include "categoryfilterdialog.h"
 
 #include <iostream>
 
@@ -23,53 +24,90 @@
 #include <QSequentialAnimationGroup>
 #include <QParallelAnimationGroup>
 
-// ==================== AnimatedButton Implementation ====================
-AnimatedButton::AnimatedButton(const QString& text, QWidget* parent)
-    : QPushButton(text, parent)
+
+#include "mainwindow.h"
+#include "cipherfactory.h"
+#include "cipherwidgetfactory.h"
+#include "formatter.h"
+#include "stylemanager.h"
+#include "advancedsettingsdialog.h"
+#include "categoryfilterdialog.h"
+
+#include <iostream>
+
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QGroupBox>
+#include <QComboBox>
+#include <QTextEdit>
+#include <QPushButton>
+#include <QLabel>
+#include <QMessageBox>
+#include <QDebug>
+#include <QSpinBox>
+#include <QLineEdit>
+#include <QPropertyAnimation>
+#include <QGraphicsDropShadowEffect>
+#include <QSequentialAnimationGroup>
+#include <QParallelAnimationGroup>
+
+// ==================== AnimatedButton Class Definition ====================
+class AnimatedButton : public QPushButton
 {
-    setCursor(Qt::PointingHandCursor);
+    Q_PROPERTY(int borderRadius READ borderRadius WRITE setBorderRadius)
 
-    m_hoverAnimation = new QPropertyAnimation(this, "borderRadius");
-    m_hoverAnimation->setDuration(150);
-    m_hoverAnimation->setEasingCurve(QEasingCurve::OutCubic);
-}
+public:
+    explicit AnimatedButton(const QString& text, QWidget* parent = nullptr)
+        : QPushButton(text, parent)
+    {
+        setCursor(Qt::PointingHandCursor);
+        m_hoverAnimation = new QPropertyAnimation(this, "borderRadius");
+        m_hoverAnimation->setDuration(150);
+        m_hoverAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    }
 
-AnimatedButton::~AnimatedButton() {
-    delete m_hoverAnimation;
-}
+    ~AnimatedButton() {
+        delete m_hoverAnimation;
+    }
 
-void AnimatedButton::setBorderRadius(int radius) {
-    m_borderRadius = radius;
-    QString style = QString(
-        "QPushButton {"
-        "    border-radius: %1px;"
-        "}"
-    ).arg(radius);
-    setStyleSheet(style);
-}
+    int borderRadius() const { return m_borderRadius; }
 
-void AnimatedButton::enterEvent(QEnterEvent* event) {
-    QPushButton::enterEvent(event);
-    m_hoverAnimation->stop();
-    m_hoverAnimation->setStartValue(borderRadius());
-    m_hoverAnimation->setEndValue(10);
-    m_hoverAnimation->start();
-}
+    void setBorderRadius(int radius) {
+        m_borderRadius = radius;
+        QString style = QString(
+            "QPushButton {"
+            "    border-radius: %1px;"
+            "}"
+        ).arg(radius);
+        setStyleSheet(style);
+    }
 
-void AnimatedButton::leaveEvent(QEvent* event) {
-    QPushButton::leaveEvent(event);
-    m_hoverAnimation->stop();
-    m_hoverAnimation->setStartValue(borderRadius());
-    m_hoverAnimation->setEndValue(6);
-    m_hoverAnimation->start();
-}
+protected:
+    void enterEvent(QEnterEvent* event) override {
+        QPushButton::enterEvent(event);
+        m_hoverAnimation->stop();
+        m_hoverAnimation->setStartValue(borderRadius());
+        m_hoverAnimation->setEndValue(10);
+        m_hoverAnimation->start();
+    }
 
+    void leaveEvent(QEvent* event) override {
+        QPushButton::leaveEvent(event);
+        m_hoverAnimation->stop();
+        m_hoverAnimation->setStartValue(borderRadius());
+        m_hoverAnimation->setEndValue(6);
+        m_hoverAnimation->start();
+    }
 
+private:
+    int m_borderRadius = 6;
+    QPropertyAnimation* m_hoverAnimation;
+};
 
 // ==================== MainWindow Implementation ====================
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , cipherComboBox(nullptr)
+    , m_cipherComboBox(nullptr)
     , themeComboBox(nullptr)
     , inputTextEdit(nullptr)
     , outputTextEdit(nullptr)
@@ -82,6 +120,8 @@ MainWindow::MainWindow(QWidget *parent)
     , m_advancedSettingsButton(nullptr)
     , m_statusResetTimer(nullptr)
     , parametersLayout(nullptr)
+    , m_filterDialog(nullptr)
+    , m_filterButton(nullptr)
 {
     setupUI();
     setupCiphers();
@@ -140,12 +180,35 @@ void MainWindow::setupUI()
 
     // Выбор шифра
     QLabel *cipherLabel = new QLabel("Шифр:");
-    cipherComboBox = new QComboBox();
-    cipherComboBox->setMinimumWidth(220);
-    cipherComboBox->setObjectName("cipherSelector");
+
+    // Контейнер для комбобокса и кнопки фильтра
+    QWidget* cipherContainer = new QWidget();
+    QHBoxLayout* cipherContainerLayout = new QHBoxLayout(cipherContainer);
+    cipherContainerLayout->setContentsMargins(0, 0, 0, 0);
+    cipherContainerLayout->setSpacing(8);
+
+    // Комбобокс с шифрами
+    m_cipherComboBox = new QComboBox(cipherContainer);
+    m_cipherComboBox->setMinimumWidth(250);
+    m_cipherComboBox->setObjectName("cipherSelector");
+    m_cipherComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+    // Кнопка фильтра
+    m_filterButton = new QPushButton("🔧 Фильтр", cipherContainer);
+    m_filterButton->setObjectName("filterButton");
+    m_filterButton->setToolTip("Настроить фильтрацию шифров по категориям");
+    m_filterButton->setCursor(Qt::PointingHandCursor);
+    m_filterButton->setFixedHeight(28);
+    m_filterButton->setFixedWidth(80);
+
+    cipherContainerLayout->addWidget(m_cipherComboBox, 1);
+    cipherContainerLayout->addWidget(m_filterButton);
 
     topPanelLayout->addWidget(cipherLabel);
-    topPanelLayout->addWidget(cipherComboBox);
+    topPanelLayout->addWidget(cipherContainer);
+
+    // Подключаем кнопку фильтра
+    connect(m_filterButton, &QPushButton::clicked, this, &MainWindow::onFilterButtonClicked);
 
     // 2. Панель параметров
     parametersGroup = new QGroupBox("Параметры шифра");
@@ -153,7 +216,6 @@ void MainWindow::setupUI()
     parametersLayout->setSpacing(8);
     parametersLayout->setContentsMargins(10, 15, 10, 10);
 
-    // === ИСПРАВЛЕНО: Горизонтальное расположение кнопки и описания ===
     // Создаем горизонтальный layout для заголовка
     QHBoxLayout* parametersHeaderLayout = new QHBoxLayout();
 
@@ -338,7 +400,7 @@ void MainWindow::setupUI()
     mainLayout->addWidget(statusLabel);
 
     // Подключение сигналов
-    connect(cipherComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+    connect(m_cipherComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &MainWindow::onCipherChanged);
     connect(encryptButton, &QPushButton::clicked,
             this, &MainWindow::onEncryptClicked);
@@ -412,11 +474,11 @@ void MainWindow::showErrorAnimation()
 void MainWindow::setupCiphers()
 {
     // Получаем список шифров из фабрики
-    cipherComboBox->clear();
-    cipherComboBox->addItems(CipherFactory::instance().displayNames());
+    m_cipherComboBox->clear();
+    m_cipherComboBox->addItems(CipherFactory::instance().displayNames());
 
     // Выбираем первый шифр
-    if (cipherComboBox->count() > 0) {
+    if (m_cipherComboBox->count() > 0) {
         onCipherChanged(0);
     } else {
         logToConsole("ПРЕДУПРЕЖДЕНИЕ: Нет зарегистрированных шифров");
@@ -428,7 +490,7 @@ void MainWindow::onCipherChanged(int index)
 {
     Q_UNUSED(index);
 
-    QString displayName = cipherComboBox->currentText();
+    QString displayName = m_cipherComboBox->currentText();
     int cipherId = CipherFactory::instance().idFromDisplayName(displayName);
 
     if (cipherId == -1) {
@@ -499,6 +561,8 @@ void MainWindow::onCipherChanged(int index)
     statusLabel->setText("Выбран: " + displayName + " - готов к работе");
 }
 
+
+
 void MainWindow::updateAdvancedSettingsButton()
 {
 
@@ -512,7 +576,7 @@ void MainWindow::onAdvancedSettingsClicked()
         return;
     }
 
-    QString displayName = cipherComboBox->currentText();
+    QString displayName = m_cipherComboBox->currentText();
     qDebug() << "=== Opening Advanced Settings for" << displayName << "===";
 
     // Исправлено: передаем ID как строку
@@ -961,4 +1025,60 @@ void MainWindow::handleSuccess(const QString& successMessage)
 
 void MainWindow::onInputTextChanged()
 {
+}
+
+
+void MainWindow::onFilterButtonClicked()
+{
+    if (!m_filterDialog) {
+        m_filterDialog = new CategoryFilterDialog(this);
+    }
+
+    // Устанавливаем текущие выбранные категории
+    m_filterDialog->setSelectedCategories(m_activeCategories);
+
+    // Показываем диалог
+    if (m_filterDialog->exec() == QDialog::Accepted) {
+        applyFilter();
+    }
+}
+
+void MainWindow::applyFilter()
+{
+    if (!m_filterDialog) return;
+
+    // Получаем выбранные категории
+    m_activeCategories = m_filterDialog->selectedCategories();
+
+    // Обновляем список шифров
+    QStringList cipherNames;
+
+    if (m_activeCategories.isEmpty()) {
+        // Если ничего не выбрано, показываем все
+        cipherNames = CipherFactory::instance().displayNames();
+    } else {
+        cipherNames = CipherFactory::instance().displayNames(m_activeCategories);
+    }
+
+    // Сохраняем текущее выбранное имя
+    QString currentName = m_cipherComboBox->currentText();
+
+    // Обновляем комбобокс
+    m_cipherComboBox->blockSignals(true);
+    m_cipherComboBox->clear();
+    m_cipherComboBox->addItems(cipherNames);
+
+    // Восстанавливаем выбор
+    int index = m_cipherComboBox->findText(currentName);
+    if (index >= 0) {
+        m_cipherComboBox->setCurrentIndex(index);
+    } else if (m_cipherComboBox->count() > 0) {
+        m_cipherComboBox->setCurrentIndex(0);
+    }
+    m_cipherComboBox->blockSignals(false);
+
+    // Логируем результат
+    logToConsole(QString("Фильтр обновлен: показано %1 из %2 шифров")
+                 .arg(cipherNames.size())
+                 .arg(CipherFactory::instance().displayNames().size()));
 }

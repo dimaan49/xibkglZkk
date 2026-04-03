@@ -578,7 +578,8 @@ ElGamalSignCipherRegister::ElGamalSignCipherRegister()
     CipherFactory::instance().registerCipher(
         25,
         "ElGamal с цифровой подписью",
-        []() -> CipherInterface* { return new ElGamalSignCipher(); }
+        []() -> CipherInterface* { return new ElGamalSignCipher(); },
+        CipherCategory::DigitalSignature
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

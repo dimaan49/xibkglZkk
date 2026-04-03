@@ -146,7 +146,8 @@ PolybiusSquareCipherRegister::PolybiusSquareCipherRegister()
     CipherFactory::instance().registerCipher(
         3,
         "Квадрат Полибия",
-        []() -> CipherInterface* { return new PolybiusSquareCipher(); }
+        []() -> CipherInterface* { return new PolybiusSquareCipher(); },
+        CipherCategory::Monoalphabetic
     );
 
     // Квадрат Полибия не имеет параметров

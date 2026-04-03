@@ -802,7 +802,8 @@ ElGamalCipherRegister::ElGamalCipherRegister()
     CipherFactory::instance().registerCipher(
         22,
         "ElGamal",
-        []() -> CipherInterface* { return new ElGamalCipher(); }
+        []() -> CipherInterface* { return new ElGamalCipher(); },
+        CipherCategory::Asymmetric
     );
 
     // Основные виджеты - только информационная панель

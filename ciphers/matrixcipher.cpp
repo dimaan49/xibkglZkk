@@ -686,7 +686,8 @@ MatrixCipherRegister::MatrixCipherRegister()
     CipherFactory::instance().registerCipher(
         9,
         "Матричный шифр",
-        []() -> CipherInterface* { return new MatrixCipher(); }
+        []() -> CipherInterface* { return new MatrixCipher(); },
+        CipherCategory::BlockSubstitution
     );
 
     // Регистрируем основные виджеты (минимум на главном экране)

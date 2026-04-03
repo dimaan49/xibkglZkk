@@ -382,7 +382,8 @@ MagmaCTRCipherRegister::MagmaCTRCipherRegister()
     CipherFactory::instance().registerCipher(
         15,
         "Магма CTR",
-        []() -> CipherInterface* { return new MagmaCTRCipher(); }
+        []() -> CipherInterface* { return new MagmaCTRCipher(); },
+        CipherCategory::Gamma
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

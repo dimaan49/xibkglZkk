@@ -78,7 +78,8 @@ CaesarCipherRegister::CaesarCipherRegister()
     CipherFactory::instance().registerCipher(
         2,
         "Шифр Цезаря",
-        []() -> CipherInterface* { return new CaesarCipher(); }
+        []() -> CipherInterface* { return new CaesarCipher(); },
+        CipherCategory::Monoalphabetic
     );
 
     // Регистрируем виджеты параметров

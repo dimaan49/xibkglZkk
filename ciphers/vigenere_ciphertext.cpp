@@ -97,7 +97,8 @@ VigenereCiphertextCipherRegister::VigenereCiphertextCipherRegister()
     CipherFactory::instance().registerCipher(
         7,
         "Виженер с ключом-шифротекстом",
-        []() -> CipherInterface* { return new VigenereCiphertextCipher(); }
+        []() -> CipherInterface* { return new VigenereCiphertextCipher(); },
+        CipherCategory::Polyalphabetic
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

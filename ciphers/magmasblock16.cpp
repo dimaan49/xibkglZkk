@@ -211,7 +211,8 @@ MagmaSBlock16CipherRegister::MagmaSBlock16CipherRegister()
     CipherFactory::instance().registerCipher(
         8,
         "S-блок замены МАГМА",
-        []() -> CipherInterface* { return new MagmaSBlock16Cipher(); }
+        []() -> CipherInterface* { return new MagmaSBlock16Cipher(); },
+        CipherCategory::Polyalphabetic
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

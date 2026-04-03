@@ -55,7 +55,8 @@ AtbashCipherRegister::AtbashCipherRegister()
     CipherFactory::instance().registerCipher(
         1,
         "Шифр АТБАШ",
-        []() -> CipherInterface* { return new AtbashCipher(); }
+        []() -> CipherInterface* { return new AtbashCipher(); },
+        CipherCategory::Monoalphabetic
     );
 
     // Атбаш не имеет параметров, но регистрируем пустую функцию

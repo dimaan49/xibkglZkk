@@ -541,7 +541,8 @@ AESCipherRegister::AESCipherRegister()
     CipherFactory::instance().registerCipher(
         19,
         "AES",
-        []() -> CipherInterface* { return new AESCipher(); }
+        []() -> CipherInterface* { return new AESCipher(); },
+        CipherCategory::Combinatorial
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

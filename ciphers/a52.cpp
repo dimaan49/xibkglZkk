@@ -475,7 +475,8 @@ A52CipherRegister::A52CipherRegister()
     CipherFactory::instance().registerCipher(
         17,
         "A5/2 ",
-        []() -> CipherInterface* { return new A52Cipher(); }
+        []() -> CipherInterface* { return new A52Cipher(); },
+        CipherCategory::Stream
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

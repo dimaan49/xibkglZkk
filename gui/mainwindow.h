@@ -1,10 +1,12 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
+#include "cipherinterface.h"
+#include <categoryfilterdialog.h>
+#include "logwindow.h"
+
 
 #include <QMainWindow>
 #include <memory>
-#include "cipherinterface.h"
-#include "logwindow.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGroupBox>
@@ -24,28 +26,11 @@
 #include <QTimer>
 
 
-class AnimatedButton : public QPushButton {
-    Q_OBJECT
-    Q_PROPERTY(int borderRadius READ borderRadius WRITE setBorderRadius)
+class CategoryFilterDialog;
+class RouteCipherAdvancedWidget;
 
-public:
-    explicit AnimatedButton(const QString& text, QWidget* parent = nullptr);
-    ~AnimatedButton() override;
-
-    int borderRadius() const { return m_borderRadius; }
-    void setBorderRadius(int radius);
-
-protected:
-    void enterEvent(QEnterEvent* event) override;
-    void leaveEvent(QEvent* event) override;
-
-private:
-    int m_borderRadius = 6;
-    QPropertyAnimation* m_hoverAnimation;
-};
-
-// Основной класс MainWindow
-class MainWindow : public QMainWindow {
+class MainWindow : public QMainWindow
+{
     Q_OBJECT
 
 public:
@@ -53,7 +38,11 @@ public:
     ~MainWindow();
 
 private slots:
+    void onCipherChanged(int index);
     void onThemeChanged();
+    void onEncryptClicked();
+    void onDecryptClicked();
+    void onClearClicked();
     void onClearInputClicked();
     void onClearOutputClicked();
     void onClearLogClicked();
@@ -61,69 +50,62 @@ private slots:
     void onDefaultTextClicked();
     void onShowLogClicked();
     void onAdvancedSettingsClicked();
-
-    void setStatusText(const QString& text, const QString& type = "info");
-    void flashWindow(const QColor& color = QColor(255, 75, 75), int duration = 800);
-    void handleError(const QString& errorMessage);
-    void handleSuccess(const QString& successMessage);
-
+    void onFilterButtonClicked();      // Добавить
     void onInputTextChanged();
 
 private:
-    // UI элементы
-    //clear
-    QPushButton *clearInputButton;
-    QPushButton *clearOutputButton;
-    QPushButton *clearLogButton;
-    //
-    QComboBox *cipherComboBox;
-    QComboBox *themeComboBox;  // Для выбора темы
-    QTextEdit *inputTextEdit;
-    QTextEdit *outputTextEdit;
-    QTextEdit *debugConsole;
-    AnimatedButton *encryptButton;
-    AnimatedButton *decryptButton;
-    AnimatedButton *clearButton;
-    QLabel *statusLabel;
-    QGroupBox *parametersGroup;
-    QVBoxLayout *parametersLayout;
-
-    //log
-    LogWindow *logWindow;
-    QPushButton *showLogButton;
-
-    // Текущий шифр
-    std::unique_ptr<CipherInterface> m_currentCipher;
-
-    // Хранилище виджетов параметров
-    QMap<QString, QWidget*> m_paramWidgets;
-    QPushButton* m_advancedSettingsButton;  // Кнопка-шестеренка
-    QMap<QString, QVariantMap> m_cipherAdvancedSettings;  // Хранилище настроек для каждого шифра
-    int m_currentCipherId;  // Сохраняем текущий ID шифра
-
-    QTimer* m_statusResetTimer;
-    QString m_originalStatusStyle;
-
-    QString m_currentPreviewText;
-    QString m_alphabet;
-
-    void updateAdvancedSettingsButton();
-
-    void onCipherChanged(int index);
-    void onEncryptClicked();
-    void onDecryptClicked();
-    void onClearClicked();
     void setupUI();
     void setupCiphers();
     void setupThemeSelector();
     void clearParameters();
-    void createCipherWidgets(const QString& cipherId);
-    QVariantMap collectParameters() const;
     void logToConsole(const QString& message);
-
-    // Анимации
+    void setStatusText(const QString& text, const QString& type = "info");
+    void flashWindow(const QColor& color, int duration);
+    void handleError(const QString& errorMessage);
+    void handleSuccess(const QString& successMessage);
     void showSuccessAnimation();
     void showErrorAnimation();
+    void updateAdvancedSettingsButton();
+    void createCipherWidgets(const QString& cipherId);
+    QVariantMap collectParameters() const;
+    void applyFilter();                // Добавить
+
+    // UI Elements
+    QComboBox* m_cipherComboBox;
+    QComboBox* themeComboBox;
+    QTextEdit* inputTextEdit;
+    QTextEdit* outputTextEdit;
+    QTextEdit* debugConsole;
+    QPushButton* encryptButton;
+    QPushButton* decryptButton;
+    QPushButton* clearButton;
+    QPushButton* clearInputButton;
+    QPushButton* clearOutputButton;
+    QPushButton* clearLogButton;
+    QPushButton* showLogButton;
+    QLabel* statusLabel;
+    QGroupBox* parametersGroup;
+    QVBoxLayout* parametersLayout;
+    QPushButton* m_advancedSettingsButton;
+    QPushButton* m_filterButton;           // Добавить
+
+    // Filter dialog
+    CategoryFilterDialog* m_filterDialog;   // Добавить
+    QList<CipherCategory> m_activeCategories; // Добавить - храним выбранные категории
+
+    LogWindow* logWindow;
+
+    // Cipher related
+    std::unique_ptr<CipherInterface> m_currentCipher;
+    int m_currentCipherId = -1;
+    QString m_currentPreviewText;
+    QString m_alphabet;
+
+    // Parameters storage
+    QMap<QString, QWidget*> m_paramWidgets;
+    QMap<QString, QVariantMap> m_cipherAdvancedSettings;
+
+    QTimer* m_statusResetTimer;
 };
 
 #endif // MAINWINDOW_H

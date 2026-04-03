@@ -376,7 +376,8 @@ FeistelCipherRegister::FeistelCipherRegister()
     CipherFactory::instance().registerCipher(
         13,
         "Cеть фейстеля МАГМА",
-        []() -> CipherInterface* { return new FeistelCipher(); }
+        []() -> CipherInterface* { return new FeistelCipher(); },
+        CipherCategory::Permutation
     );
 
     // Здесь можно добавить регистрацию виджетов, если нужно

@@ -140,7 +140,8 @@ VigenereAutoCipherRegister::VigenereAutoCipherRegister()
     CipherFactory::instance().registerCipher(
        6,
         "Виженер с самоключом",
-        []() -> CipherInterface* { return new VigenereAutoCipher(); }
+        []() -> CipherInterface* { return new VigenereAutoCipher(); },
+        CipherCategory::Polyalphabetic
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

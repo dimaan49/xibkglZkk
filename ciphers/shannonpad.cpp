@@ -228,7 +228,8 @@ ShannonPadCipherRegister::ShannonPadCipherRegister()
     CipherFactory::instance().registerCipher(
         14,
         "Одноразовый блокнот Шеннона",
-        []() -> CipherInterface* { return new ShannonPadCipher(); }
+        []() -> CipherInterface* { return new ShannonPadCipher(); },
+        CipherCategory::Gamma
     );
 
     // Регистрируем виджеты параметров (ГОРИЗОНТАЛЬНОЕ РАСПОЛОЖЕНИЕ С ПОДПИСЯМИ СЛЕВА)

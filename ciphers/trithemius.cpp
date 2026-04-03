@@ -113,7 +113,8 @@ TrithemiusCipherRegister::TrithemiusCipherRegister()
     CipherFactory::instance().registerCipher(
         4,
         "Шифр Тритемия",
-        []() -> CipherInterface* { return new TrithemiusCipher(); }
+        []() -> CipherInterface* { return new TrithemiusCipher(); },
+        CipherCategory::Polyalphabetic
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

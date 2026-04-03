@@ -1,3 +1,4 @@
+// cipherfactory.cpp
 #include "cipherfactory.h"
 
 CipherFactory& CipherFactory::instance()
@@ -46,6 +47,33 @@ QStringList CipherFactory::displayNames() const
     std::sort(ids.begin(), ids.end());
 
     for (int id : ids) {
+        names.append(m_ciphers[id].displayName);
+    }
+
+    return names;
+}
+
+QStringList CipherFactory::displayNames(const QList<CipherCategory>& categories) const
+{
+    QStringList names;
+
+    // Если фильтр пуст, возвращаем все
+    if (categories.isEmpty()) {
+        return displayNames();
+    }
+
+    // Собираем ID шифров, категории которых есть в фильтре
+    QList<int> filteredIds;
+    for (auto it = m_ciphers.begin(); it != m_ciphers.end(); ++it) {
+        if (categories.contains(it.value().category)) {
+            filteredIds.append(it.key());
+        }
+    }
+
+    // Сортируем по ID
+    std::sort(filteredIds.begin(), filteredIds.end());
+
+    for (int id : filteredIds) {
         names.append(m_ciphers[id].displayName);
     }
 
@@ -105,7 +133,7 @@ CipherCategory CipherFactory::cipherCategory(int id) const
     if (m_ciphers.contains(id)) {
         return m_ciphers[id].category;
     }
-    return CipherCategory::Other;
+    return CipherCategory::Asymmetric;
 }
 
 QMap<CipherCategory, QList<int>> CipherFactory::getCiphersByCategory() const
@@ -122,6 +150,51 @@ QMap<CipherCategory, QList<int>> CipherFactory::getCiphersByCategory() const
     }
 
     return result;
+}
+
+QList<CipherCategory> CipherFactory::getAllCategories() const
+{
+    QList<CipherCategory> categories;
+    for (auto it = m_ciphers.begin(); it != m_ciphers.end(); ++it) {
+        if (!categories.contains(it.value().category)) {
+            categories.append(it.value().category);
+        }
+    }
+    return categories;
+}
+
+QString CipherFactory::getCategoryName(CipherCategory category)
+{
+    switch(category) {
+        case CipherCategory::KeyExchange: return "Алгоритмы обмена ключами";
+        case CipherCategory::DigitalSignature: return "Алгоритмы цифровой подписи";
+        case CipherCategory::Asymmetric: return "Асимметричные";
+        case CipherCategory::Combinatorial: return "Комбинационные";
+        case CipherCategory::Stream: return "Поточные";
+        case CipherCategory::Gamma: return "Шифры гаммирования";
+        case CipherCategory::Permutation: return "Шифры перестановки";
+        case CipherCategory::BlockSubstitution: return "Шифры блочной замены";
+        case CipherCategory::Polyalphabetic: return "Шифры многозначной замены";
+        case CipherCategory::Monoalphabetic: return "Шифры однозначной замены";
+        default: return "Прочие";
+    }
+}
+
+QString CipherFactory::getCategoryIcon(CipherCategory category)
+{
+    switch(category) {
+        case CipherCategory::KeyExchange: return "🔑";
+        case CipherCategory::DigitalSignature: return "✍️";
+        case CipherCategory::Asymmetric: return "🔐";
+        case CipherCategory::Combinatorial: return "🧩";
+        case CipherCategory::Stream: return "🌊";
+        case CipherCategory::Gamma: return "🎲";
+        case CipherCategory::Permutation: return "🔄";
+        case CipherCategory::BlockSubstitution: return "🧱";
+        case CipherCategory::Polyalphabetic: return "📚";
+        case CipherCategory::Monoalphabetic: return "🔡";
+        default: return "📦";
+    }
 }
 
 bool CipherFactory::hasCipher(int id) const

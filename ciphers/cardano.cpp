@@ -376,7 +376,8 @@ CardanoCipherRegister::CardanoCipherRegister()
     CipherFactory::instance().registerCipher(
         12,
         "Кардано",
-        []() -> CipherInterface* { return new CardanoCipher(); }
+        []() -> CipherInterface* { return new CardanoCipher(); },
+        CipherCategory::Permutation
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

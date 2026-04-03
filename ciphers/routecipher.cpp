@@ -471,7 +471,8 @@ RouteCipherRegister::RouteCipherRegister()
     CipherFactory::instance().registerCipher(
         29,
         "Маршрутная перестановка",
-        []() -> CipherInterface* { return new RouteCipher(); }
+        []() -> CipherInterface* { return new RouteCipher(); },
+        CipherCategory::Permutation
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(

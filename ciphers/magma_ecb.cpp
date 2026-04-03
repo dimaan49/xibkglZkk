@@ -437,7 +437,8 @@ MagmaECBCipherRegister::MagmaECBCipherRegister()
     CipherFactory::instance().registerCipher(
         18,
         "Магма ECB",
-        []() -> CipherInterface* { return new MagmaECBCipher(); }
+        []() -> CipherInterface* { return new MagmaECBCipher(); },
+        CipherCategory::Combinatorial
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
