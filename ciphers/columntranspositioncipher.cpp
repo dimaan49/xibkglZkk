@@ -363,7 +363,7 @@ public:
         );
 
         CipherWidgetFactory::instance().registerCipherWidgets(
-            "columntransposition",
+            11,
             // Основной виджет - только поле для ключа
             [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
              // Базовые параметры - поле для ключа

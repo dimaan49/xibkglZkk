@@ -14,13 +14,13 @@ CipherWidgetFactory& CipherWidgetFactory::instance()
     return instance;
 }
 
-void CipherWidgetFactory::registerCipherWidgets(const QString& cipherId,
+void CipherWidgetFactory::registerCipherWidgets(int cipherId,
                                                std::function<void(QWidget*, QVBoxLayout*, QMap<QString, QWidget*>&)> creator)
 {
     registerCipherWidgets(cipherId, creator, nullptr);
 }
 
-void CipherWidgetFactory::registerCipherWidgets(const QString& cipherId,
+void CipherWidgetFactory::registerCipherWidgets(int cipherId,
                                                std::function<void(QWidget*, QVBoxLayout*, QMap<QString, QWidget*>&)> mainCreator,
                                                std::function<void(QWidget*, QVBoxLayout*, QMap<QString, QWidget*>&)> advancedCreator)
 {
@@ -30,7 +30,7 @@ void CipherWidgetFactory::registerCipherWidgets(const QString& cipherId,
     m_widgets[cipherId] = set;
 }
 
-void CipherWidgetFactory::createMainWidgets(const QString& cipherId, QWidget* parent,
+void CipherWidgetFactory::createMainWidgets(int cipherId, QWidget* parent,
                                            QVBoxLayout* layout, QMap<QString, QWidget*>& widgets)
 {
     if (m_widgets.contains(cipherId) && m_widgets[cipherId].mainCreator) {
@@ -38,7 +38,7 @@ void CipherWidgetFactory::createMainWidgets(const QString& cipherId, QWidget* pa
     }
 }
 
-void CipherWidgetFactory::createAdvancedWidgets(const QString& cipherId, QWidget* parent,
+void CipherWidgetFactory::createAdvancedWidgets(int cipherId, QWidget* parent,
                                                QVBoxLayout* layout, QMap<QString, QWidget*>& widgets)
 {
     if (m_widgets.contains(cipherId) && m_widgets[cipherId].advancedCreator) {
@@ -46,10 +46,11 @@ void CipherWidgetFactory::createAdvancedWidgets(const QString& cipherId, QWidget
     }
 }
 
-bool CipherWidgetFactory::hasAdvancedWidgets(const QString& cipherId) const
+bool CipherWidgetFactory::hasAdvancedWidgets(int cipherId) const
 {
     return m_widgets.contains(cipherId) && m_widgets[cipherId].advancedCreator != nullptr;
 }
+
 
 QVariantMap CipherWidgetFactory::collectValues(const QMap<QString, QWidget*>& widgets)
 {

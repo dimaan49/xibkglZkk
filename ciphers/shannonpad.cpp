@@ -234,7 +234,7 @@ ShannonPadCipherRegister::ShannonPadCipherRegister()
 
     // Регистрируем виджеты параметров (ГОРИЗОНТАЛЬНОЕ РАСПОЛОЖЕНИЕ С ПОДПИСЯМИ СЛЕВА)
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "shannon_pad",
+        14,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             // Минимальный контейнер без лишних отступов
             QWidget* paramsContainer = new QWidget(parent);

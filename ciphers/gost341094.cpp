@@ -594,7 +594,7 @@ GOST341094CipherRegister::GOST341094CipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "gost341094",
+        26,
         [](QWidget*, QVBoxLayout*, QMap<QString, QWidget*>&) {},
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QWidget* paramsContainer = new QWidget(parent);

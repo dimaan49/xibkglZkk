@@ -442,7 +442,7 @@ MagmaECBCipherRegister::MagmaECBCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "magma_ecb",
+        18,
         [](QWidget*, QVBoxLayout*, QMap<QString, QWidget*>&) {},
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QWidget* container = new QWidget(parent);

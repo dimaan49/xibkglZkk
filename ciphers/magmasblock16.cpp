@@ -216,7 +216,7 @@ MagmaSBlock16CipherRegister::MagmaSBlock16CipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "magma16",
+        8,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             Q_UNUSED(parent);
             Q_UNUSED(layout);

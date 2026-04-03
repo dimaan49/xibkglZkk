@@ -152,7 +152,7 @@ PolybiusSquareCipherRegister::PolybiusSquareCipherRegister()
 
     // Квадрат Полибия не имеет параметров
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "polybius",
+        3,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             Q_UNUSED(parent);
             Q_UNUSED(layout);

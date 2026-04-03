@@ -24,33 +24,6 @@
 #include <QSequentialAnimationGroup>
 #include <QParallelAnimationGroup>
 
-
-#include "mainwindow.h"
-#include "cipherfactory.h"
-#include "cipherwidgetfactory.h"
-#include "formatter.h"
-#include "stylemanager.h"
-#include "advancedsettingsdialog.h"
-#include "categoryfilterdialog.h"
-
-#include <iostream>
-
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QGroupBox>
-#include <QComboBox>
-#include <QTextEdit>
-#include <QPushButton>
-#include <QLabel>
-#include <QMessageBox>
-#include <QDebug>
-#include <QSpinBox>
-#include <QLineEdit>
-#include <QPropertyAnimation>
-#include <QGraphicsDropShadowEffect>
-#include <QSequentialAnimationGroup>
-#include <QParallelAnimationGroup>
-
 // ==================== AnimatedButton Class Definition ====================
 class AnimatedButton : public QPushButton
 {
@@ -541,7 +514,7 @@ void MainWindow::onCipherChanged(int index)
 
     // Создаем виджеты для основных параметров (исправлено: передаем cipherId как число)
     CipherWidgetFactory::instance().createMainWidgets(
-        QString::number(cipherId),  // ← преобразуем int в QString для совместимости с CipherWidgetFactory
+        cipherId,  // ← преобразуем int в QString для совместимости с CipherWidgetFactory
         parametersGroup,
         parametersLayout,
         m_paramWidgets
@@ -551,7 +524,7 @@ void MainWindow::onCipherChanged(int index)
     updateAdvancedSettingsButton();
 
     m_currentPreviewText = inputTextEdit->toPlainText();
-    if (cipherId == 20) {  // ID для route (20)
+    if (cipherId == 29) {  // ID для route (20)
         m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
     } else {
         m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
@@ -565,28 +538,28 @@ void MainWindow::onCipherChanged(int index)
 
 void MainWindow::updateAdvancedSettingsButton()
 {
-
-    bool hasAdvanced = CipherWidgetFactory::instance().hasAdvancedWidgets(QString::number(m_currentCipherId));
+    // ← ИСПРАВЛЕНО: передаем m_currentCipherId (int)
+    bool hasAdvanced = CipherWidgetFactory::instance().hasAdvancedWidgets(m_currentCipherId);
     m_advancedSettingsButton->setVisible(hasAdvanced);
 }
 
+
 void MainWindow::onAdvancedSettingsClicked()
 {
-    if (m_currentCipherId == -1 || !m_currentCipher) {  // ← проверка на -1 вместо isEmpty()
+    if (m_currentCipherId == -1 || !m_currentCipher) {
         return;
     }
 
     QString displayName = m_cipherComboBox->currentText();
     qDebug() << "=== Opening Advanced Settings for" << displayName << "===";
 
-    // Исправлено: передаем ID как строку
-    AdvancedSettingsDialog dialog(QString::number(m_currentCipherId), displayName, this);
+    // ← ИСПРАВЛЕНО: передаем m_currentCipherId (int), а не строку
+    AdvancedSettingsDialog dialog(m_currentCipherId, displayName, this);
 
     if (m_cipherAdvancedSettings.contains(QString::number(m_currentCipherId))) {
         dialog.setSettings(m_cipherAdvancedSettings[QString::number(m_currentCipherId)]);
     }
 
-    // ФИЛЬТРУЕМ ТЕКСТ ПЕРЕД ПЕРЕДАЧЕЙ
     QString rawText = inputTextEdit->toPlainText();
     QString filteredText = CipherUtils::filterAlphabetOnly(rawText, m_alphabet);
     dialog.setPreviewText(filteredText);
@@ -599,8 +572,7 @@ void MainWindow::onAdvancedSettingsClicked()
         m_cipherAdvancedSettings[QString::number(m_currentCipherId)] = advancedSettings;
         logToConsole("✓ Сохранены расширенные настройки для " + displayName);
 
-        // Получаем указатель на виджет и обновляем предпросмотр
-        if (m_currentCipherId == 20) {  // ID для route (20)
+        if (m_currentCipherId == 29) {  // ID для route
             RouteCipherAdvancedWidget* widget = dialog.getRouteAdvancedWidget();
             if (widget) {
                 widget->setPreviewText(inputTextEdit->toPlainText());
@@ -609,7 +581,7 @@ void MainWindow::onAdvancedSettingsClicked()
     }
 }
 
-void MainWindow::createCipherWidgets(const QString& cipherId)
+void MainWindow::createCipherWidgets(int cipherId)
 {
 
     CipherWidgetFactory::instance().createMainWidgets(
@@ -622,15 +594,11 @@ void MainWindow::createCipherWidgets(const QString& cipherId)
 
 QVariantMap MainWindow::collectParameters() const
 {
-    // Собираем основные параметры
     QVariantMap params = CipherWidgetFactory::collectValues(m_paramWidgets);
 
-    // ДОБАВЛЯЕМ расширенные настройки, если они есть для текущего шифра
     QString currentCipherIdStr = QString::number(m_currentCipherId);
     if (m_cipherAdvancedSettings.contains(currentCipherIdStr)) {
         const QVariantMap& advancedParams = m_cipherAdvancedSettings[currentCipherIdStr];
-
-        // Добавляем все расширенные параметры (с приоритетом - перезаписывают основные)
         for (auto it = advancedParams.constBegin(); it != advancedParams.constEnd(); ++it) {
             params[it.key()] = it.value();
             qDebug() << "  Added advanced param:" << it.key() << "=" << it.value().toString();

@@ -523,7 +523,7 @@ A51CipherRegister::A51CipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "a51",
+        16,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
 
         },

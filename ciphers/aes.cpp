@@ -546,7 +546,7 @@ AESCipherRegister::AESCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "aes",
+        19,
         [](QWidget*, QVBoxLayout*, QMap<QString, QWidget*>&) {},
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QWidget* container = new QWidget(parent);

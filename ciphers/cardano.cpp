@@ -381,7 +381,7 @@ CardanoCipherRegister::CardanoCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "cardano",
+        12,
         // Основные виджеты
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
         },

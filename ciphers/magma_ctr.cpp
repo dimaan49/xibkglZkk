@@ -387,7 +387,7 @@ MagmaCTRCipherRegister::MagmaCTRCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "magma_ctr",
+        15,
         [](QWidget*, QVBoxLayout*, QMap<QString, QWidget*>&) {},
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QWidget* container = new QWidget(parent);

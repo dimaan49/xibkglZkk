@@ -500,7 +500,7 @@ KuznechikCipherRegister::KuznechikCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "kuznechik",
+        20,
         [](QWidget*, QVBoxLayout*, QMap<QString, QWidget*>&) {},
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QWidget* container = new QWidget(parent);

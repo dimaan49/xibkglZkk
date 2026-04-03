@@ -482,7 +482,7 @@ ECCCipherRegister::ECCCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "ecc",
+        23,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             // Пустые основные виджеты
             Q_UNUSED(parent);

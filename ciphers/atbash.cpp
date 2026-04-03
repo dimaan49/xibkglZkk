@@ -61,7 +61,7 @@ AtbashCipherRegister::AtbashCipherRegister()
 
     // Атбаш не имеет параметров, но регистрируем пустую функцию
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "atbash",
+        1,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             Q_UNUSED(parent);
             Q_UNUSED(layout);

@@ -118,7 +118,7 @@ TrithemiusCipherRegister::TrithemiusCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "trithemius",
+        4,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QHBoxLayout* startShiftLayout = new QHBoxLayout();
             QLabel* startShiftLabel = new QLabel("Начальный сдвиг:");

@@ -13,7 +13,7 @@
 #include <QApplication>
 #include <QDebug>
 
-AdvancedSettingsDialog::AdvancedSettingsDialog(const QString& cipherId, const QString& cipherName,
+AdvancedSettingsDialog::AdvancedSettingsDialog(int cipherId, const QString& cipherName,
                                              QWidget* parent)
     : QDialog(parent, Qt::Window | Qt::WindowCloseButtonHint | Qt::WindowTitleHint)
     , m_cipherId(cipherId)
@@ -107,7 +107,7 @@ void AdvancedSettingsDialog::createAdvancedWidgets()
     );
 
     // ПЕРЕДАЕМ ОТФИЛЬТРОВАННЫЙ ТЕКСТ В ВИДЖЕТ
-    if (m_cipherId == "route" && m_advancedWidgets.contains("routeAdvancedWidget")) {
+    if (m_cipherId == 29 && m_advancedWidgets.contains("routeAdvancedWidget")) {
         RouteCipherAdvancedWidget* widget =
             qobject_cast<RouteCipherAdvancedWidget*>(m_advancedWidgets["routeAdvancedWidget"]);
         if (widget && !m_previewText.isEmpty()) {

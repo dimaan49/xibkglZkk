@@ -84,7 +84,7 @@ CaesarCipherRegister::CaesarCipherRegister()
 
     // Регистрируем виджеты параметров
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "caesar",
+        2,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QHBoxLayout* shiftLayout = new QHBoxLayout();
             QLabel* shiftLabel = new QLabel("Сдвиг:");

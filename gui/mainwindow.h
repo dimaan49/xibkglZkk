@@ -66,7 +66,7 @@ private:
     void showSuccessAnimation();
     void showErrorAnimation();
     void updateAdvancedSettingsButton();
-    void createCipherWidgets(const QString& cipherId);
+    void createCipherWidgets(int cipherId);
     QVariantMap collectParameters() const;
     void applyFilter();                // Добавить
 

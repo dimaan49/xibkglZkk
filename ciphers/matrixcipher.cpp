@@ -692,7 +692,7 @@ MatrixCipherRegister::MatrixCipherRegister()
 
     // Регистрируем основные виджеты (минимум на главном экране)
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "matrix",
+        9,
         // Основные виджеты (на главном экране)
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QLabel* infoLabel = new QLabel("Ключ: квадратная обратимая матрица", parent);

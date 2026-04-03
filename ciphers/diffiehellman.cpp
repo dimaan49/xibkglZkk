@@ -197,7 +197,7 @@ DiffieHellmanCipherRegister::DiffieHellmanCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "diffiehellman",
+        28,
         [](QWidget*, QVBoxLayout*, QMap<QString, QWidget*>&) {},
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QWidget* paramsContainer = new QWidget(parent);

@@ -583,7 +583,7 @@ ElGamalSignCipherRegister::ElGamalSignCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "elgamal_sign",
+        25,
         [](QWidget*, QVBoxLayout*, QMap<QString, QWidget*>&) {},
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QWidget* paramsContainer = new QWidget(parent);

@@ -666,7 +666,7 @@ PlayfairCipherRegister::PlayfairCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "playfair",
+        10,
         // Основные виджеты
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QLabel* infoLabel = new QLabel(QStringLiteral("Ключ: слово-лозунг для заполнения таблицы 5×6 или 4×8"), parent);

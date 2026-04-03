@@ -382,7 +382,7 @@ FeistelCipherRegister::FeistelCipherRegister()
 
     // Здесь можно добавить регистрацию виджетов, если нужно
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "feistel",
+        13,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             Q_UNUSED(parent);
             Q_UNUSED(layout);

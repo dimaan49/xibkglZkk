@@ -480,7 +480,7 @@ A52CipherRegister::A52CipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "a52",
+        17,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             // Пустые основные виджеты - ничего не добавляем
             Q_UNUSED(parent);

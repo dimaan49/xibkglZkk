@@ -476,7 +476,7 @@ RouteCipherRegister::RouteCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "route",
+        29,
         // Основной виджет
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             // может быть пусто

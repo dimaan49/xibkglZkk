@@ -6,35 +6,29 @@
 #include <QVBoxLayout>
 #include <QMap>
 #include <functional>
-#include <QListWidget>
-#include <QListwidgetItem>
-#include <QTableWidget>
-#include <QTableWidgetItem>
-#include <QPushButton>
-
 
 class CipherWidgetFactory
 {
 public:
     static CipherWidgetFactory& instance();
 
-    // Регистрация только основных виджетов
-    void registerCipherWidgets(const QString& cipherId,
+    // Регистрация только основных виджетов - ID теперь int
+    void registerCipherWidgets(int cipherId,
                               std::function<void(QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets)> creator);
 
-    // Регистрация основных + расширенных виджетов
-    void registerCipherWidgets(const QString& cipherId,
+    // Регистрация основных + расширенных виджетов - ID теперь int
+    void registerCipherWidgets(int cipherId,
                               std::function<void(QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets)> mainCreator,
                               std::function<void(QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets)> advancedCreator);
 
     // Создание основных виджетов
-    void createMainWidgets(const QString& cipherId, QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets);
+    void createMainWidgets(int cipherId, QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets);
 
     // Создание расширенных виджетов
-    void createAdvancedWidgets(const QString& cipherId, QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets);
+    void createAdvancedWidgets(int cipherId, QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets);
 
     // Проверка наличия расширенных виджетов
-    bool hasAdvancedWidgets(const QString& cipherId) const;
+    bool hasAdvancedWidgets(int cipherId) const;
 
     // Сбор значений из виджетов
     static QVariantMap collectValues(const QMap<QString, QWidget*>& widgets);
@@ -50,7 +44,7 @@ private:
         std::function<void(QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets)> advancedCreator;
     };
 
-    QMap<QString, CipherWidgetSet> m_widgets;
+    QMap<int, CipherWidgetSet> m_widgets;  // ← ключ теперь int
 };
 
 #endif // CIPHERWIDGETFACTORY_H

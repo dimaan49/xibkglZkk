@@ -17,7 +17,7 @@ class AdvancedSettingsDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit AdvancedSettingsDialog(const QString& cipherId, const QString& cipherName,
+    explicit AdvancedSettingsDialog(int cipherId, const QString& cipherName,
                                    QWidget* parent = nullptr);
     ~AdvancedSettingsDialog();
 
@@ -37,7 +37,7 @@ private:
     void setupUI();
     void createAdvancedWidgets();
 
-    QString m_cipherId;
+    int m_cipherId;
     QString m_cipherName;
     QVariantMap m_initialSettings;
 

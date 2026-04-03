@@ -808,7 +808,7 @@ ElGamalCipherRegister::ElGamalCipherRegister()
 
     // Основные виджеты - только информационная панель
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "elgamal",
+        22,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
         },
         // Расширенные виджеты

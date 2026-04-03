@@ -129,7 +129,7 @@ BelazoCipherRegister::BelazoCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "belazo",
+        5,
         // Один набор виджетов вместо двух
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             // Базовые параметры

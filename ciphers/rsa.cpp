@@ -580,7 +580,7 @@ RSACipherRegister::RSACipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "rsa",
+        21,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
         },
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {

@@ -102,7 +102,7 @@ VigenereCiphertextCipherRegister::VigenereCiphertextCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "vigenere_ciphertext",
+       7,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QHBoxLayout* keyLayout = new QHBoxLayout();
             QLabel* keyLabel = new QLabel("Начальная буква ключа:");

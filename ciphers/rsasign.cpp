@@ -618,7 +618,7 @@ RSASignCipherRegister::RSASignCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        "rsa_sign",
+        24,
         [](QWidget*, QVBoxLayout*, QMap<QString, QWidget*>&) {},
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QWidget* paramsContainer = new QWidget(parent);
