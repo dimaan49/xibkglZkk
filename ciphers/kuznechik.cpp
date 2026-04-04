@@ -335,13 +335,14 @@ CipherResult KuznechikCipher::encrypt(const QString& text, const QVariantMap& pa
         return result;
     }
 
+    // Проверка длины данных (должна быть кратна 32 HEX символам = 16 байт)
     if (hexData.length() % 32 != 0) {
         result.result = QString("ОШИБКА: Длина данных должна быть кратна 32 HEX символам. Получено: %1")
                         .arg(hexData.length());
         return result;
     }
 
-    steps.append(CipherStep(2, QChar(), QString("Входные данные: %1").arg(hexData), "Данные"));
+    steps.append(CipherStep(2, QChar(), QString("Входные данные: %1 (длина: %2 байт)").arg(hexData).arg(hexData.length() / 2), "Данные"));
 
     // Преобразуем ключ
     std::array<uint8_t, 32> masterKey{};
@@ -359,42 +360,65 @@ CipherResult KuznechikCipher::encrypt(const QString& text, const QVariantMap& pa
             QString("Раундовый ключ %1").arg(r + 1)));
     }
 
-    // Шифрование блока
-    std::array<uint8_t, 16> state{};
-    hexToBytes(hexData, state.data(), 16);
-
+    // Количество блоков (16 байт = 32 HEX символа)
+    int blockCount = hexData.length() / 32;
     steps.append(CipherStep(14, QChar(),
-        QString("Начальное состояние: %1").arg(bytesToHex(state.data(), 16)),
-        "Начало"));
+        QString("Количество блоков: %1").arg(blockCount),
+        "Разбиение на блоки"));
 
-    // Раунды 1-9: LSX[Ki]
-    for (int r = 0; r < 9; ++r) {
-        // X
-        X(state, roundKeys[r]);
-        steps.append(CipherStep(15 + r * 3, QChar(),
-            QString("Раунд %1: X[K%2] = %3").arg(r + 1).arg(r + 1).arg(bytesToHex(state.data(), 16)),
-            QString("Раунд %1 - X").arg(r + 1)));
-        // S
-        S(state);
-        steps.append(CipherStep(16 + r * 3, QChar(),
-            QString("Раунд %1: S = %2").arg(r + 1).arg(bytesToHex(state.data(), 16)),
-            QString("Раунд %1 - S").arg(r + 1)));
-        // L
-        L(state);
-        steps.append(CipherStep(17 + r * 3, QChar(),
-            QString("Раунд %1: L = %2").arg(r + 1).arg(bytesToHex(state.data(), 16)),
-            QString("Раунд %1 - L").arg(r + 1)));
+    QString encryptedHex;
+    int stepCounter = 15;
+
+    // Обрабатываем каждый блок
+    for (int blockIdx = 0; blockIdx < blockCount; ++blockIdx) {
+        QString blockHex = hexData.mid(blockIdx * 32, 32);
+
+        steps.append(CipherStep(stepCounter++, QChar(),
+            QString("━━━ Блок %1 из %2: %3 ━━━").arg(blockIdx + 1).arg(blockCount).arg(blockHex),
+            QString("Начало блока %1").arg(blockIdx + 1)));
+
+        // Шифрование блока
+        std::array<uint8_t, 16> state{};
+        hexToBytes(blockHex, state.data(), 16);
+
+        steps.append(CipherStep(stepCounter++, QChar(),
+            QString("Начальное состояние блока %1: %2").arg(blockIdx + 1).arg(bytesToHex(state.data(), 16)),
+            QString("Состояние блока %1").arg(blockIdx + 1)));
+
+        // Раунды 1-9: LSX[Ki]
+        for (int r = 0; r < 9; ++r) {
+            // X
+            X(state, roundKeys[r]);
+            steps.append(CipherStep(stepCounter++, QChar(),
+                QString("  Раунд %1: X[K%2] = %3").arg(r + 1).arg(r + 1).arg(bytesToHex(state.data(), 16)),
+                QString("Блок %1 раунд %2 - X").arg(blockIdx + 1).arg(r + 1)));
+            // S
+            S(state);
+            steps.append(CipherStep(stepCounter++, QChar(),
+                QString("  Раунд %1: S = %2").arg(r + 1).arg(bytesToHex(state.data(), 16)),
+                QString("Блок %1 раунд %2 - S").arg(blockIdx + 1).arg(r + 1)));
+            // L
+            L(state);
+            steps.append(CipherStep(stepCounter++, QChar(),
+                QString("  Раунд %1: L = %2").arg(r + 1).arg(bytesToHex(state.data(), 16)),
+                QString("Блок %1 раунд %2 - L").arg(blockIdx + 1).arg(r + 1)));
+        }
+
+        // Финальный раунд: X[K10]
+        X(state, roundKeys[9]);
+        steps.append(CipherStep(stepCounter++, QChar(),
+            QString("Финальный X[K10] = %1").arg(bytesToHex(state.data(), 16)),
+            QString("Блок %1 финальный раунд").arg(blockIdx + 1)));
+
+        encryptedHex += bytesToHex(state.data(), 16);
+
+        steps.append(CipherStep(stepCounter++, QChar(),
+            QString("Зашифрованный блок %1: %2").arg(blockIdx + 1).arg(bytesToHex(state.data(), 16)),
+            QString("Результат блока %1").arg(blockIdx + 1)));
     }
 
-    // Финальный раунд: X[K10]
-    X(state, roundKeys[9]);
-    steps.append(CipherStep(42, QChar(),
-        QString("Финальный X[K10] = %1").arg(bytesToHex(state.data(), 16)),
-        "Финальный раунд"));
-
-    QString encryptedHex = bytesToHex(state.data(), 16);
-    steps.append(CipherStep(43, QChar(),
-        QString("Результат: %1").arg(encryptedHex),
+    steps.append(CipherStep(stepCounter++, QChar(),
+        QString("Полный шифртекст: %1").arg(encryptedHex),
         "Завершение"));
 
     result.result = encryptedHex;
@@ -437,7 +461,7 @@ CipherResult KuznechikCipher::decrypt(const QString& text, const QVariantMap& pa
         return result;
     }
 
-    steps.append(CipherStep(2, QChar(), QString("Входные данные: %1").arg(hexData), "Данные"));
+    steps.append(CipherStep(2, QChar(), QString("Входные данные: %1 (длина: %2 байт)").arg(hexData).arg(hexData.length() / 2), "Данные"));
 
     std::array<uint8_t, 32> masterKey{};
     hexToBytes(cleanedKey, masterKey.data(), 32);
@@ -446,41 +470,63 @@ CipherResult KuznechikCipher::decrypt(const QString& text, const QVariantMap& pa
 
     steps.append(CipherStep(3, QChar(), "Развернуто 10 итерационных ключей", "Развертывание ключа"));
 
-    std::array<uint8_t, 16> state{};
-    hexToBytes(hexData, state.data(), 16);
-
+    int blockCount = hexData.length() / 32;
     steps.append(CipherStep(4, QChar(),
-        QString("Начальное состояние: %1").arg(bytesToHex(state.data(), 16)),
-        "Начало"));
+        QString("Количество блоков: %1").arg(blockCount),
+        "Разбиение на блоки"));
 
-    // X[K10]
-    X(state, roundKeys[9]);
-    steps.append(CipherStep(5, QChar(),
-        QString("После X[K10]: %1").arg(bytesToHex(state.data(), 16)),
-        "Начальный X"));
+    QString decryptedHex;
+    int stepCounter = 5;
 
-    // Раунды 8..1: invLSX
-    for (int r = 8; r >= 0; --r) {
-        // invL
-        invL(state);
-        steps.append(CipherStep(6 + (8 - r) * 3, QChar(),
-            QString("Раунд %1: L⁻¹ = %2").arg(r + 1).arg(bytesToHex(state.data(), 16)),
-            QString("Раунд %1 - L⁻¹").arg(r + 1)));
-        // invS
-        invS(state);
-        steps.append(CipherStep(7 + (8 - r) * 3, QChar(),
-            QString("Раунд %1: S⁻¹ = %2").arg(r + 1).arg(bytesToHex(state.data(), 16)),
-            QString("Раунд %1 - S⁻¹").arg(r + 1)));
-        // X[Kr]
-        X(state, roundKeys[r]);
-        steps.append(CipherStep(8 + (8 - r) * 3, QChar(),
-            QString("Раунд %1: X[K%2] = %3").arg(r + 1).arg(r + 1).arg(bytesToHex(state.data(), 16)),
-            QString("Раунд %1 - X").arg(r + 1)));
+    // Обрабатываем каждый блок
+    for (int blockIdx = 0; blockIdx < blockCount; ++blockIdx) {
+        QString blockHex = hexData.mid(blockIdx * 32, 32);
+
+        steps.append(CipherStep(stepCounter++, QChar(),
+            QString("━━━ Блок %1 из %2: %3 ━━━").arg(blockIdx + 1).arg(blockCount).arg(blockHex),
+            QString("Начало блока %1").arg(blockIdx + 1)));
+
+        std::array<uint8_t, 16> state{};
+        hexToBytes(blockHex, state.data(), 16);
+
+        steps.append(CipherStep(stepCounter++, QChar(),
+            QString("Начальное состояние блока %1: %2").arg(blockIdx + 1).arg(bytesToHex(state.data(), 16)),
+            QString("Состояние блока %1").arg(blockIdx + 1)));
+
+        // X[K10]
+        X(state, roundKeys[9]);
+        steps.append(CipherStep(stepCounter++, QChar(),
+            QString("После X[K10]: %1").arg(bytesToHex(state.data(), 16)),
+            QString("Блок %1 начальный X").arg(blockIdx + 1)));
+
+        // Раунды 8..1: invLSX
+        for (int r = 8; r >= 0; --r) {
+            // invL
+            invL(state);
+            steps.append(CipherStep(stepCounter++, QChar(),
+                QString("  Раунд %1: L⁻¹ = %2").arg(r + 1).arg(bytesToHex(state.data(), 16)),
+                QString("Блок %1 раунд %2 - L⁻¹").arg(blockIdx + 1).arg(r + 1)));
+            // invS
+            invS(state);
+            steps.append(CipherStep(stepCounter++, QChar(),
+                QString("  Раунд %1: S⁻¹ = %2").arg(r + 1).arg(bytesToHex(state.data(), 16)),
+                QString("Блок %1 раунд %2 - S⁻¹").arg(blockIdx + 1).arg(r + 1)));
+            // X[Kr]
+            X(state, roundKeys[r]);
+            steps.append(CipherStep(stepCounter++, QChar(),
+                QString("  Раунд %1: X[K%2] = %3").arg(r + 1).arg(r + 1).arg(bytesToHex(state.data(), 16)),
+                QString("Блок %1 раунд %2 - X").arg(blockIdx + 1).arg(r + 1)));
+        }
+
+        decryptedHex += bytesToHex(state.data(), 16);
+
+        steps.append(CipherStep(stepCounter++, QChar(),
+            QString("Расшифрованный блок %1: %2").arg(blockIdx + 1).arg(bytesToHex(state.data(), 16)),
+            QString("Результат блока %1").arg(blockIdx + 1)));
     }
 
-    QString decryptedHex = bytesToHex(state.data(), 16);
-    steps.append(CipherStep(35, QChar(),
-        QString("Результат: %1").arg(decryptedHex),
+    steps.append(CipherStep(stepCounter++, QChar(),
+        QString("Полный расшифрованный текст: %1").arg(decryptedHex),
         "Завершение"));
 
     result.result = decryptedHex;

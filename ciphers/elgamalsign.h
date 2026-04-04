@@ -31,7 +31,7 @@ public:
     static uint64_t generateRandomKStatic(uint64_t p);
     static uint64_t modPowStatic(uint64_t base, uint64_t exp, uint64_t mod);
     static uint64_t gcdStatic(uint64_t a, uint64_t b);
-    static bool isPrimeStatic(uint64_t n, int k = 10);  // <-- ПЕРЕМЕЩЕНО В PUBLIC
+    static bool isPrimeStatic(uint64_t n, int k = 10);
 
     // Методы для работы с числами
     uint64_t modPow(uint64_t base, uint64_t exp, uint64_t mod) const;

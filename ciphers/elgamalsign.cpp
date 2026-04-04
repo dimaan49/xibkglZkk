@@ -425,10 +425,7 @@ CipherResult ElGamalSignCipher::encrypt(const QString& text, const QVariantMap& 
         "Вычисление a"));
 
     // Решаем уравнение m = X*a + K*b (mod P-1)
-    // b = (m - X*a) * K^(-1) mod (P-1)
     uint64_t phi = p - 1;
-
-    // Вычисляем K^(-1) mod phi
     uint64_t k_inv = modInverse(k, phi);
     steps.append(CipherStep(stepCounter++, QChar(),
         QString("K⁻¹ mod (P-1) = %1⁻¹ mod %2 = %3").arg(k).arg(phi).arg(k_inv),
@@ -443,7 +440,15 @@ CipherResult ElGamalSignCipher::encrypt(const QString& text, const QVariantMap& 
             .arg(hash).arg(x).arg(a).arg(k_inv).arg(phi).arg(b),
         "Вычисление b"));
 
-    // Формируем результат: исходный текст | a b
+    // ВАЖНО: Выводим ключи для проверки в лог
+    steps.append(CipherStep(stepCounter++, QChar(),
+        QString("═══════════════════════════════════════════════════════════\n"
+                "  P = %1\n  G = %2\n  Y = %3 (ОТКРЫТЫЙ КЛЮЧ)\n  p_hash = %4\n"
+                "═══════════════════════════════════════════════════════════")
+            .arg(p).arg(g).arg(y).arg(p_hash),
+        "КЛЮЧИ ДЛЯ ПРОВЕРКИ ПОДПИСИ"));
+
+    // Формируем результат: только сообщение | a b
     QString signature = QString("%1 | %2 %3").arg(filteredText).arg(a).arg(b);
 
     steps.append(CipherStep(stepCounter++, QChar(),
