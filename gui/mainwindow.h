@@ -4,6 +4,7 @@
 #include <categoryfilterdialog.h>
 #include "logwindow.h"
 #include "analysiswindow.h"
+#include "librarywindow.h"
 
 
 #include <QMainWindow>
@@ -54,6 +55,7 @@ private slots:
     void onFilterButtonClicked();      // Добавить
     void onInputTextChanged();
     void onAnalysisWindowOpen();
+    void onLibraryWindowOpen();
 
 private:
     void setupUI();
@@ -91,7 +93,9 @@ private:
     QPushButton* m_advancedSettingsButton;
     QPushButton* m_filterButton;           // Добавить
     AnalysisWindow* m_analysisWindow;
-    QPushButton* m_analysisButton;
+    LibraryWindow* m_libraryWindow;
+    QMenuBar* m_menuBar;
+    QMenu* m_actionsMenu;
 
     // Filter dialog
     CategoryFilterDialog* m_filterDialog;   // Добавить

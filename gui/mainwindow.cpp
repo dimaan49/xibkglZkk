@@ -18,6 +18,9 @@
 #include <QMessageBox>
 #include <QDebug>
 #include <QSpinBox>
+#include <QMenuBar>
+#include <QMenu>
+#include <QAction>
 #include <QLineEdit>
 #include <QPropertyAnimation>
 #include <QGraphicsDropShadowEffect>
@@ -96,6 +99,7 @@ MainWindow::MainWindow(QWidget *parent)
     , m_filterDialog(nullptr)
     , m_filterButton(nullptr)
     , m_analysisWindow(nullptr)
+    , m_libraryWindow(nullptr)
 {
     setupUI();
     setupCiphers();
@@ -136,6 +140,21 @@ void MainWindow::setupUI()
     QLabel *logoLabel = new QLabel("🔒 MospolyCryp");
     logoLabel->setStyleSheet("font-size: 18px; font-weight: bold; color: #00c896;");
     topPanelLayout->addWidget(logoLabel);
+    topPanelLayout->addStretch();
+
+    // Меню действий
+    m_menuBar = new QMenuBar(this);
+    m_menuBar->setStyleSheet("QMenuBar { background-color: transparent; }");
+
+    m_actionsMenu = m_menuBar->addMenu("Действия");
+
+    QAction* analysisAction = m_actionsMenu->addAction("Анализ");
+    QAction* libraryAction = m_actionsMenu->addAction("Библиотека");
+
+    connect(analysisAction, &QAction::triggered, this, &MainWindow::onAnalysisWindowOpen);
+    connect(libraryAction, &QAction::triggered, this, &MainWindow::onLibraryWindowOpen);
+
+    topPanelLayout->addWidget(m_menuBar);
     topPanelLayout->addStretch();
 
     // Выбор темы
@@ -271,15 +290,6 @@ void MainWindow::setupUI()
     buttonLayout->setSpacing(8);
     buttonLayout->setContentsMargins(10, 0, 10, 0);
     buttonLayout->setAlignment(Qt::AlignCenter);
-
-    m_analysisButton = new QPushButton("📊 Анализ", this);
-    m_analysisButton->setObjectName("analysisButton");
-    m_analysisButton->setMinimumSize(120, 40);
-    m_analysisButton->setToolTip("Открыть окно частотного анализа");
-    connect(m_analysisButton, &QPushButton::clicked, this, &MainWindow::onAnalysisWindowOpen);
-
-    // Добавить в buttonLayout (где encryptButton, decryptButton и т.д.)
-    buttonLayout->addWidget(m_analysisButton);
 
     // Шифровать
     encryptButton = new AnimatedButton("🔐 Шифровать", this);
@@ -1056,6 +1066,11 @@ void MainWindow::applyFilter()
     }
     m_cipherComboBox->blockSignals(false);
 
+    // ВАЖНО: Принудительно вызываем onCipherChanged для первого элемента
+    if (m_cipherComboBox->count() > 0) {
+        onCipherChanged(m_cipherComboBox->currentIndex());
+    }
+
     // Логируем результат
     logToConsole(QString("Фильтр обновлен: показано %1 из %2 шифров")
                  .arg(cipherNames.size())
@@ -1076,4 +1091,19 @@ void MainWindow::onAnalysisWindowOpen()
     m_analysisWindow->show();
     m_analysisWindow->raise();
     m_analysisWindow->activateWindow();
+}
+
+void MainWindow::onLibraryWindowOpen()
+{
+    if (!m_libraryWindow) {
+        m_libraryWindow = new LibraryWindow(this);
+        m_libraryWindow->setAttribute(Qt::WA_DeleteOnClose);
+        connect(m_libraryWindow, &QDialog::destroyed, [this]() {
+            m_libraryWindow = nullptr;
+        });
+    }
+
+    m_libraryWindow->show();
+    m_libraryWindow->raise();
+    m_libraryWindow->activateWindow();
 }

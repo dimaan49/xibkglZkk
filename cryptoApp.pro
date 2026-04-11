@@ -56,6 +56,7 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     gui/analysiswindow.cpp \
     gui/categoryfilterdialog.cpp \
     gui/formatter.cpp \
+    gui/librarywindow.cpp \
     gui/logger.cpp \
     gui/logwindow.cpp \
     gui/mainwindow.cpp \
@@ -102,6 +103,7 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     gui/analysiswindow.h \
     gui/categoryfilterdialog.h \
     gui/formatter.h \
+    gui/librarywindow.h \
     gui/logger.h \
     gui/logwindow.h \
     gui/mainwindow.h \
