@@ -32,20 +32,42 @@ BigInt::BigInt(uint64_t value) {
     }
 }
 
-BigInt::BigInt(const std::string& hex) {
-    std::string s = hex;
+BigInt::BigInt(const std::string& str) {
+    std::string s = str;
+
+    // Убираем префикс 0x если есть (на всякий случай)
     if (s.substr(0, 2) == "0x" || s.substr(0, 2) == "0X") {
         s = s.substr(2);
     }
 
     limbs.clear();
-    for (int i = s.length(); i > 0; i -= 16) {
-        int start = std::max(0, i - 16);
-        int len = i - start;
-        std::string part = s.substr(start, len);
-        uint64_t val = std::stoull(part, nullptr, 16);
-        limbs.push_back(val);
+
+    // Всегда парсим как десятичное число
+    try {
+        // Для больших чисел используем посегментный парсинг десятичных цифр
+        if (s.length() > 19) {  // Больше чем влезает в uint64_t
+            BigInt result;
+            BigInt multiplier(10000000000000000000ULL); // 10^19
+
+            for (size_t i = 0; i < s.length(); i += 19) {
+                int len = std::min(19, (int)(s.length() - i));
+                std::string part = s.substr(i, len);
+                uint64_t val = std::stoull(part, nullptr, 10);
+
+                result = result * multiplier + BigInt(val);
+            }
+            *this = result;
+        } else {
+            uint64_t val = std::stoull(s, nullptr, 10);
+            if (val != 0) {
+                limbs.push_back(val);
+            }
+        }
+    } catch (const std::exception& e) {
+        // Если не удалось распарсить, оставляем 0
+        limbs.clear();
     }
+
     normalize();
 }
 
@@ -230,8 +252,30 @@ BigInt BigInt::modPow(const BigInt& exp, const BigInt& mod) const {
 }
 
 BigInt BigInt::modInverse(const BigInt& mod) const {
-    // Расширенный алгоритм Евклида
-    return BigInt(1);
+    if (mod.isZero() || this->isZero()) return BigInt(0);
+
+    uint64_t a_val = this->toUInt64();
+    uint64_t m_val = mod.toUInt64();
+
+    int64_t t = 0, newt = 1;
+    int64_t r = m_val, newr = a_val % m_val;
+
+    while (newr != 0) {
+        int64_t q = r / newr;
+        int64_t tmp = newt;
+        newt = t - q * newt;
+        t = tmp;
+
+        tmp = newr;
+        newr = r - q * newr;
+        r = tmp;
+    }
+
+    if (r > 1) return BigInt(0); // Нет обратного
+
+    if (t < 0) t += m_val;
+
+    return BigInt(static_cast<uint64_t>(t));
 }
 
 std::string BigInt::toHex() const {
@@ -255,6 +299,19 @@ QString BigInt::toQString() const {
 uint64_t BigInt::toUInt64() const {
     if (limbs.empty()) return 0;
     return limbs[0];
+}
+
+QString BigInt::toDecQString() const {
+    if (limbs.empty()) return "0";
+
+    // Для чисел, помещающихся в uint64_t
+    if (limbs.size() == 1) {
+        return QString::number(limbs[0]);
+    }
+
+    // Для больших чисел — временно возвращаем HEX
+    // В будущем можно реализовать полноценное десятичное преобразование
+    return QString::fromStdString(toHex()) + " (hex)";
 }
 
 int BigInt::bitLength() const {
@@ -312,32 +369,132 @@ QString ECPoint::toString() const {
 
 // ==================== Арифметика эллиптической кривой ====================
 
+// Вспомогательная функция: модульное обратное (расширенный алгоритм Евклида)
+static BigInt modInverseHelper(const BigInt& a, const BigInt& m) {
+    int64_t a_val = static_cast<int64_t>(a.toUInt64());
+    int64_t m_val = static_cast<int64_t>(m.toUInt64());
+
+    if (a_val == 0) return BigInt(0);
+
+    // Нормализуем a по модулю m
+    a_val = ((a_val % m_val) + m_val) % m_val;
+
+    int64_t t = 0, newt = 1;
+    int64_t r = m_val, newr = a_val;
+
+    while (newr != 0) {
+        int64_t q = r / newr;
+        int64_t tmp = newt;
+        newt = t - q * newt;
+        t = tmp;
+
+        tmp = newr;
+        newr = r - q * newr;
+        r = tmp;
+    }
+
+    if (r > 1) return BigInt(0); // Нет обратного
+
+    if (t < 0) t += m_val;
+
+    return BigInt(static_cast<uint64_t>(t));
+}
+
+// Удвоение точки: P + P
+ECPoint GOST34102012Cipher::pointDouble(const ECPoint& P, const BigInt& p, const BigInt& a) {
+    if (P.isInfinity) return P;
+
+    uint64_t p_val = p.toUInt64();
+    uint64_t x1 = P.x.toUInt64() % p_val;
+    uint64_t y1 = P.y.toUInt64() % p_val;
+    uint64_t a_val = a.toUInt64() % p_val;
+
+    // Если y = 0, то касательная вертикальна → точка в бесконечности
+    if (y1 == 0) return ECPoint();
+
+    // λ = (3x₁² + a) / (2y₁) mod p
+    uint64_t num = (3 * x1 * x1 + a_val) % p_val;
+    uint64_t den = (2 * y1) % p_val;
+    uint64_t den_inv = modInverseHelper(BigInt(den), p).toUInt64();
+
+    if (den_inv == 0) return ECPoint();
+
+    uint64_t lambda = (num * den_inv) % p_val;
+
+    // x₃ = λ² - 2x₁ mod p
+    uint64_t lambda2 = (lambda * lambda) % p_val;
+    uint64_t x3 = (lambda2 + 2 * p_val - 2 * x1) % p_val;
+
+    // y₃ = λ(x₁ - x₃) - y₁ mod p
+    uint64_t x_diff = (x1 + p_val - x3) % p_val;
+    uint64_t lambda_x_diff = (lambda * x_diff) % p_val;
+    uint64_t y3 = (lambda_x_diff + p_val - y1) % p_val;
+
+    return ECPoint(BigInt(x3), BigInt(y3));
+}
+
+// Сложение точек: P + Q (P ≠ Q)
 ECPoint GOST34102012Cipher::pointAdd(const ECPoint& P, const ECPoint& Q,
-                                       const BigInt& p, const BigInt& a) {
+                                      const BigInt& p, const BigInt& a) {
     if (P.isInfinity) return Q;
     if (Q.isInfinity) return P;
 
-    // Для контрольного примера используем известные значения
-    // В полной реализации здесь должно быть вычисление λ = (y2-y1)/(x2-x1) mod p
-    return ECPoint();
+    uint64_t p_val = p.toUInt64();
+    uint64_t x1 = P.x.toUInt64() % p_val;
+    uint64_t y1 = P.y.toUInt64() % p_val;
+    uint64_t x2 = Q.x.toUInt64() % p_val;
+    uint64_t y2 = Q.y.toUInt64() % p_val;
+    uint64_t a_val = a.toUInt64() % p_val;
+
+    // Если точки равны, используем удвоение
+    if (x1 == x2 && y1 == y2) {
+        return pointDouble(P, p, a);
+    }
+
+    // Если x₁ == x₂, то P + Q = O (точка в бесконечности)
+    if (x1 == x2) {
+        return ECPoint();
+    }
+
+    // λ = (y₂ - y₁) / (x₂ - x₁) mod p
+    uint64_t num = (y2 + p_val - y1) % p_val;
+    uint64_t den = (x2 + p_val - x1) % p_val;
+    uint64_t den_inv = modInverseHelper(BigInt(den), p).toUInt64();
+
+    if (den_inv == 0) return ECPoint();
+
+    uint64_t lambda = (num * den_inv) % p_val;
+
+    // x₃ = λ² - x₁ - x₂ mod p
+    uint64_t lambda2 = (lambda * lambda) % p_val;
+    uint64_t x3 = (lambda2 + 2 * p_val - x1 - x2) % p_val;
+
+    // y₃ = λ(x₁ - x₃) - y₁ mod p
+    uint64_t x_diff = (x1 + p_val - x3) % p_val;
+    uint64_t lambda_x_diff = (lambda * x_diff) % p_val;
+    uint64_t y3 = (lambda_x_diff + p_val - y1) % p_val;
+
+    return ECPoint(BigInt(x3), BigInt(y3));
 }
 
-ECPoint GOST34102012Cipher::pointDouble(const ECPoint& P, const BigInt& p, const BigInt& a) {
-    if (P.isInfinity) return P;
-    // λ = (3x1² + a) / (2y1) mod p
-    return ECPoint();
-}
-
+// Умножение точки на скаляр: k·P
 ECPoint GOST34102012Cipher::pointMul(const BigInt& k, const ECPoint& P,
                                       const BigInt& p, const BigInt& a) {
-    ECPoint result;
-    ECPoint base = P;
-    BigInt exp = k;
+    if (k.isZero() || P.isInfinity) return ECPoint();
 
-    while (!exp.isZero()) {
-        // Упрощенная реализация
-        break;
+    ECPoint result; // точка в бесконечности
+    ECPoint base = P;
+    uint64_t k_val = k.toUInt64();
+
+    // Алгоритм удвоения-сложения (double-and-add)
+    while (k_val > 0) {
+        if (k_val & 1) {
+            result = pointAdd(result, base, p, a);
+        }
+        base = pointDouble(base, p, a);
+        k_val >>= 1;
     }
+
     return result;
 }
 
@@ -357,7 +514,6 @@ BigInt GOST34102012Cipher::computeHash(const QString& text, const BigInt& p,
 
     // Используем p как модуль для хеширования
     uint64_t mod = p.toUInt64();
-    if (mod < 32) mod = 256;
 
     uint64_t h = 0;
 
@@ -419,12 +575,6 @@ QString GOST34102012Cipher::numbersToText(const QVector<uint64_t>& numbers) cons
 bool GOST34102012Cipher::validateParameters(const BigInt& p, const BigInt& a, const BigInt& b,
                                              const BigInt& q, const ECPoint& P,
                                              QString& errorMessage) const {
-    const uint64_t ALPHABET_SIZE = 32;
-
-    if (p.toUInt64() <= ALPHABET_SIZE) {
-        errorMessage = QString("Модуль p = %1 должен быть больше %2").arg(p.toQString()).arg(ALPHABET_SIZE);
-        return false;
-    }
 
     if (q.isZero()) {
         errorMessage = "Порядок подгруппы q не может быть нулевым";
@@ -440,7 +590,6 @@ bool GOST34102012Cipher::validateParameters(const BigInt& p, const BigInt& a, co
 }
 
 // ==================== Шифрование (создание подписи) ====================
-
 CipherResult GOST34102012Cipher::encrypt(const QString& text, const QVariantMap& params)
 {
     CipherResult result;
@@ -454,16 +603,17 @@ CipherResult GOST34102012Cipher::encrypt(const QString& text, const QVariantMap&
 
     // Получаем параметры из виджетов
     QString pStr = params.value("p", "").toString();
-    QString aStr = params.value("a", "7").toString();
+    QString aStr = params.value("a", "").toString();
     QString bStr = params.value("b", "").toString();
     QString qStr = params.value("q", "").toString();
     QString xpStr = params.value("xp", "").toString();
     QString ypStr = params.value("yp", "").toString();
     QString dStr = params.value("d", "").toString();
-    QString p_hashStr = params.value("p_hash", "101").toString();
-
-    if (pStr.isEmpty() || qStr.isEmpty() || xpStr.isEmpty() || ypStr.isEmpty() || dStr.isEmpty()) {
-        result.result = "ОШИБКА: Необходимо указать все параметры эллиптической кривой (p, a, b, q, xp, yp, d)";
+    QString kStr = params.value("k", "").toString();
+    // Проверка наличия всех параметров
+    if (pStr.isEmpty() || aStr.isEmpty() || bStr.isEmpty() || qStr.isEmpty() ||
+        xpStr.isEmpty() || ypStr.isEmpty() || dStr.isEmpty() || kStr.isEmpty()) {
+        result.result = "ОШИБКА: Необходимо указать все параметры (p, a, b, q, xp, yp, d, k)";
         return result;
     }
 
@@ -474,96 +624,86 @@ CipherResult GOST34102012Cipher::encrypt(const QString& text, const QVariantMap&
     BigInt xp = parseBigInt(xpStr);
     BigInt yp = parseBigInt(ypStr);
     BigInt d = parseBigInt(dStr);
-    BigInt p_hash = parseBigInt(p_hashStr);
+    BigInt k = parseBigInt(kStr);
 
-    ECPoint P(xp, yp);
+    ECPoint G(xp, yp);
+
+    ECPoint Q = pointMul(d, G, p, a);
+
+    steps.append(CipherStep(stepCounter++, QChar(),
+        QString("Открытый ключ Q = d·G = (%1, %2)")
+            .arg(Q.x.toDecQString()).arg(Q.y.toDecQString()),
+        "Вычисление Q"));
 
     // Проверка параметров
     QString validationError;
-    if (!validateParameters(p, a, b, q, P, validationError)) {
+    if (!validateParameters(p, a, b, q, G, validationError)) {
         result.result = "ОШИБКА: " + validationError;
         return result;
     }
 
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Параметры эллиптической кривой:\n  p = %1\n  a = %2\n  b = %3\n  q = %4\n  P = (%5, %6)\n  d = %7")
-            .arg(p.toQString()).arg(a.toQString()).arg(b.toQString())
-            .arg(q.toQString()).arg(xp.toQString()).arg(yp.toQString())
-            .arg(d.toQString()),
+        QString("Параметры эллиптической кривой:\n  p = %1\n  a = %2\n  b = %3\n  q = %4\n  G = (%5, %6)\n  d = %7\n  k = %8")
+            .arg(p.toDecQString()).arg(a.toDecQString()).arg(b.toDecQString())
+            .arg(q.toDecQString()).arg(xp.toDecQString()).arg(yp.toDecQString())
+            .arg(d.toDecQString()).arg(k.toDecQString()),
         "Параметры схемы"));
 
     // Шаг 1: Вычисляем хеш сообщения
-    BigInt hash = computeHash(text, p_hash, steps, stepCounter);
-
-    // Шаг 2: Вычисляем e = hash mod q
-    BigInt e = hash % q;
-    if (e.isZero()) {
-        steps.append(CipherStep(stepCounter++, QChar(),
-            "e = 0, устанавливаем e = 1",
-            "Коррекция e"));
-        e = BigInt(1);
-    }
+    BigInt hash = computeHash(text, p, steps, stepCounter);
 
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Шаг 1-2: e = h(M) mod q = %1").arg(e.toQString()),
-        "Вычисление e"));
+        QString("Шаг 1: h(M) = %1").arg(hash.toDecQString()),
+        "Хеш сообщения"));
 
-    // Шаг 3: Генерируем случайное k
-    BigInt k(std::string("77105C9B20BCD3122823C8CF6FCC7B956DE33814E95B7FE64FED924594DCEAB316"));
+    // Шаг 2: Вычисляем точку C = kG
+    ECPoint C = pointMul(k, G, p, a);
+
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Шаг 3: Случайное число k = %1").arg(k.toQString()),
-        "Генерация k"));
+        QString("Шаг 2: C = k·G = (%1, %2)").arg(C.x.toDecQString()).arg(C.y.toDecQString()),
+        "Вычисление точки C"));
 
-    // Шаг 4: Вычисляем C = kP и r = x_C mod q
-    ECPoint C = pointMul(k, P, p, a);
-    // Для контрольного примера используем известное значение r
-    BigInt r(std::string("41AA28D2F1AB148280CD9ED56FEDA41974053554A42767B83AD043FD39DC0493"));
-
-
+    // Шаг 3: Вычисляем r = x_C mod q
+    BigInt r = C.x % q;
 
     if (r.isZero()) {
         steps.append(CipherStep(stepCounter++, QChar(),
             "r = 0, необходимо выбрать другое k",
-            "Повтор генерации k"));
-        // В реальной реализации нужно вернуться к шагу 3
+            "Ошибка: r = 0"));
+        result.result = "ОШИБКА: r = 0, выберите другое k";
+        return result;
     }
 
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Шаг 4: C = kP, r = x_C mod q = %1").arg(r.toQString()),
+        QString("Шаг 3: r = x_C mod q = %1 mod %2 = %3")
+            .arg(C.x.toDecQString()).arg(q.toDecQString()).arg(r.toDecQString()),
         "Вычисление r"));
 
-    // Шаг 5: Вычисляем s = (r*d + k*e) mod q
+    // Шаг 4: Вычисляем s = (k·h + r·d) mod q
+    BigInt kh = (k * hash) % q;
     BigInt rd = (r * d) % q;
-    BigInt ke = (k * e) % q;
-    //BigInt s = (rd + ke) % q;
-    BigInt s(std::string("1456C64BA4642A1653C235A98A60249BCD6D3F746B631DF928014F6C5BF9C4016"));
-
-    steps.append(CipherStep(stepCounter++, QChar(),
-        QString("  r*d mod q = %1\n  k*e mod q = %2\n  s = %3")
-            .arg(rd.toQString()).arg(ke.toQString()).arg(s.toQString()),
-        "Промежуточные значения"));
+    BigInt s = (kh + rd) % q;
 
     if (s.isZero()) {
         steps.append(CipherStep(stepCounter++, QChar(),
-            "s = 0, выбираем другое k",
-            "Повтор генерации"));
-        // Вместо возврата, генерируем новое k
-        // Для теста используем другое фиксированное значение
-        k = BigInt(std::string("FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210"));
+            "s = 0, необходимо выбрать другое k",
+            "Ошибка: s = 0"));
+        result.result = "ОШИБКА: s = 0, выберите другое k";
+        return result;
     }
 
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Шаг 5: s = (r*d + k*e) mod q = (%1*%2 + %3*%4) mod %5 = %6")
-            .arg(r.toQString()).arg(d.toQString())
-            .arg(k.toQString()).arg(e.toQString())
-            .arg(q.toQString()).arg(s.toQString()),
+        QString("Шаг 4: s = (k·h + r·d) mod q = (%1·%2 + %3·%4) mod %5 = %6")
+            .arg(k.toDecQString()).arg(hash.toDecQString())
+            .arg(r.toDecQString()).arg(d.toDecQString())
+            .arg(q.toDecQString()).arg(s.toDecQString()),
         "Вычисление s"));
 
-    // Формируем подпись как конкатенацию r и s
-    QString signature = r.toQString() + s.toQString();
+    // Формируем подпись
+    QString signature = QString("(%1, %2)").arg(r.toDecQString()).arg(s.toDecQString());
 
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Цифровая подпись: ζ = r || s = %1").arg(signature),
+        QString("Цифровая подпись: (r, s) = %1").arg(signature),
         "Завершение"));
 
     result.result = signature;
@@ -585,28 +725,26 @@ CipherResult GOST34102012Cipher::decrypt(const QString& text, const QVariantMap&
     int stepCounter = 0;
     steps.append(CipherStep(stepCounter++, QChar(), "Начало проверки подписи по ГОСТ Р 34.10-2012", "Инициализация"));
 
-    // Получаем параметры из params
+    // Получаем параметры
     QString pStr = params.value("p", "").toString();
-    QString aStr = params.value("a", "7").toString();
+    QString aStr = params.value("a", "").toString();
     QString bStr = params.value("b", "").toString();
     QString qStr = params.value("q", "").toString();
     QString xpStr = params.value("xp", "").toString();
     QString ypStr = params.value("yp", "").toString();
     QString xqStr = params.value("xq", "").toString();
     QString yqStr = params.value("yq", "").toString();
-    QString p_hashStr = params.value("p_hash", "101").toString();
 
-    // Сообщение для проверки берем из параметра message (поле в расширенных настройках)
     QString message = params.value("message", "").toString();
 
     if (pStr.isEmpty() || qStr.isEmpty() || xpStr.isEmpty() || ypStr.isEmpty() ||
         xqStr.isEmpty() || yqStr.isEmpty()) {
-        result.result = "ОШИБКА: Необходимо указать все параметры эллиптической кривой (p, a, b, q, xp, yp, xq, yq)";
+        result.result = "ОШИБКА: Необходимо указать все параметры (p, a, b, q, xp, yp, xq, yq)";
         return result;
     }
 
     if (message.isEmpty()) {
-        result.result = "ОШИБКА: Для проверки подписи необходимо указать сообщение в поле 'Сообщение для проверки подписи' в расширенных настройках.";
+        result.result = "ОШИБКА: Укажите сообщение для проверки подписи";
         return result;
     }
 
@@ -618,102 +756,86 @@ CipherResult GOST34102012Cipher::decrypt(const QString& text, const QVariantMap&
     BigInt yp = parseBigInt(ypStr);
     BigInt xq = parseBigInt(xqStr);
     BigInt yq = parseBigInt(yqStr);
-    BigInt p_hash = parseBigInt(p_hashStr);
 
-    ECPoint P(xp, yp);
+    ECPoint G(xp, yp);
     ECPoint Q(xq, yq);
 
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Параметры эллиптической кривой:\n  p = %1\n  a = %2\n  b = %3\n  q = %4\n  P = (%5, %6)\n  Q = (%7, %8)")
-            .arg(p.toQString()).arg(a.toQString()).arg(b.toQString())
-            .arg(q.toQString()).arg(xp.toQString()).arg(yp.toQString())
-            .arg(xq.toQString()).arg(yq.toQString()),
+        QString("Параметры:\n  p = %1\n  q = %2\n  G = (%3, %4)\n  Q = (%5, %6)")
+            .arg(p.toDecQString()).arg(q.toDecQString())
+            .arg(xp.toDecQString()).arg(yp.toDecQString())
+            .arg(xq.toDecQString()).arg(yq.toDecQString()),
         "Параметры схемы"));
 
-    steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Сообщение для проверки: %1").arg(message),
-        "Сообщение"));
-
-    // Разбираем подпись (r и s) из поля "Входной текст"
+    // Парсим подпись
     QString sig = text.trimmed();
-    if (sig.length() < 128) {
-        result.result = "ОШИБКА: Неверный формат подписи (ожидается 128+ HEX символов)";
+    sig.remove('(').remove(')').remove(' ');
+    QStringList parts = sig.split(',');
+
+    if (parts.size() != 2) {
+        result.result = "ОШИБКА: Неверный формат подписи (ожидается r,s)";
         return result;
     }
 
-    // Первые 64 символа (256 бит) - r, остальные - s
-    QString rStr = sig.left(64);
-    QString sStr = sig.mid(64);
-
-    BigInt r = parseBigInt(rStr);
-    BigInt s = parseBigInt(sStr);
+    BigInt r = parseBigInt(parts[0].trimmed());
+    BigInt s = parseBigInt(parts[1].trimmed());
 
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Получена подпись: r = %1\n  s = %2").arg(r.toQString()).arg(s.toQString()),
+        QString("Подпись: r = %1, s = %2").arg(r.toDecQString()).arg(s.toDecQString()),
         "Извлечение подписи"));
 
-    // Шаг 1: Проверка 0 < r < q и 0 < s < q
+    // Проверка 0 < r < q и 0 < s < q
     if (r.isZero() || r >= q || s.isZero() || s >= q) {
-        result.result = QString("ОШИБКА: Неверные значения подписи (r=%1, s=%2 должны быть в (0, q))")
-                            .arg(r.toQString()).arg(s.toQString());
+        result.result = "ОШИБКА: Неверные значения подписи (0 < r,s < q)";
         return result;
     }
 
+    steps.append(CipherStep(stepCounter++, QChar(), "Шаг 1: 0 < r < q и 0 < s < q — выполнено", "Проверка"));
+
+    // Хеш сообщения
+    BigInt hash = computeHash(message, p, steps, stepCounter);
     steps.append(CipherStep(stepCounter++, QChar(),
-        "Шаг 1: 0 < r < q и 0 < s < q — выполнено",
-        "Проверка диапазона"));
+        QString("Шаг 2: h(M) = %1").arg(hash.toDecQString()), "Хеш"));
 
-    // Шаг 2-3: Вычисляем хеш сообщения и e
-    BigInt hash = computeHash(message, p_hash, steps, stepCounter);
-
-    BigInt e = hash % q;
-    if (e.isZero()) e = BigInt(1);
-
+    // h⁻¹ mod q
+    BigInt h_inv = hash.modInverse(q);
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Шаг 2-3: e = h(M) mod q = %1").arg(e.toQString()),
-        "Вычисление e"));
+        QString("Шаг 3: h⁻¹ mod q = %1").arg(h_inv.toDecQString()), "Обратный элемент"));
 
-    // Шаг 4: Вычисляем v = e⁻¹ mod q
-    BigInt v = e.modInverse(q);
-
+    // u1 и u2
+    BigInt u1 = (s * h_inv) % q;
+    BigInt u2 = (q - (r * h_inv) % q) % q;
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Шаг 4: v = e⁻¹ mod q = %1").arg(v.toQString()),
-        "Вычисление v"));
+        QString("Шаг 4: u1 = %1, u2 = %2").arg(u1.toDecQString()).arg(u2.toDecQString()),
+        "Вычисление u1, u2"));
 
-    // Шаг 5: Вычисляем z1 = s*v mod q, z2 = -r*v mod q
-    BigInt z1 = (s * v) % q;
-    BigInt z2 = (q - (r * v) % q) % q;
-
+    // P = u1·G + u2·Q
+    ECPoint P1 = pointMul(u1, G, p, a);
+    ECPoint P2 = pointMul(u2, Q, p, a);
+    ECPoint P = pointAdd(P1, P2, p, a);
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Шаг 5: z1 = s*v mod q = %1\n  z2 = -r*v mod q = %2")
-            .arg(z1.toQString()).arg(z2.toQString()),
-        "Вычисление z1, z2"));
+        QString("Шаг 5: P = (%1, %2)").arg(P.x.toDecQString()).arg(P.y.toDecQString()),
+        "Точка P"));
 
-    // Шаг 6: Вычисляем C = z1*P + z2*Q и R = x_C mod q
-    // Для контрольного примера используем известное значение
-    BigInt R(std::string("41AA28D2F1AB148280CD9ED56FEDA41974053554A42767B83AD043FD39DC0493"));
-
+    // R = x_P mod q
+    BigInt R = P.x % q;
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Шаг 6: C = z1*P + z2*Q, R = x_C mod q = %1").arg(R.toQString()),
-        "Вычисление R"));
+        QString("Шаг 6: R = %1").arg(R.toDecQString()), "Вычисление R"));
 
-    // Шаг 7: Проверка R == r
+    // Проверка
     if (R == r) {
-        steps.append(CipherStep(stepCounter++, QChar(),
-            QString("✓ Подпись ВЕРНА! R (%1) == r (%2)").arg(R.toQString()).arg(r.toQString()),
-            "Проверка подписи - УСПЕШНО"));
-        result.result = QString("✓ ПОДПИСЬ ВЕРНА!\n\nСообщение: %1").arg(message);
+        steps.append(CipherStep(stepCounter++, QChar(), "✓ Подпись ВЕРНА!", "Успех"));
+        result.result = QString("✓ ПОДПИСЬ ВЕРНА!\n\nСообщение: %1\nr = %2\ns = %3")
+            .arg(message).arg(r.toDecQString()).arg(s.toDecQString());
     } else {
-        steps.append(CipherStep(stepCounter++, QChar(),
-            QString("✗ Подпись НЕВЕРНА! R = %1, r = %2").arg(R.toQString()).arg(r.toQString()),
-            "Проверка подписи - ОШИБКА"));
-        result.result = QString("✗ ПОДПИСЬ НЕВЕРНА!\nR = %1\nr = %2").arg(R.toQString()).arg(r.toQString());
+        steps.append(CipherStep(stepCounter++, QChar(), "✗ Подпись НЕВЕРНА!", "Ошибка"));
+        result.result = QString("✗ ПОДПИСЬ НЕВЕРНА!\nR = %1\nr = %2")
+            .arg(R.toDecQString()).arg(r.toDecQString());
     }
 
     result.steps = steps;
     return result;
 }
-
 // ==================== Статические методы ====================
 
 BigInt GOST34102012Cipher::generatePrimeStatic(int bits) {
@@ -722,6 +844,96 @@ BigInt GOST34102012Cipher::generatePrimeStatic(int bits) {
 
 BigInt GOST34102012Cipher::generateRandomStatic(const BigInt& max) {
     return BigInt::random(max);
+}
+
+void GOST34102012Cipher::computeCurveOrder(const BigInt& p, const BigInt& a, const BigInt& b,
+                                           BigInt& curveOrder, BigInt& subgroupOrder, BigInt& cofactor,
+                                           QString& log)
+{
+    log.clear();
+    log += "=== Вычисление порядка эллиптической кривой перебором ===\n\n";
+
+    uint64_t p_val = p.toUInt64();
+    uint64_t a_val = a.toUInt64();
+    uint64_t b_val = b.toUInt64();
+
+    log += QString("Параметры кривой: p = %1, a = %2, b = %3\n")
+           .arg(p_val).arg(a_val).arg(b_val);
+    log += QString("Уравнение: y² = x³ + %1·x + %2 (mod %3)\n\n")
+           .arg(a_val).arg(b_val).arg(p_val);
+
+    // Шаг 1: Предвычисляем квадраты по модулю p
+    QMap<uint64_t, QList<uint64_t>> squares;
+    for (uint64_t y = 0; y < p_val; ++y) {
+        uint64_t y2 = (y * y) % p_val;
+        squares[y2].append(y);
+    }
+
+    log += "Таблица квадратов по модулю p:\n";
+    log += "y    : ";
+    for (uint64_t y = 0; y < p_val; ++y) log += QString("%1 ").arg(y);
+    log += "\ny²   : ";
+    for (uint64_t y = 0; y < p_val; ++y) log += QString("%1 ").arg((y * y) % p_val);
+    log += "\n\n";
+
+    // Шаг 2: Перебираем x, вычисляем y² = x³ + a·x + b (mod p)
+    log += "Вычисление y² для каждого x:\n";
+    log += "x    | x³+ax+b | y² | точки\n";
+    log += "-----|---------|----|-------\n";
+
+    QVector<ECPoint> points;
+
+    for (uint64_t x = 0; x < p_val; ++x) {
+        uint64_t x2 = (x * x) % p_val;
+        uint64_t x3 = (x2 * x) % p_val;
+        uint64_t ax = (a_val * x) % p_val;
+        uint64_t rhs = (x3 + ax + b_val) % p_val;
+
+        QString pointsStr;
+        if (squares.contains(rhs)) {
+            for (uint64_t y : squares[rhs]) {
+                points.append(ECPoint(BigInt(x), BigInt(y)));
+                if (!pointsStr.isEmpty()) pointsStr += ", ";
+                pointsStr += QString("(%1, %2)").arg(x).arg(y);
+            }
+        } else {
+            pointsStr = "нет";
+        }
+
+        log += QString("%1    | %2       | %3  | %4\n")
+               .arg(x, -4).arg(rhs, -7).arg(rhs, -2).arg(pointsStr);
+    }
+
+    // Добавляем точку в бесконечности O
+    uint64_t totalPoints = points.size() + 1;
+    curveOrder = BigInt(totalPoints);
+
+    // Находим наибольший простой делитель
+    uint64_t q_val = 1;
+    for (uint64_t i = 2; i <= totalPoints; ++i) {
+        if (totalPoints % i == 0) {
+            bool isPrime = true;
+            for (uint64_t j = 2; j * j <= i; ++j) {
+                if (i % j == 0) {
+                    isPrime = false;
+                    break;
+                }
+            }
+            if (isPrime) {
+                q_val = i;
+            }
+        }
+    }
+
+    uint64_t h_val = totalPoints / q_val;
+
+    subgroupOrder = BigInt(q_val);
+    cofactor = BigInt(h_val);
+
+    log += QString("\nn = #E = %1 = h · q\n").arg(totalPoints);
+    log += QString("Кофактор h = %1\n").arg(h_val);
+    log += QString("Порядок подгруппы q = %1\n").arg(q_val);
+    log += QString("Проверка: %1 = %2 · %3\n").arg(totalPoints).arg(h_val).arg(q_val);
 }
 
 
@@ -794,13 +1006,25 @@ GOST34102012CipherRegister::GOST34102012CipherRegister()
             // Строка 1: q
             QLabel* qLabel = new QLabel("q (порядок):");
             qLabel->setFixedWidth(100);
+
+            QHBoxLayout* qLayout = new QHBoxLayout();
+            qLayout->setSpacing(5);
             QLineEdit* qEdit = new QLineEdit();
             qEdit->setObjectName("q");
             qEdit->setMinimumWidth(200);
-            qEdit->setPlaceholderText("q (HEX)");
-            grid->addWidget(qLabel, 1, 2);
-            grid->addWidget(qEdit, 1, 3);
+            qEdit->setPlaceholderText("q (HEX) — нажмите 'Вычислить'");
+            qEdit->setReadOnly(true);
 
+            QPushButton* calcQButton = new QPushButton("Вычислить q");
+            calcQButton->setObjectName("calcQButton");
+            calcQButton->setCursor(Qt::PointingHandCursor);
+            calcQButton->setFixedWidth(100);
+
+            qLayout->addWidget(qEdit);
+            qLayout->addWidget(calcQButton);
+
+            grid->addWidget(qLabel, 1, 2);
+            grid->addLayout(qLayout, 1, 3);
             // Строка 2: xp
             QLabel* xpLabel = new QLabel("xp (координата P):");
             xpLabel->setFixedWidth(100);
@@ -851,6 +1075,17 @@ GOST34102012CipherRegister::GOST34102012CipherRegister()
             keyGrid->addWidget(dLabel, 0, 0);
             keyGrid->addWidget(dEdit, 0, 1);
 
+            // Строка 1: k (случайное число)
+            QLabel* kLabel = new QLabel("k (случайное):");
+            kLabel->setFixedWidth(100);
+            QLineEdit* kEdit = new QLineEdit();
+            kEdit->setObjectName("k");
+            kEdit->setMinimumWidth(200);
+            kEdit->setPlaceholderText("k (десятичное)");
+            kEdit->setText("5");  // Значение по умолчанию из примера
+            keyGrid->addWidget(kLabel, 1, 2);
+            keyGrid->addWidget(kEdit, 1, 3);
+
             // Строка 0: xq (открытый ключ)
             QLabel* xqLabel = new QLabel("xq (координата Q):");
             xqLabel->setFixedWidth(100);
@@ -888,16 +1123,6 @@ GOST34102012CipherRegister::GOST34102012CipherRegister()
             commonGrid->setColumnStretch(0, 0);
             commonGrid->setColumnStretch(1, 1);
 
-            // Модуль хеширования
-            QLabel* pHashLabel = new QLabel("Модуль p (хеш):");
-            pHashLabel->setFixedWidth(100);
-            QLineEdit* pHashEdit = new QLineEdit();
-            pHashEdit->setObjectName("p_hash");
-            pHashEdit->setText("101");
-            pHashEdit->setMinimumWidth(200);
-            pHashEdit->setPlaceholderText(">32");
-            commonGrid->addWidget(pHashLabel, 0, 0);
-            commonGrid->addWidget(pHashEdit, 0, 1);
 
             mainLayout->addLayout(commonGrid);
 
@@ -929,14 +1154,15 @@ GOST34102012CipherRegister::GOST34102012CipherRegister()
             widgets["p"] = pEdit;
             widgets["a"] = aEdit;
             widgets["b"] = bEdit;
+            widgets["k"] = kEdit;
             widgets["q"] = qEdit;
             widgets["xp"] = xpEdit;
             widgets["yp"] = ypEdit;
             widgets["d"] = dEdit;
             widgets["xq"] = xqEdit;
             widgets["yq"] = yqEdit;
-            widgets["p_hash"] = pHashEdit;
             widgets["message"] = messageEdit;
+            widgets["calcQButton"] = calcQButton;
             widgets["loadExampleButton"] = loadExampleButton;
 
             // Загрузка контрольного примера
@@ -954,6 +1180,43 @@ GOST34102012CipherRegister::GOST34102012CipherRegister()
 
                 QMessageBox::information(nullptr, "Контрольный пример загружен",
                     "Загружены параметры из ГОСТ Р 34.10-2012 (Пример А.1)");
+            });
+
+            QObject::connect(calcQButton, &QPushButton::clicked, [pEdit, aEdit, bEdit, qEdit]() {
+                QString pStr = pEdit->text().trimmed();
+                QString aStr = aEdit->text().trimmed();
+                QString bStr = bEdit->text().trimmed();
+
+                if (pStr.isEmpty() || aStr.isEmpty() || bStr.isEmpty()) {
+                    QMessageBox::warning(nullptr, "Ошибка", "Заполните параметры p, a, b");
+                    return;
+                }
+
+                try {
+                    BigInt p(pStr.toStdString());
+                    BigInt a(aStr.toStdString());
+                    BigInt b(bStr.toStdString());
+
+                    BigInt curveOrder, subgroupOrder, cofactor;
+                    QString log;
+
+                    GOST34102012Cipher::computeCurveOrder(p, a, b, curveOrder, subgroupOrder, cofactor, log);
+
+                    qEdit->setText(subgroupOrder.toQString());
+
+                    QMessageBox msgBox;
+                    msgBox.setWindowTitle("Результаты вычисления порядка кривой");
+                    msgBox.setText(QString("Порядок кривой #E = %1\nПорядок подгруппы q = %2\nКофактор h = %3")
+                                   .arg(curveOrder.toDecQString())      // ← используем десятичный вывод
+                                   .arg(subgroupOrder.toDecQString())   // ←
+                                   .arg(cofactor.toDecQString()));      // ←
+                    msgBox.setDetailedText(log);
+                    msgBox.setIcon(QMessageBox::Information);
+                    msgBox.exec();
+
+                } catch (const std::exception& e) {
+                    QMessageBox::critical(nullptr, "Ошибка", QString("Ошибка вычисления: %1").arg(e.what()));
+                }
             });
         }
     );

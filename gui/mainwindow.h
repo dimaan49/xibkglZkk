@@ -3,6 +3,7 @@
 #include "cipherinterface.h"
 #include <categoryfilterdialog.h>
 #include "logwindow.h"
+#include "analysiswindow.h"
 
 
 #include <QMainWindow>
@@ -52,6 +53,7 @@ private slots:
     void onAdvancedSettingsClicked();
     void onFilterButtonClicked();      // Добавить
     void onInputTextChanged();
+    void onAnalysisWindowOpen();
 
 private:
     void setupUI();
@@ -88,6 +90,8 @@ private:
     QVBoxLayout* parametersLayout;
     QPushButton* m_advancedSettingsButton;
     QPushButton* m_filterButton;           // Добавить
+    AnalysisWindow* m_analysisWindow;
+    QPushButton* m_analysisButton;
 
     // Filter dialog
     CategoryFilterDialog* m_filterDialog;   // Добавить

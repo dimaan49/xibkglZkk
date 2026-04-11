@@ -458,6 +458,7 @@ DiffieHellmanCipherRegister::DiffieHellmanCipherRegister()
             widgets["computeButton"] = computeButton;
             widgets["resetButton"] = resetButton;
 
+
             // Функция красной вспышки
             auto flashRed = [](QWidget* target) {
                 QWidget* flash = new QWidget(target);
@@ -468,35 +469,60 @@ DiffieHellmanCipherRegister::DiffieHellmanCipherRegister()
                 QTimer::singleShot(300, [flash]() { flash->deleteLater(); });
             };
 
-            // Вычисление YA
-            auto computeYA = [nEdit, aEdit, kaEdit, yaEdit]() {
+            auto showError = [statusLabel, flashRed, parent](const QString& msg) {
+                statusLabel->setText(msg);
+                statusLabel->setStyleSheet("color: red; font-weight: bold;");
+                flashRed(parent->window());
+            };
+
+            auto computeYA = [nEdit, aEdit, kaEdit, yaEdit, showError]() {
                 uint64_t n = nEdit->text().toULongLong();
                 uint64_t a = aEdit->text().toULongLong();
                 uint64_t ka = kaEdit->text().toULongLong();
-                if (n == 0 || a == 0 || ka == 0 || ka >= n) return;
-                yaEdit->setText(QString::number(DiffieHellmanCipher::modPowStatic(a, ka, n)));
+
+                if (n == 0 || a == 0) return;
+                if (ka == 0 || ka == 1) {
+                    showError("KA не должен быть 0 или 1!");
+                    return;
+                }
+                if (ka >= n) {
+                    showError("KA должен быть меньше n!");
+                    return;
+                }
+
+                uint64_t ya = DiffieHellmanCipher::modPowStatic(a, ka, n);
+                if (ya == 0 || ya == 1) {
+                    showError("YA не должен быть 0 или 1! Выберите другие параметры.");
+                }
+                yaEdit->setText(QString::number(ya));
             };
 
-            // Вычисление YB
-            auto computeYB = [nEdit, aEdit, kbEdit, ybEdit]() {
+            auto computeYB = [nEdit, aEdit, kbEdit, ybEdit, showError]() {
                 uint64_t n = nEdit->text().toULongLong();
                 uint64_t a = aEdit->text().toULongLong();
                 uint64_t kb = kbEdit->text().toULongLong();
-                if (n == 0 || a == 0 || kb == 0 || kb >= n) return;
-                ybEdit->setText(QString::number(DiffieHellmanCipher::modPowStatic(a, kb, n)));
+
+                if (n == 0 || a == 0) return;
+                if (kb == 0 || kb == 1) {
+                    showError("KB не должен быть 0 или 1!");
+                    return;
+                }
+                if (kb >= n) {
+                    showError("KB должен быть меньше n!");
+                    return;
+                }
+
+                uint64_t yb = DiffieHellmanCipher::modPowStatic(a, kb, n);
+                if (yb == 0 || yb == 1) {
+                    showError("YB не должен быть 0 или 1! Выберите другие параметры.");
+                }
+                ybEdit->setText(QString::number(yb));
             };
 
             // Обмен
             auto exchangeKeys = [yaEdit, ybEdit, yaReceivedEdit, ybReceivedEdit]() {
                 yaReceivedEdit->setText(yaEdit->text());
                 ybReceivedEdit->setText(ybEdit->text());
-            };
-
-            // Показать ошибку
-            auto showError = [statusLabel, flashRed, parent](const QString& msg) {
-                statusLabel->setText(msg);
-                statusLabel->setStyleSheet("color: red; font-weight: bold;");
-                flashRed(parent->window());
             };
 
             // Показать успех
@@ -518,13 +544,37 @@ DiffieHellmanCipherRegister::DiffieHellmanCipherRegister()
                 if (ka == 0 || kb == 0) { showError("Ошибка: нет KA/KB"); return; }
                 if (ya == 0 || yb == 0) { showError("Ошибка: выполните обмен"); return; }
 
+                // Проверка, что секретные ключи разные
+                if (ka == kb) {
+                    showError("Ошибка: KA и KB должны быть разными!");
+                    return;
+                }
+
+                // Проверка, что секретные ключи не 0 и не 1
+                if (ka == 0 || ka == 1 || kb == 0 || kb == 1) {
+                    showError("Ошибка: KA и KB не должны быть 0 или 1!");
+                    return;
+                }
+
                 uint64_t k1 = DiffieHellmanCipher::modPowStatic(yb, ka, n);
                 uint64_t k2 = DiffieHellmanCipher::modPowStatic(ya, kb, n);
 
                 k1ResultEdit->setText(QString::number(k1));
                 k2ResultEdit->setText(QString::number(k2));
 
-                if (k1 == k2 && k1 != 0) {
+                // Проверка, что общий ключ не 0 и не 1
+                if (k1 == 0 || k1 == 1) {
+                    showError("Ошибка: общий ключ не должен быть 0 или 1! Выберите другие параметры.");
+                    return;
+                }
+
+                // Проверка, что общий ключ не равен YA или YB
+                if (k1 == ya || k1 == yb) {
+                    showError("Ошибка: общий ключ не должен быть равен YA или YB! Выберите другие параметры.");
+                    return;
+                }
+
+                if (k1 == k2) {
                     showSuccess(QString("Общий ключ: %1").arg(k1));
                 } else {
                     showError("Ключи не совпадают!");
@@ -532,16 +582,42 @@ DiffieHellmanCipherRegister::DiffieHellmanCipherRegister()
             };
 
             // Сигналы
-            QObject::connect(generateKaButton, &QPushButton::clicked, [nEdit, kaEdit]() {
+            QObject::connect(generateKaButton, &QPushButton::clicked, [nEdit, kaEdit, kbEdit, showError]() {
                 uint64_t n = nEdit->text().toULongLong();
-                if (n == 0) { QMessageBox::warning(nullptr, "Ошибка", "Введите n!"); return; }
-                kaEdit->setText(QString::number(DiffieHellmanCipher::generateRandomStatic(n)));
+                if (n == 0) {
+                    QMessageBox::warning(nullptr, "Ошибка", "Введите n!");
+                    return;
+                }
+
+                uint64_t kb = kbEdit->text().toULongLong();
+                uint64_t ka;
+                int attempts = 0;
+                do {
+                    ka = DiffieHellmanCipher::generateRandomStatic(n);
+                    attempts++;
+                    if (attempts > 100) break; // Защита от бесконечного цикла
+                } while (ka == kb || ka == 0 || ka == 1);
+
+                kaEdit->setText(QString::number(ka));
             });
 
-            QObject::connect(generateKbButton, &QPushButton::clicked, [nEdit, kbEdit]() {
+            QObject::connect(generateKbButton, &QPushButton::clicked, [nEdit, kaEdit, kbEdit, showError]() {
                 uint64_t n = nEdit->text().toULongLong();
-                if (n == 0) { QMessageBox::warning(nullptr, "Ошибка", "Введите n!"); return; }
-                kbEdit->setText(QString::number(DiffieHellmanCipher::generateRandomStatic(n)));
+                if (n == 0) {
+                    QMessageBox::warning(nullptr, "Ошибка", "Введите n!");
+                    return;
+                }
+
+                uint64_t ka = kaEdit->text().toULongLong();
+                uint64_t kb;
+                int attempts = 0;
+                do {
+                    kb = DiffieHellmanCipher::generateRandomStatic(n);
+                    attempts++;
+                    if (attempts > 100) break;
+                } while (kb == ka || kb == 0 || kb == 1);
+
+                kbEdit->setText(QString::number(kb));
             });
 
             QObject::connect(computeYaButton, &QPushButton::clicked, computeYA);

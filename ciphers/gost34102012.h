@@ -50,6 +50,7 @@ public:
     std::string toHex() const;
     QString toQString() const;
     uint64_t toUInt64() const;
+    QString toDecQString() const;
 
     int bitLength() const;
 
@@ -98,6 +99,9 @@ public:
 
     // Хеш-функция квадратичной свертки
     BigInt computeHash(const QString& text, const BigInt& p, QVector<CipherStep>& steps, int& stepCounter) const;
+    static void computeCurveOrder(const BigInt& p, const BigInt& a, const BigInt& b,
+                                  BigInt& curveOrder, BigInt& subgroupOrder, BigInt& cofactor,
+                                  QString& log);
 
 private:
     const QString m_alphabet = "АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";

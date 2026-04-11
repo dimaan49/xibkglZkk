@@ -2,7 +2,7 @@
 CONFIG += c++17
 #CONFIG console
 CONFIG -= app_bundle
-QT += core widgets
+QT += core widgets printsupport
 
 TARGET = cryptoApp
 TEMPLATE = app
@@ -53,11 +53,13 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     fabrics/cipherfactory.cpp \
     fabrics/cipherwidgetfactory.cpp \
     gui/advancedsettingsdialog.cpp \
+    gui/analysiswindow.cpp \
     gui/categoryfilterdialog.cpp \
     gui/formatter.cpp \
     gui/logger.cpp \
     gui/logwindow.cpp \
     gui/mainwindow.cpp \
+    gui/qcustomplot.cpp \
     gui/routecipherwidget.cpp \
     gui/stylemanager.cpp
 HEADERS += $$files($$PWD/*/*.h) \    \
@@ -97,11 +99,13 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     fabrics/cipherfactory.h \
     fabrics/cipherwidgetfactory.h \
     gui/advancedsettingsdialog.h \
+    gui/analysiswindow.h \
     gui/categoryfilterdialog.h \
     gui/formatter.h \
     gui/logger.h \
     gui/logwindow.h \
     gui/mainwindow.h \
+    gui/qcustomplot.h \
     gui/routecipherwidget.h \
     gui/stylemanager.h
 

@@ -95,6 +95,7 @@ MainWindow::MainWindow(QWidget *parent)
     , parametersLayout(nullptr)
     , m_filterDialog(nullptr)
     , m_filterButton(nullptr)
+    , m_analysisWindow(nullptr)
 {
     setupUI();
     setupCiphers();
@@ -165,6 +166,7 @@ void MainWindow::setupUI()
     m_cipherComboBox->setMinimumWidth(250);
     m_cipherComboBox->setObjectName("cipherSelector");
     m_cipherComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
 
     // Кнопка фильтра
     m_filterButton = new QPushButton("🔧 Фильтр", cipherContainer);
@@ -269,6 +271,15 @@ void MainWindow::setupUI()
     buttonLayout->setSpacing(8);
     buttonLayout->setContentsMargins(10, 0, 10, 0);
     buttonLayout->setAlignment(Qt::AlignCenter);
+
+    m_analysisButton = new QPushButton("📊 Анализ", this);
+    m_analysisButton->setObjectName("analysisButton");
+    m_analysisButton->setMinimumSize(120, 40);
+    m_analysisButton->setToolTip("Открыть окно частотного анализа");
+    connect(m_analysisButton, &QPushButton::clicked, this, &MainWindow::onAnalysisWindowOpen);
+
+    // Добавить в buttonLayout (где encryptButton, decryptButton и т.д.)
+    buttonLayout->addWidget(m_analysisButton);
 
     // Шифровать
     encryptButton = new AnimatedButton("🔐 Шифровать", this);
@@ -1049,4 +1060,20 @@ void MainWindow::applyFilter()
     logToConsole(QString("Фильтр обновлен: показано %1 из %2 шифров")
                  .arg(cipherNames.size())
                  .arg(CipherFactory::instance().displayNames().size()));
+}
+
+void MainWindow::onAnalysisWindowOpen()
+{
+    if (!m_analysisWindow) {
+        m_analysisWindow = new AnalysisWindow(this);
+        m_analysisWindow->setAttribute(Qt::WA_DeleteOnClose);
+        connect(m_analysisWindow, &QDialog::destroyed, [this]() {
+            m_analysisWindow = nullptr;
+        });
+    }
+
+    m_analysisWindow->setTexts(inputTextEdit->toPlainText(), outputTextEdit->toPlainText());
+    m_analysisWindow->show();
+    m_analysisWindow->raise();
+    m_analysisWindow->activateWindow();
 }
