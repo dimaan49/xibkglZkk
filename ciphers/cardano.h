@@ -30,7 +30,7 @@ public:
     int countTotalHoles() const;
 
 private:
-    QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+    QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
     std::vector<std::vector<bool>> m_holes; // Решетка
     std::vector<std::vector<QChar>> m_grid; // Рабочая решетка
     int m_rows;

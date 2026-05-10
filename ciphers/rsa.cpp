@@ -258,18 +258,7 @@ bool RSACipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, QString& 
     return true;
 }
 
-int RSACipher::charToNumber(QChar ch) const
-{
-    return m_alphabet.indexOf(ch);
-}
 
-QChar RSACipher::numberToChar(int num) const
-{
-    if (num >= 0 && num < m_alphabet.length()) {
-        return m_alphabet[num];
-    }
-    return '?';
-}
 
 
 uint64_t RSACipher::encryptNumber(uint64_t m, uint64_t e, uint64_t n) const
@@ -313,36 +302,25 @@ uint64_t RSACipher::generateEStatic(uint64_t phi)
     return e;
 }
 
-// Преобразование текста в числа (каждая буква -> число 0-31)
 QVector<uint64_t> RSACipher::textToNumbers(const QString& text) const
 {
     QVector<uint64_t> numbers;
     QString filtered = CipherUtils::filterAlphabetOnly(text, m_alphabet);
-
-    for (int i = 0; i < filtered.length(); ++i) {
-        int num = charToNumber(filtered[i]);
-        if (num >= 0 && num < 32) {
-            numbers.append(static_cast<uint64_t>(num));
-        }
+    QVector<int> indices = CipherUtils::textToIndices(filtered, m_alphabet);
+    for (int idx : indices) {
+        numbers.append(static_cast<uint64_t>(idx));
     }
-
     return numbers;
 }
 
-// Преобразование чисел в текст (каждое число 0-31 -> буква)
+
 QString RSACipher::numbersToText(const QVector<uint64_t>& numbers) const
 {
-    QString result;
-
+    QVector<int> indices;
     for (uint64_t num : numbers) {
-        if (num < static_cast<uint64_t>(m_alphabet.length())) {
-            result.append(m_alphabet[static_cast<int>(num)]);
-        } else {
-            result.append('?');
-        }
+        indices.append(static_cast<int>(num));
     }
-
-    return result;
+    return CipherUtils::indicesToText(indices, m_alphabet);
 }
 
 // Шифрование

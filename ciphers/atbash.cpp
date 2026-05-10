@@ -27,11 +27,11 @@ CipherResult AtbashCipher::encrypt(const QString& text, const QVariantMap& param
 
     for (int i = 0; i < filteredText.length(); ++i) {
         QChar originalChar = filteredText[i];
-        int index = m_alphabet.indexOf(originalChar);
+        int index = CipherUtils::charToIndex(originalChar, m_alphabet);
 
         if (index != -1) {
             int mirrorIndex = n - 1 - index;
-            QChar resultChar = m_alphabet[mirrorIndex];
+            QChar resultChar = CipherUtils::indexToChar(mirrorIndex, m_alphabet);
             encryptedText.append(resultChar);
 
             // Добавляем шаг для детализации

@@ -32,7 +32,7 @@ public:
 
 private:
     // Алфавит для преобразования текста в числа
-    QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+    QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 
     // Вспомогательные математические функции
     bool isPrime(uint64_t n, int k = 5) const;
@@ -49,10 +49,6 @@ private:
     // Основные операции RSA
     uint64_t encryptNumber(uint64_t m, uint64_t e, uint64_t n) const;
     uint64_t decryptNumber(uint64_t c, uint64_t d, uint64_t n) const;
-
-    // Алфавит в число и обратно
-    int charToNumber(QChar ch) const;
-    QChar numberToChar(int num) const;
 };
 
 // Класс для регистрации шифра

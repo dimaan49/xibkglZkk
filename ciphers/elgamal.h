@@ -24,7 +24,7 @@ public:
 
 private:
     // Алфавит для преобразования текста в числа
-    QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+    QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 
     // Вспомогательные математические функции
     bool isPrime(uint64_t n, int k = 5) const;
@@ -50,9 +50,7 @@ private:
     QPair<uint64_t, uint64_t> encryptNumber(uint64_t m, uint64_t p, uint64_t g, uint64_t y, uint64_t k) const;
     uint64_t decryptNumber(uint64_t a, uint64_t b, uint64_t p, uint64_t x) const;
 
-    // Алфавит в число и обратно
-    int charToNumber(QChar ch) const;
-    QChar numberToChar(int num) const;
+
 
     // Статические методы для генерации
 public:

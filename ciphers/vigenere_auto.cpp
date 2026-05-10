@@ -41,11 +41,11 @@ CipherResult VigenereAutoCipher::encrypt(const QString& text, const QVariantMap&
         QChar ch = filteredText[i];
         QChar keyChar = key[i];
 
-        int textPos = m_alphabet.indexOf(ch);
-        int keyPos = m_alphabet.indexOf(keyChar);
+        int textPos = CipherUtils::charToIndex(ch, m_alphabet);
+        int keyPos = CipherUtils::charToIndex(keyChar, m_alphabet);
 
         int newPos = (textPos + keyPos) % n;
-        QChar newChar = m_alphabet[newPos];
+        QChar newChar = CipherUtils::indexToChar(newPos, m_alphabet);
         encrypted.append(newChar);
 
         CipherStep step;
@@ -91,11 +91,10 @@ CipherResult VigenereAutoCipher::decrypt(const QString& text, const QVariantMap&
 
     // Первая буква: используем только keyLetter
     QChar firstCh = filteredText[0];
-    int firstTextPos = m_alphabet.indexOf(firstCh);
-    int firstKeyPos = m_alphabet.indexOf(keyLetter);
-
+    int firstTextPos = CipherUtils::charToIndex(firstCh, m_alphabet);
+    int firstKeyPos = CipherUtils::charToIndex(keyLetter, m_alphabet);
     int firstNewPos = (firstTextPos - firstKeyPos + n) % n;
-    QChar firstNewChar = m_alphabet[firstNewPos];
+    QChar firstNewChar = CipherUtils::indexToChar(firstNewPos, m_alphabet);
     decrypted.append(firstNewChar);
 
     CipherStep firstStep;
@@ -113,11 +112,11 @@ CipherResult VigenereAutoCipher::decrypt(const QString& text, const QVariantMap&
         QChar keyChar = decrypted[i-1]; // Предыдущая расшифрованная буква
         QChar ch = filteredText[i];
 
-        int textPos = m_alphabet.indexOf(ch);
-        int keyPos = m_alphabet.indexOf(keyChar);
+        int textPos = CipherUtils::charToIndex(ch, m_alphabet);
+        int keyPos = CipherUtils::charToIndex(keyChar, m_alphabet);
 
         int newPos = (textPos - keyPos + n) % n;
-        QChar newChar = m_alphabet[newPos];
+        QChar newChar = CipherUtils::indexToChar(newPos, m_alphabet);
         decrypted.append(newChar);
 
         CipherStep step;

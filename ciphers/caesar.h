@@ -18,7 +18,7 @@ public:
 
 
 private:
-    QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+    QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 
     CipherResult shiftText(const QString& text, int shift, const QString& operation);
     int getShift(const QVariantMap& params) const;

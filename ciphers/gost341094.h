@@ -41,7 +41,7 @@ public:
     uint64_t computeHash(const QString& text, uint64_t p, QVector<CipherStep>& steps, int& stepCounter) const;
 
 private:
-    const QString m_alphabet = "АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
+    const QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 
     // Преобразование текста в числа и обратно
     int charToNumber(QChar ch) const;

@@ -48,11 +48,10 @@ CipherResult CaesarCipher::shiftText(const QString& text, int shift, const QStri
 
     for (int i = 0; i < filtered.length(); ++i) {
         QChar ch = filtered[i];
-        int idx = m_alphabet.indexOf(ch);
-
+        int idx = CipherUtils::charToIndex(ch, m_alphabet);
         if (idx != -1) {
             int newIdx = (idx + shift) % n;
-            QChar newChar = m_alphabet[newIdx];
+            QChar newChar = CipherUtils::indexToChar(newIdx, m_alphabet);
             transformed.append(newChar);
 
             CipherStep step;

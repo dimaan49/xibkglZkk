@@ -38,8 +38,8 @@ CipherResult VigenereCiphertextCipher::process(const QString& text, QChar keyLet
 
     for (int i = 0; i < filteredText.length(); ++i) {
         QChar ch = filteredText[i];
-        int textPos = m_alphabet.indexOf(ch);
-        int keyPos = m_alphabet.indexOf(currentKey);
+        int textPos = CipherUtils::charToIndex(ch, m_alphabet);
+        int keyPos = CipherUtils::charToIndex(currentKey, m_alphabet);
 
         if (keyPos == -1) {
             // Запасной ключ
@@ -57,7 +57,7 @@ CipherResult VigenereCiphertextCipher::process(const QString& text, QChar keyLet
             operation = "-";
         }
 
-        QChar newChar = m_alphabet[newPos];
+        QChar newChar = CipherUtils::indexToChar(newPos, m_alphabet);
         transformed.append(newChar);
 
         // Обновляем ключ

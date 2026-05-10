@@ -38,13 +38,13 @@ CipherResult TrithemiusCipher::encrypt(const QString& text, const QVariantMap& p
 
     for (int i = 0; i < filteredText.size(); ++i) {
         QChar ch = filteredText[i];
-        int pos = m_alphabet.indexOf(ch);
+        int pos = CipherUtils::charToIndex(ch, m_alphabet);
 
         int shift = startShift + stepShift * i; // startShift + 1 * i
         int normalizedShift = normalizeShift(shift);
 
         int newPos = (pos + normalizedShift) % n;
-        QChar newChar = m_alphabet[newPos];
+        QChar newChar = CipherUtils::indexToChar(newPos, m_alphabet);
         encrypted.append(newChar);
 
         CipherStep step;
@@ -84,13 +84,13 @@ CipherResult TrithemiusCipher::decrypt(const QString& text, const QVariantMap& p
 
     for (int i = 0; i < filteredText.size(); ++i) {
         QChar ch = filteredText[i];
-        int pos = m_alphabet.indexOf(ch);
+        int pos =  CipherUtils::charToIndex(ch, m_alphabet);
 
         int shift = startShift + stepShift * i; // startShift + 1 * i
         int normalizedShift = normalizeShift(shift);
 
         int newPos = (pos - normalizedShift + n) % n;
-        QChar newChar = m_alphabet[newPos];
+        QChar newChar = CipherUtils::indexToChar(newPos, m_alphabet);
         decrypted.append(newChar);
 
         CipherStep step;

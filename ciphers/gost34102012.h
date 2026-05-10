@@ -104,7 +104,7 @@ public:
                                   QString& log);
 
 private:
-    const QString m_alphabet = "АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
+    const QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 
     // Преобразование текста в числа
     QVector<uint64_t> textToNumbers(const QString& text) const;

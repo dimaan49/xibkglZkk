@@ -219,7 +219,7 @@ uint64_t RSASignCipher::computeHash(const QString& text, uint64_t p, QVector<Cip
     }
 
     for (int i = 0; i < filtered.length(); ++i) {
-        int charIndex = m_alphabet.indexOf(filtered[i]);
+        int charIndex = CipherUtils::charToIndex(filtered[i], m_alphabet);
         uint64_t Mi = static_cast<uint64_t>(charIndex + 1);
 
         uint64_t old_h = h;
@@ -345,29 +345,21 @@ QVector<uint64_t> RSASignCipher::textToNumbers(const QString& text) const
 {
     QVector<uint64_t> numbers;
     QString filtered = CipherUtils::filterAlphabetOnly(text, m_alphabet);
-
-    for (int i = 0; i < filtered.length(); ++i) {
-        int num = charToNumber(filtered[i]);
-        if (num >= 0 && num < 32) {
-            numbers.append(static_cast<uint64_t>(num));
-        }
+    QVector<int> indices = CipherUtils::textToIndices(filtered, m_alphabet);
+    for (int idx : indices) {
+        numbers.append(static_cast<uint64_t>(idx));
     }
     return numbers;
 }
 
 QString RSASignCipher::numbersToText(const QVector<uint64_t>& numbers) const
 {
-    QString result;
+    QVector<int> indices;
     for (uint64_t num : numbers) {
-        if (num < static_cast<uint64_t>(m_alphabet.length())) {
-            result.append(m_alphabet[static_cast<int>(num)]);
-        } else {
-            result.append('?');
-        }
+        indices.append(static_cast<int>(num));
     }
-    return result;
+    return CipherUtils::indicesToText(indices, m_alphabet);
 }
-
 
 // ==================== Шифрование с подписью ====================
 CipherResult RSASignCipher::encrypt(const QString& text, const QVariantMap& params)

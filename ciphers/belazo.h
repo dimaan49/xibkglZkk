@@ -17,7 +17,7 @@ public:
     }
 
 private:
-    QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+    QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 
     QString generateKey(const QString& text, const QString& key) const;
 };

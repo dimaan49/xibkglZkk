@@ -37,7 +37,7 @@ public:
     bool isPrime(uint64_t n, int k = 10) const;
 
 private:
-    const QString m_alphabet = "АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
+    const QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 };
 
 // ==================== Регистратор ====================

@@ -1,3 +1,4 @@
+
 #include "elgamal.h"
 #include "cipherfactory.h"
 #include "cipherwidgetfactory.h"
@@ -319,55 +320,26 @@ uint64_t ElGamalCipher::generateRandomK(uint64_t p) const
     return k;
 }
 
-// Алфавит в число (0-31)
-int ElGamalCipher::charToNumber(QChar ch) const
-{
-    int pos = m_alphabet.indexOf(ch);
-    if (pos >= 0 && pos < 32) {
-        return pos;  // 0-31, а не 1-32
-    }
-    return 0;  // 'А' = 0
-}
 
-// Число в букву (0-31)
-QChar ElGamalCipher::numberToChar(int num) const
-{
-    if (num >= 0 && num < 32) {
-        return m_alphabet[num];
-    }
-    return '?';
-}
 
-// Преобразование текста в числа (каждая буква -> число 0-31)
 QVector<uint64_t> ElGamalCipher::textToNumbers(const QString& text) const
 {
     QVector<uint64_t> numbers;
     QString filtered = CipherUtils::filterAlphabetOnly(text, m_alphabet);
-
-    for (int i = 0; i < filtered.length(); ++i) {
-        int num = charToNumber(filtered[i]);
-        if (num >= 0 && num < 32) {
-            numbers.append(static_cast<uint64_t>(num));
-        }
+    QVector<int> indices = CipherUtils::textToIndices(filtered, m_alphabet);
+    for (int idx : indices) {
+        numbers.append(static_cast<uint64_t>(idx));
     }
-
     return numbers;
 }
 
-// Преобразование чисел в текст (каждое число 0-31 -> буква)
 QString ElGamalCipher::numbersToText(const QVector<uint64_t>& numbers) const
 {
-    QString result;
-
+    QVector<int> indices;
     for (uint64_t num : numbers) {
-        if (num < 32) {
-            result.append(m_alphabet[static_cast<int>(num)]);
-        } else {
-            result.append('?');
-        }
+        indices.append(static_cast<int>(num));
     }
-
-    return result;
+    return CipherUtils::indicesToText(indices, m_alphabet);
 }
 
 QPair<uint64_t, uint64_t> ElGamalCipher::encryptNumber(uint64_t m, uint64_t p, uint64_t g, uint64_t y, uint64_t k) const

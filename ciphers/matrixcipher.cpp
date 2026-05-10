@@ -18,8 +18,6 @@
 #include <QGroupBox>
 #include <QFrame>
 
-const QString MatrixCipher::ALPHABET = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
-
 MatrixCipher::MatrixCipher() {}
 
 CipherResult MatrixCipher::encrypt(const QString& text, const QVariantMap& params)
@@ -96,7 +94,7 @@ CipherResult MatrixCipher::encrypt(const QString& text, const QVariantMap& param
             "Вычисление обратной матрицы"));
 
         // Шаг 4: Преобразование текста в числа
-        QString cleanText = CipherUtils::filterAlphabetOnly(text, ALPHABET);
+        QString cleanText = CipherUtils::filterAlphabetOnly(text, m_alphabet);
 
         if (cleanText.isEmpty()) {
             steps.append(CipherStep(4, QChar(), "Ошибка: текст не содержит букв алфавита", "Преобразование текста"));
@@ -131,7 +129,7 @@ CipherResult MatrixCipher::encrypt(const QString& text, const QVariantMap& param
                 numbers.append(paddingChar); // Добавляем ОДНУ И ТУ ЖЕ букву
             }
 
-            QString paddingLetter = ALPHABET[paddingChar];
+        QChar paddingLetter = CipherUtils::indexToChar(paddingChar, m_alphabet);
             steps.append(CipherStep(5, QChar(),
                 QString("Добавлено %1 букв '%2' для выравнивания").arg(paddingCount).arg(paddingLetter),
                 "Дополнение блока"));
@@ -539,7 +537,7 @@ QVector<int> MatrixCipher::textToNumbers(const QString& text) {
     QVector<int> numbers;
 
     for (const QChar& ch : text) {
-        int index = ALPHABET.indexOf(ch);
+        int index = CipherUtils::charToIndex(ch, m_alphabet);
         if (index >= 0) {
             numbers.append(index); // А=0, Б=1, ..., Я=31
         }
@@ -554,7 +552,7 @@ QString MatrixCipher::numbersToText(const QVector<int>& numbers) {
     for (int num : numbers) {
         // Проверяем, что число в пределах алфавита
         if (num >= 0 && num < ALPHABET_SIZE) {
-            text.append(ALPHABET[num]);
+            text.append(CipherUtils::indexToChar(num, m_alphabet));
         } else {
             // Если число вне диапазона, добавляем '?'
             text.append('?');

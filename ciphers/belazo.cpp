@@ -49,10 +49,10 @@ CipherResult BelazoCipher::encrypt(const QString& text, const QVariantMap& param
         QChar ch = filteredText[i];
         QChar keyChar = generatedKey[i];
 
-        int textPos = m_alphabet.indexOf(ch);
-        int keyPos = m_alphabet.indexOf(keyChar);
+        int textPos = CipherUtils::charToIndex(ch, m_alphabet);
+        int keyPos = CipherUtils::charToIndex(ch, m_alphabet);
         int newPos = (textPos + keyPos) % n;
-        QChar newChar = m_alphabet[newPos];
+        QChar newChar = CipherUtils::indexToChar(newPos, m_alphabet);
         transformed.append(newChar);
 
         CipherStep step;
@@ -98,10 +98,10 @@ CipherResult BelazoCipher::decrypt(const QString& text, const QVariantMap& param
         QChar ch = filteredText[i];
         QChar keyChar = generatedKey[i];
 
-        int textPos = m_alphabet.indexOf(ch);
-        int keyPos = m_alphabet.indexOf(keyChar);
+        int textPos = CipherUtils::charToIndex(ch, m_alphabet);
+        int keyPos = CipherUtils::charToIndex(keyChar, m_alphabet);
         int newPos = (textPos - keyPos + n) % n;
-        QChar newChar = m_alphabet[newPos];
+        QChar newChar = CipherUtils::indexToChar(newPos, m_alphabet);
         transformed.append(newChar);
 
         CipherStep step;

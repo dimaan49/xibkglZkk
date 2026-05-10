@@ -43,8 +43,7 @@ std::vector<std::vector<bool>> CardanoCipher::createDefaultGrid() const
 }
 
 QChar CardanoCipher::getAlphabetChar(int index) const {
-    static const QString alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
-    return alphabet[index % alphabet.size()];
+    return CipherUtils::indexToChar(index % m_alphabet.size(), m_alphabet);
 }
 
 // Поворот на 180 градусов

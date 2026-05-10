@@ -26,7 +26,7 @@ private:
     CipherResult process(const QString& text, const QVariantMap& params, bool encrypt);
     bool validateParameters(int t0, int a, int c, QString& errorMessage);
     QVector<int> generateGamma(int length, int t0, int a, int c);
-    QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+    QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 };
 
 // Класс для регистрации шифра в фабриках

@@ -16,13 +16,16 @@ public:
     virtual QString description() const override;
 
     // Константы
-    static const QString ALPHABET;
+    QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
     static const int ALPHABET_SIZE = 32;
 
     // Вспомогательные методы (публичные для доступа из регистратора)
     static bool checkMatrix(const QString& matrixStr, QString& resultMessage, int& det, int& size);
 
 private:
+
+    QVector<int> textToNumbers(const QString& text);
+    QString numbersToText(const QVector<int>& numbers);
     // Вспомогательные методы
     static bool parseMatrix(const QString& matrixStr, QVector<QVector<int>>& matrix);
     static bool isInvertible(const QVector<QVector<int>>& matrix, int& det);
@@ -30,8 +33,6 @@ private:
     static int calculateMinor(const QVector<QVector<int>>& matrix, int row, int col);
     static bool calculateInverse(const QVector<QVector<int>>& matrix, QVector<QVector<double>>& inverse, int det);
 
-    static QVector<int> textToNumbers(const QString& text);
-    static QString numbersToText(const QVector<int>& numbers);
     static QVector<int> multiplyMatrixVector(const QVector<QVector<int>>& matrix, const QVector<int>& vector);
     static QVector<double> multiplyMatrixVectorDouble(const QVector<QVector<double>>& matrix, const QVector<int>& vector);
     static QVector<int> roundToInt(const QVector<double>& numbers);

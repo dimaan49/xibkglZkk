@@ -18,7 +18,7 @@ public:
     }
 
 private:
-    QString m_alphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+    QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
     QString m_numeric = QStringLiteral(u"0123456");
     QMap<QChar, QString> m_charToCoords;  // Буква → координаты
     QMap<QString, QChar> m_coordsToChar;  // Координаты → буква

@@ -61,7 +61,7 @@ public:
     uint64_t computeHash(const QString& text, uint64_t p, QVector<CipherStep>& steps, int stepOffset) const;
 
 private:
-    const QString m_alphabet = "АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
+    const QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 
     // Проверка параметров (с учетом p_hash)
     bool validateParameters(uint64_t p, uint64_t q, uint64_t e, uint64_t p_hash, QString& errorMessage) const;

@@ -522,7 +522,7 @@ BigInt GOST34102012Cipher::computeHash(const QString& text, const BigInt& p,
         "Хеширование"));
 
     for (int i = 0; i < filtered.length(); ++i) {
-        int charIndex = m_alphabet.indexOf(filtered[i]);
+        int charIndex = CipherUtils::charToIndex(filtered[i], m_alphabet);
         uint64_t Mi = static_cast<uint64_t>(charIndex + 1);
 
         uint64_t old_h = h;
@@ -555,21 +555,24 @@ QChar GOST34102012Cipher::numberToChar(int num) const {
     return '?';
 }
 
-QVector<uint64_t> GOST34102012Cipher::textToNumbers(const QString& text) const {
+QVector<uint64_t> GOST34102012Cipher::textToNumbers(const QString& text) const
+{
     QVector<uint64_t> numbers;
     QString filtered = CipherUtils::filterAlphabetOnly(text, m_alphabet);
-    for (int i = 0; i < filtered.length(); ++i) {
-        numbers.append(static_cast<uint64_t>(charToNumber(filtered[i])));
+    QVector<int> indices = CipherUtils::textToIndices(filtered, m_alphabet);
+    for (int idx : indices) {
+        numbers.append(static_cast<uint64_t>(idx));
     }
     return numbers;
 }
 
-QString GOST34102012Cipher::numbersToText(const QVector<uint64_t>& numbers) const {
-    QString result;
+QString GOST34102012Cipher::numbersToText(const QVector<uint64_t>& numbers) const
+{
+    QVector<int> indices;
     for (uint64_t num : numbers) {
-        result.append(numberToChar(static_cast<int>(num)));
+        indices.append(static_cast<int>(num));
     }
-    return result;
+    return CipherUtils::indicesToText(indices, m_alphabet);
 }
 
 bool GOST34102012Cipher::validateParameters(const BigInt& p, const BigInt& a, const BigInt& b,
