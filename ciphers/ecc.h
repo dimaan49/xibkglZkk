@@ -51,13 +51,6 @@ public:
                                    QString& errorMessage);
 
 private:
-    // Вспомогательные математические функции
-    static uint64_t modAdd(uint64_t a, uint64_t b, uint64_t p);
-    static uint64_t modSub(uint64_t a, uint64_t b, uint64_t p);
-    static uint64_t modMul(uint64_t a, uint64_t b, uint64_t p);
-    static uint64_t modPow(uint64_t base, uint64_t exp, uint64_t mod);
-    static uint64_t modInverse(uint64_t a, uint64_t p);
-
     // Преобразование числа в строку
     static QString pointToString(const ECPoint& P);
     static ECPoint stringToPoint(const QString& str);

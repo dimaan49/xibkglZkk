@@ -44,10 +44,6 @@ public:
                "при расшифровании подпись проверяется.";
     }
 
-
-
-    // Статические методы для генерации ключей
-    static uint64_t generatePrimeStatic(int bits);
     static uint64_t generateEStatic(uint64_t phi);
 
     // Хеш-функция квадратичной свертки

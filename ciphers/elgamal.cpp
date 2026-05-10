@@ -122,31 +122,7 @@ ElGamalCipher::ElGamalCipher()
 }
 
 
-bool ElGamalCipher::isPrimitiveRoot(uint64_t g, uint64_t p) const
-{
-    if (g >= p) return false;
 
-    uint64_t phi = p - 1;
-    QVector<uint64_t> factors;
-    uint64_t temp = phi;
-
-    // Находим простые множители phi
-    for (uint64_t i = 2; i * i <= temp; ++i) {
-        if (temp % i == 0) {
-            factors.append(i);
-            while (temp % i == 0) temp /= i;
-        }
-    }
-    if (temp > 1) factors.append(temp);
-
-    // Проверяем g^(phi/p) mod p != 1 для каждого простого делителя
-    for (uint64_t factor : factors) {
-        if (CoreMath::modPow(g, phi / factor, p) == 1) {
-            return false;
-        }
-    }
-    return true;
-}
 
 bool ElGamalCipher::validateParameters(uint64_t p, uint64_t g, uint64_t x, QString& errorMessage) const
 {
@@ -196,34 +172,6 @@ bool ElGamalCipher::validateMessageNumber(uint64_t m, uint64_t p, QString& error
     return true;
 }
 
-uint64_t ElGamalCipher::generatePrime(int bits) const
-{
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(1 << (bits - 1), (1 << bits) - 1);
-
-    uint64_t candidate;
-    do {
-        candidate = dist(gen);
-        if (candidate % 2 == 0) candidate++;
-    } while (!CoreMath::isPrime(candidate, 10));
-
-    return candidate;
-}
-
-uint64_t ElGamalCipher::generatePrimitiveRoot(uint64_t p) const
-{
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, p - 1);
-
-    uint64_t g;
-    do {
-        g = dist(gen);
-    } while (!isPrimitiveRoot(g, p));
-
-    return g;
-}
 
 uint64_t ElGamalCipher::generateRandomK(uint64_t p) const
 {
@@ -257,52 +205,6 @@ uint64_t ElGamalCipher::decryptNumber(uint64_t a, uint64_t b, uint64_t p, uint64
 
 
 
-uint64_t ElGamalCipher::generatePrimeStatic(int bits)
-{
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(1 << (bits - 1), (1 << bits) - 1);
-
-    uint64_t candidate;
-    do {
-        candidate = dist(gen);
-        if (candidate % 2 == 0) candidate++;
-    } while (!CoreMath::isPrime(candidate, 10));
-
-    return candidate;
-}
-
-uint64_t ElGamalCipher::generatePrimitiveRootStatic(uint64_t p)
-{
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, p - 1);
-
-    auto isPrimitiveRootStatic = [&](uint64_t g, uint64_t prime) -> bool {
-        if (g >= prime) return false;
-        uint64_t phi = prime - 1;
-        QVector<uint64_t> factors;
-        uint64_t temp = phi;
-        for (uint64_t i = 2; i * i <= temp; ++i) {
-            if (temp % i == 0) {
-                factors.append(i);
-                while (temp % i == 0) temp /= i;
-            }
-        }
-        if (temp > 1) factors.append(temp);
-        for (uint64_t factor : factors) {
-            if (CoreMath::modPow(g, phi / factor, prime) == 1) return false;
-        }
-        return true;
-    };
-
-    uint64_t g;
-    do {
-        g = dist(gen);
-    } while (!isPrimitiveRootStatic(g, p));
-
-    return g;
-}
 
 uint64_t ElGamalCipher::generateRandomKStatic(uint64_t p)
 {
@@ -735,8 +637,8 @@ ElGamalCipherRegister::ElGamalCipherRegister()
 
             // Подключаем генерацию ключей
             QObject::connect(generateButton, &QPushButton::clicked, [pEdit, gEdit, xEdit]() {
-                uint64_t p = ElGamalCipher::generatePrimeStatic(16);
-                uint64_t g = ElGamalCipher::generatePrimitiveRootStatic(p);
+                uint64_t p = CoreMath::generatePrime(16);
+                uint64_t g = CoreMath::generatePrimitiveRoot(p);
                 uint64_t x = ElGamalCipher::generateRandomKStatic(p);
 
                 pEdit->setValue(p);

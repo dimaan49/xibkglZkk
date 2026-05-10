@@ -15,7 +15,6 @@ class RSACipher : public CipherInterface
 public:
     RSACipher();
     virtual ~RSACipher() = default;
-    uint64_t modInverse(uint64_t e, uint64_t phi) const;
 
     // CipherInterface interface
     virtual QString name() const override { return "RSA"; }
@@ -25,20 +24,13 @@ public:
 
     // Статические методы для генерации ключей
     static uint64_t generateEStatic(uint64_t phi);
-    static uint64_t generatePrimeStatic(int bits);
-
 
 private:
     // Алфавит для преобразования текста в числа
     QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 
-
     // Проверка параметров RSA
     bool validateParameters(uint64_t p, uint64_t q, uint64_t e, QString& errorMessage) const;
-
-    // Преобразование текста в число (для блочного шифрования)
-    QVector<uint64_t> textToNumbers(const QString& text) const;
-    QString numbersToText(const QVector<uint64_t>& numbers) const;
 
     // Основные операции RSA
     uint64_t encryptNumber(uint64_t m, uint64_t e, uint64_t n) const;

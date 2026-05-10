@@ -21,29 +21,6 @@ ElGamalSignCipher::ElGamalSignCipher()
 
 
 
-bool ElGamalSignCipher::isPrimitiveRoot(uint64_t g, uint64_t p) const
-{
-    if (g >= p) return false;
-
-    uint64_t phi = p - 1;
-    QVector<uint64_t> factors;
-    uint64_t temp = phi;
-
-    for (uint64_t i = 2; i * i <= temp; ++i) {
-        if (temp % i == 0) {
-            factors.append(i);
-            while (temp % i == 0) temp /= i;
-        }
-    }
-    if (temp > 1) factors.append(temp);
-
-    for (uint64_t factor : factors) {
-        if (CoreMath::modPow(g, phi / factor, p) == 1) {
-            return false;
-        }
-    }
-    return true;
-}
 
 // ==================== Хеш-функция квадратичной свертки ====================
 uint64_t ElGamalSignCipher::computeHash(const QString& text, uint64_t p, QVector<CipherStep>& steps, int stepOffset) const
@@ -123,53 +100,6 @@ bool ElGamalSignCipher::validateParameters(uint64_t p, uint64_t g, uint64_t x, u
 
 
 
-
-uint64_t ElGamalSignCipher::generatePrimeStatic(int bits)
-{
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(1 << (bits - 1), (1 << bits) - 1);
-
-    uint64_t candidate;
-    do {
-        candidate = dist(gen);
-        if (candidate % 2 == 0) candidate++;
-    } while (!CoreMath::isPrime(candidate, 10));  // <-- ИСПРАВЛЕНО: добавлен ElGamalSignCipher::
-
-    return candidate;
-}
-
-uint64_t ElGamalSignCipher::generatePrimitiveRootStatic(uint64_t p)
-{
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, p - 1);
-
-    auto isPrimitiveRootStatic = [&](uint64_t g, uint64_t prime) -> bool {
-        if (g >= prime) return false;
-        uint64_t phi = prime - 1;
-        QVector<uint64_t> factors;
-        uint64_t temp = phi;
-        for (uint64_t i = 2; i * i <= temp; ++i) {
-            if (temp % i == 0) {
-                factors.append(i);
-                while (temp % i == 0) temp /= i;
-            }
-        }
-        if (temp > 1) factors.append(temp);
-        for (uint64_t factor : factors) {
-            if (CoreMath::modPow(g, phi / factor, prime) == 1) return false;
-        }
-        return true;
-    };
-
-    uint64_t g;
-    do {
-        g = dist(gen);
-    } while (!isPrimitiveRootStatic(g, p));
-
-    return g;
-}
 
 uint64_t ElGamalSignCipher::generateRandomKStatic(uint64_t p)
 {
@@ -548,8 +478,8 @@ ElGamalSignCipherRegister::ElGamalSignCipherRegister()
 
             // Подключаем генерацию ключей
             QObject::connect(generateButton, &QPushButton::clicked, [pEdit, gEdit, xEdit, yEdit, pHashEdit]() {
-                uint64_t p = ElGamalSignCipher::generatePrimeStatic(16);
-                uint64_t g = ElGamalSignCipher::generatePrimitiveRootStatic(p);
+                uint64_t p = CoreMath::generatePrime(16);
+                uint64_t g = CoreMath::generatePrimitiveRoot(p);
                 uint64_t x = ElGamalSignCipher::generateRandomKStatic(p);
                 uint64_t y = CoreMath::modPow(g, x, p);
 

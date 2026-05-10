@@ -21,29 +21,6 @@ GOST341094Cipher::GOST341094Cipher()
 }
 
 
-uint64_t GOST341094Cipher::generatePrimeStatic(int bits)
-{
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(1 << (bits - 1), (1 << bits) - 1);
-
-    uint64_t candidate;
-    do {
-        candidate = dist(gen);
-        if (candidate % 2 == 0) candidate++;
-    } while (!CoreMath::isPrime(candidate, 10));
-
-    return candidate;
-}
-
-uint64_t GOST341094Cipher::generateRandomStatic(uint64_t max)
-{
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, max - 1);
-    return dist(gen);
-}
-
 // ==================== Хеш-функция ====================
 
 uint64_t GOST341094Cipher::computeHash(const QString& text, uint64_t p,
@@ -580,12 +557,12 @@ GOST341094CipherRegister::GOST341094CipherRegister()
 
             // Генерация ключей
             QObject::connect(generateButton, &QPushButton::clicked, [pEdit, qEdit, aEdit, xEdit, kEdit, yEdit]() {
-                uint64_t p = GOST341094Cipher::generatePrimeStatic(16);
-                uint64_t q = GOST341094Cipher::generatePrimeStatic(12);
+                uint64_t p = CoreMath::generatePrime(16);
+                uint64_t q = CoreMath::generatePrime(12);
 
                 // Находим q | (p-1)
                 while ((p - 1) % q != 0) {
-                    q = GOST341094Cipher::generatePrimeStatic(12);
+                    q = CoreMath::generatePrime(12);
                 }
 
                 // Находим a: a^q mod p = 1
@@ -595,8 +572,8 @@ GOST341094CipherRegister::GOST341094CipherRegister()
                     if (a >= p) break;
                 }
 
-                uint64_t x = GOST341094Cipher::generateRandomStatic(q);
-                uint64_t k = GOST341094Cipher::generateRandomStatic(q);
+                uint64_t x = CoreMath::generateRandom(q);
+                uint64_t k = CoreMath::generateRandom(q);
                 uint64_t y = CoreMath::modPow(a, x, p);
 
                 pEdit->setText(QString::number(p));

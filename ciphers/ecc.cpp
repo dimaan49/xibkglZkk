@@ -117,56 +117,6 @@ ECCCipher::ECCCipher()
 {
 }
 
-uint64_t ECCCipher::modAdd(uint64_t a, uint64_t b, uint64_t p)
-{
-    return (a + b) % p;
-}
-
-uint64_t ECCCipher::modSub(uint64_t a, uint64_t b, uint64_t p)
-{
-    return (a + p - (b % p)) % p;
-}
-
-uint64_t ECCCipher::modMul(uint64_t a, uint64_t b, uint64_t p)
-{
-    return (a * b) % p;
-}
-
-uint64_t ECCCipher::modPow(uint64_t base, uint64_t exp, uint64_t mod)
-{
-    uint64_t result = 1;
-    base %= mod;
-    while (exp > 0) {
-        if (exp & 1) {
-            result = (result * base) % mod;
-        }
-        base = (base * base) % mod;
-        exp >>= 1;
-    }
-    return result;
-}
-
-uint64_t ECCCipher::modInverse(uint64_t a, uint64_t p)
-{
-    // Расширенный алгоритм Евклида
-    int64_t t = 0, new_t = 1;
-    int64_t r = p, new_r = a;
-
-    while (new_r != 0) {
-        int64_t quotient = r / new_r;
-        int64_t temp_t = t;
-        t = new_t;
-        new_t = temp_t - quotient * new_t;
-
-        int64_t temp_r = r;
-        r = new_r;
-        new_r = temp_r - quotient * new_r;
-    }
-
-    if (r > 1) return 0; // Нет обратного
-    if (t < 0) t += p;
-    return static_cast<uint64_t>(t);
-}
 
 ECPoint ECCCipher::pointAdd(const ECPoint& P, const ECPoint& Q, uint64_t a, uint64_t p)
 {
@@ -185,14 +135,14 @@ ECPoint ECCCipher::pointAdd(const ECPoint& P, const ECPoint& Q, uint64_t a, uint
     }
 
     // λ = (y2 - y1) * (x2 - x1)^(-1) mod p
-    uint64_t dx = modSub(Q.x, P.x, p);
-    uint64_t dy = modSub(Q.y, P.y, p);
-    uint64_t lambda = modMul(dy, modInverse(dx, p), p);
+    uint64_t dx = CoreMath::modSub(Q.x, P.x, p);
+    uint64_t dy = CoreMath::modSub(Q.y, P.y, p);
+    uint64_t lambda = CoreMath::modMul(dy, CoreMath::modInverse(dx, p), p);
 
     // x3 = λ^2 - x1 - x2 mod p
-    uint64_t x3 = modSub(modSub(modMul(lambda, lambda, p), P.x, p), Q.x, p);
+    uint64_t x3 = CoreMath::modSub(CoreMath::modSub(CoreMath::modMul(lambda, lambda, p), P.x, p), Q.x, p);
     // y3 = λ(x1 - x3) - y1 mod p
-    uint64_t y3 = modSub(modMul(lambda, modSub(P.x, x3, p), p), P.y, p);
+    uint64_t y3 = CoreMath::modSub(CoreMath::modMul(lambda, CoreMath::modSub(P.x, x3, p), p), P.y, p);
 
     return ECPoint(x3, y3);
 }
@@ -204,15 +154,15 @@ ECPoint ECCCipher::pointDouble(const ECPoint& P, uint64_t a, uint64_t p)
     }
 
     // λ = (3*x1^2 + a) * (2*y1)^(-1) mod p
-    uint64_t threeX2 = modMul(3, modMul(P.x, P.x, p), p);
-    uint64_t numerator = modAdd(threeX2, a, p);
-    uint64_t denominator = modMul(2, P.y, p);
-    uint64_t lambda = modMul(numerator, modInverse(denominator, p), p);
+    uint64_t threeX2 = CoreMath::modMul(3, CoreMath::modMul(P.x, P.x, p), p);
+    uint64_t numerator = CoreMath::modAdd(threeX2, a, p);
+    uint64_t denominator = CoreMath::modMul(2, P.y, p);
+    uint64_t lambda = CoreMath::modMul(numerator, CoreMath::modInverse(denominator, p), p);
 
     // x3 = λ^2 - 2*x1 mod p
-    uint64_t x3 = modSub(modMul(lambda, lambda, p), modMul(2, P.x, p), p);
+    uint64_t x3 = CoreMath::modSub(CoreMath::modMul(lambda, lambda, p), CoreMath::modMul(2, P.x, p), p);
     // y3 = λ(x1 - x3) - y1 mod p
-    uint64_t y3 = modSub(modMul(lambda, modSub(P.x, x3, p), p), P.y, p);
+    uint64_t y3 = CoreMath::modSub(CoreMath::modMul(lambda, CoreMath::modSub(P.x, x3, p), p), P.y, p);
 
     return ECPoint(x3, y3);
 }
@@ -239,8 +189,8 @@ bool ECCCipher::isPointOnCurve(const ECPoint& P, uint64_t a, uint64_t b, uint64_
     if (P.isInfinity) return true;
 
     // y^2 mod p = (x^3 + a*x + b) mod p
-    uint64_t left = modMul(P.y, P.y, p);
-    uint64_t right = modAdd(modAdd(modMul(modMul(P.x, P.x, p), P.x, p), modMul(a, P.x, p), p), b, p);
+    uint64_t left = CoreMath::modMul(P.y, P.y, p);
+    uint64_t right = CoreMath::modAdd(CoreMath::modAdd(CoreMath::modMul(CoreMath::modMul(P.x, P.x, p), P.x, p), CoreMath::modMul(a, P.x, p), p), b, p);
 
     return left == right;
 }
@@ -266,9 +216,9 @@ bool ECCCipher::validateParameters(uint64_t a, uint64_t b, uint64_t p,
     }
 
     // Проверка 2: дискриминант 4a^3 + 27b^2 ≠ 0 mod p
-    uint64_t a3 = modMul(modMul(a, a, p), a, p);
-    uint64_t b2 = modMul(b, b, p);
-    uint64_t discriminant = modAdd(modMul(4, a3, p), modMul(27, b2, p), p);
+    uint64_t a3 = CoreMath::modMul(CoreMath::modMul(a, a, p), a, p);
+    uint64_t b2 = CoreMath::modMul(b, b, p);
+    uint64_t discriminant = CoreMath::modAdd(CoreMath::modMul(4, a3, p), CoreMath::modMul(27, b2, p), p);
     if (discriminant == 0) {
         errorMessage = "Дискриминант кривой равен 0 (кривая сингулярна)";
         return false;
@@ -371,7 +321,7 @@ CipherResult ECCCipher::encrypt(const QString& text, const QVariantMap& params)
     // P = [k]DB = (x, y)
     ECPoint P = pointMultiply(DB, k, a, p);
     // e = M * x mod p (где x - координата x точки P)
-    uint64_t e = modMul(M, P.x, p);
+    uint64_t e = CoreMath::modMul(M, P.x, p);
 
     steps.append(CipherStep(4, QChar(),
         QString("Шифрование:\n  R = [k]G = [%1]%2 = %3\n  P = [k]DB = %4\n  e = M * x_P = %1 * %5 mod %6 = %7")
@@ -450,8 +400,8 @@ CipherResult ECCCipher::decrypt(const QString& text, const QVariantMap& params)
     // Q = [Cb]R = (x, y)
     ECPoint Q = pointMultiply(R, cB, a, p);
     // M = e * x^(-1) mod p
-    uint64_t xInv = modInverse(Q.x, p);
-    uint64_t M = modMul(e, xInv, p);
+    uint64_t xInv = CoreMath::modInverse(Q.x, p);
+    uint64_t M = CoreMath::modMul(e, xInv, p);
 
     steps.append(CipherStep(3, QChar(),
         QString("расшифрование:\n  Q = [Cb]R = [%1]%2 = %3\n  x^(-1) = %4^(-1) mod %5 = %6\n  M = e * x^(-1) mod p = %7 * %8 mod %9 = %10")

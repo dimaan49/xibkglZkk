@@ -16,148 +16,6 @@
 #include <random>
 #include <cmath>
 
-// ==================== Вспомогательные функции ====================
-
-bool DiffieHellmanCipher::isPrime(uint64_t n, int k) const
-{
-    if (n <= 1) return false;
-    if (n <= 3) return true;
-    if (n % 2 == 0) return false;
-
-    uint64_t d = n - 1;
-    int r = 0;
-    while (d % 2 == 0) {
-        d /= 2;
-        r++;
-    }
-
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, n - 2);
-
-    for (int i = 0; i < k; ++i) {
-        uint64_t a = dist(gen);
-        uint64_t x = modPow(a, d, n);
-
-        if (x == 1 || x == n - 1) continue;
-
-        bool composite = true;
-        for (int j = 0; j < r - 1; ++j) {
-            x = modPow(x, 2, n);
-            if (x == n - 1) {
-                composite = false;
-                break;
-            }
-        }
-        if (composite) return false;
-    }
-    return true;
-}
-
-bool DiffieHellmanCipher::isPrimeStatic(uint64_t n, int k)
-{
-    if (n <= 1) return false;
-    if (n <= 3) return true;
-    if (n % 2 == 0) return false;
-
-    uint64_t d = n - 1;
-    int r = 0;
-    while (d % 2 == 0) {
-        d /= 2;
-        r++;
-    }
-
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, n - 2);
-
-    for (int i = 0; i < k; ++i) {
-        uint64_t a = dist(gen);
-        uint64_t x = DiffieHellmanCipher::modPowStatic(a, d, n);
-
-        if (x == 1 || x == n - 1) continue;
-
-        bool composite = true;
-        for (int j = 0; j < r - 1; ++j) {
-            x = DiffieHellmanCipher::modPowStatic(x, 2, n);
-            if (x == n - 1) {
-                composite = false;
-                break;
-            }
-        }
-        if (composite) return false;
-    }
-    return true;
-}
-
-uint64_t DiffieHellmanCipher::gcd(uint64_t a, uint64_t b) const
-{
-    while (b != 0) {
-        uint64_t temp = b;
-        b = a % b;
-        a = temp;
-    }
-    return a;
-}
-
-uint64_t DiffieHellmanCipher::gcdStatic(uint64_t a, uint64_t b)
-{
-    while (b != 0) {
-        uint64_t temp = b;
-        b = a % b;
-        a = temp;
-    }
-    return a;
-}
-
-uint64_t DiffieHellmanCipher::modPow(uint64_t base, uint64_t exp, uint64_t mod) const
-{
-    uint64_t result = 1;
-    base %= mod;
-    while (exp > 0) {
-        if (exp & 1) {
-            result = (result * base) % mod;
-        }
-        base = (base * base) % mod;
-        exp >>= 1;
-    }
-    return result;
-}
-
-uint64_t DiffieHellmanCipher::modPowStatic(uint64_t base, uint64_t exp, uint64_t mod)
-{
-    uint64_t result = 1;
-    base %= mod;
-    while (exp > 0) {
-        if (exp & 1) result = (result * base) % mod;
-        base = (base * base) % mod;
-        exp >>= 1;
-    }
-    return result;
-}
-
-uint64_t DiffieHellmanCipher::generatePrimeStatic(int bits)
-{
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(1 << (bits - 1), (1 << bits) - 1);
-
-    uint64_t candidate;
-    do {
-        candidate = dist(gen);
-        if (candidate % 2 == 0) candidate++;
-    } while (!isPrimeStatic(candidate, 10));
-
-    return candidate;
-}
-
-uint64_t DiffieHellmanCipher::generateRandomStatic(uint64_t max)
-{
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, max - 1);
-    return dist(gen);
-}
 
 // ==================== Конструктор ====================
 
@@ -490,7 +348,7 @@ DiffieHellmanCipherRegister::DiffieHellmanCipherRegister()
                     return;
                 }
 
-                uint64_t ya = DiffieHellmanCipher::modPowStatic(a, ka, n);
+                uint64_t ya = CoreMath::modPow(a, ka, n);
                 if (ya == 0 || ya == 1) {
                     showError("YA не должен быть 0 или 1! Выберите другие параметры.");
                 }
@@ -512,7 +370,7 @@ DiffieHellmanCipherRegister::DiffieHellmanCipherRegister()
                     return;
                 }
 
-                uint64_t yb = DiffieHellmanCipher::modPowStatic(a, kb, n);
+                uint64_t yb = CoreMath::modPow(a, kb, n);
                 if (yb == 0 || yb == 1) {
                     showError("YB не должен быть 0 или 1! Выберите другие параметры.");
                 }
@@ -556,8 +414,8 @@ DiffieHellmanCipherRegister::DiffieHellmanCipherRegister()
                     return;
                 }
 
-                uint64_t k1 = DiffieHellmanCipher::modPowStatic(yb, ka, n);
-                uint64_t k2 = DiffieHellmanCipher::modPowStatic(ya, kb, n);
+                uint64_t k1 = CoreMath::modPow(yb, ka, n);
+                uint64_t k2 = CoreMath::modPow(ya, kb, n);
 
                 k1ResultEdit->setText(QString::number(k1));
                 k2ResultEdit->setText(QString::number(k2));
@@ -593,7 +451,7 @@ DiffieHellmanCipherRegister::DiffieHellmanCipherRegister()
                 uint64_t ka;
                 int attempts = 0;
                 do {
-                    ka = DiffieHellmanCipher::generateRandomStatic(n);
+                    ka = CoreMath::generateRandom(n);
                     attempts++;
                     if (attempts > 100) break; // Защита от бесконечного цикла
                 } while (ka == kb || ka == 0 || ka == 1);
@@ -612,7 +470,7 @@ DiffieHellmanCipherRegister::DiffieHellmanCipherRegister()
                 uint64_t kb;
                 int attempts = 0;
                 do {
-                    kb = DiffieHellmanCipher::generateRandomStatic(n);
+                    kb = CoreMath::generateRandom(n);
                     attempts++;
                     if (attempts > 100) break;
                 } while (kb == ka || kb == 0 || kb == 1);

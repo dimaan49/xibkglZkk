@@ -25,15 +25,11 @@ public:
 private:
     // Алфавит для преобразования текста в числа
     QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
-    bool isPrimitiveRoot(uint64_t g, uint64_t p) const;
 
     // Проверка параметров
     bool validateParameters(uint64_t p, uint64_t g, uint64_t x, QString& errorMessage) const;
     bool validateMessageNumber(uint64_t m, uint64_t p, QString& errorMessage) const;
 
-    // Генерация случайных чисел
-    uint64_t generatePrime(int bits = 16) const;
-    uint64_t generatePrimitiveRoot(uint64_t p) const;
     uint64_t generateRandomK(uint64_t p) const;
 
     // Основные операции ElGamal

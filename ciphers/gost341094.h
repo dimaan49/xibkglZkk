@@ -24,10 +24,6 @@ public:
 
     bool isAvailable() const{ return true; }
 
-    // Статические методы для генерации ключей
-    static uint64_t generatePrimeStatic(int bits);
-    static uint64_t generateRandomStatic(uint64_t max);
-
 
     // Хеш-функция квадратичной свертки
     uint64_t computeHash(const QString& text, uint64_t p, QVector<CipherStep>& steps, int& stepCounter) const;

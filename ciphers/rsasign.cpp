@@ -160,20 +160,7 @@ uint64_t RSASignCipher::decryptNumber(uint64_t c, uint64_t d, uint64_t n) const
     return CoreMath::modPow(c, d, n);
 }
 
-uint64_t RSASignCipher::generatePrimeStatic(int bits)
-{
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(1 << (bits - 1), (1 << bits) - 1);
 
-    uint64_t candidate;
-    do {
-        candidate = dist(gen);
-        if (candidate % 2 == 0) candidate++;
-    } while (!CoreMath::isPrime(candidate, 10));
-
-    return candidate;
-}
 
 uint64_t RSASignCipher::generateEStatic(uint64_t phi)
 {
@@ -530,8 +517,8 @@ RSASignCipherRegister::RSASignCipherRegister()
 
             // Генерация ключей
             QObject::connect(generateButton, &QPushButton::clicked, [pEdit, qEdit, eEdit, nEdit]() {
-                uint64_t p = RSASignCipher::generatePrimeStatic(16);
-                uint64_t q = RSASignCipher::generatePrimeStatic(16);
+                uint64_t p = CoreMath::generatePrime(16);
+                uint64_t q = CoreMath::generatePrime(16);
                 uint64_t phi = (p - 1) * (q - 1);
                 uint64_t e = RSASignCipher::generateEStatic(phi);
                 uint64_t n = p * q;
