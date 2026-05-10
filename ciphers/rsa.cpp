@@ -65,162 +65,17 @@ RSACipher::RSACipher()
 {
 }
 
-// Алгоритм Миллера-Рабина для проверки простоты
-bool RSACipher::isPrime(uint64_t n, int k) const
-{
-    if (n <= 1) return false;
-    if (n <= 3) return true;
-    if (n % 2 == 0) return false;
-
-    // Записываем n-1 как d * 2^r
-    uint64_t d = n - 1;
-    int r = 0;
-    while (d % 2 == 0) {
-        d /= 2;
-        r++;
-    }
-
-    // Генератор случайных чисел
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, n - 2);
-
-    // Проводим k тестов
-    for (int i = 0; i < k; ++i) {
-        uint64_t a = dist(gen);
-        uint64_t x = modPow(a, d, n);
-
-        if (x == 1 || x == n - 1) continue;
-
-        bool composite = true;
-        for (int j = 0; j < r - 1; ++j) {
-            x = modPow(x, 2, n);
-            if (x == n - 1) {
-                composite = false;
-                break;
-            }
-        }
-        if (composite) return false;
-    }
-    return true;
-}
-
-bool RSACipher::isPrimeStatic(uint64_t n, int k)
-{
-    if (n <= 1) return false;
-    if (n <= 3) return true;
-    if (n % 2 == 0) return false;
-
-    uint64_t d = n - 1;
-    int r = 0;
-    while (d % 2 == 0) {
-        d /= 2;
-        r++;
-    }
-
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, n - 2);
-
-    for (int i = 0; i < k; ++i) {
-        uint64_t a = dist(gen);
-        uint64_t x = modPowStatic(a, d, n);
-
-        if (x == 1 || x == n - 1) continue;
-
-        bool composite = true;
-        for (int j = 0; j < r - 1; ++j) {
-            x = modPowStatic(x, 2, n);
-            if (x == n - 1) {
-                composite = false;
-                break;
-            }
-        }
-        if (composite) return false;
-    }
-    return true;
-}
-
-uint64_t RSACipher::gcd(uint64_t a, uint64_t b) const
-{
-    while (b != 0) {
-        uint64_t temp = b;
-        b = a % b;
-        a = temp;
-    }
-    return a;
-}
-
-uint64_t RSACipher::gcdStatic(uint64_t a, uint64_t b)
-{
-    while (b != 0) {
-        uint64_t temp = b;
-        b = a % b;
-        a = temp;
-    }
-    return a;
-}
-
-uint64_t RSACipher::modPow(uint64_t base, uint64_t exp, uint64_t mod) const
-{
-    uint64_t result = 1;
-    base %= mod;
-    while (exp > 0) {
-        if (exp & 1) {
-            result = (result * base) % mod;
-        }
-        base = (base * base) % mod;
-        exp >>= 1;
-    }
-    return result;
-}
-
-uint64_t RSACipher::modPowStatic(uint64_t base, uint64_t exp, uint64_t mod)
-{
-    uint64_t result = 1;
-    base %= mod;
-    while (exp > 0) {
-        if (exp & 1) {
-            result = (result * base) % mod;
-        }
-        base = (base * base) % mod;
-        exp >>= 1;
-    }
-    return result;
-}
-
-uint64_t RSACipher::modInverse(uint64_t e, uint64_t phi) const
-{
-    // Расширенный алгоритм Евклида
-    int64_t t = 0, new_t = 1;
-    int64_t r = phi, new_r = e;
-
-    while (new_r != 0) {
-        int64_t quotient = r / new_r;
-        int64_t temp_t = t;
-        t = new_t;
-        new_t = temp_t - quotient * new_t;
-
-        int64_t temp_r = r;
-        r = new_r;
-        new_r = temp_r - quotient * new_r;
-    }
-
-    if (r > 1) return 0; // Не существует обратного
-    if (t < 0) t += phi;
-    return static_cast<uint64_t>(t);
-}
 
 bool RSACipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, QString& errorMessage) const
 {
     const uint64_t ALPHABET_SIZE = 32;
 
     // Проверка 1: p и q должны быть простыми
-    if (!isPrime(p)) {
+    if (!CoreMath::isPrime(p)) {
         errorMessage = QString("P = %1 не является простым числом").arg(p);
         return false;
     }
-    if (!isPrime(q)) {
+    if (!CoreMath::isPrime(q)) {
         errorMessage = QString("Q = %1 не является простым числом").arg(q);
         return false;
     }
@@ -250,7 +105,7 @@ bool RSACipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, QString& 
     }
 
     // Проверка 6: e и φ(N) взаимно просты
-    if (gcd(e, phi) != 1) {
+    if (CoreMath::gcd(e, phi) != 1) {
         errorMessage = QString("E и φ(N) = %1 не являются взаимно простыми").arg(phi);
         return false;
     }
@@ -263,12 +118,12 @@ bool RSACipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, QString& 
 
 uint64_t RSACipher::encryptNumber(uint64_t m, uint64_t e, uint64_t n) const
 {
-    return modPow(m, e, n);
+    return CoreMath::modPow(m, e, n);
 }
 
 uint64_t RSACipher::decryptNumber(uint64_t c, uint64_t d, uint64_t n) const
 {
-    return modPow(c, d, n);
+    return CoreMath::modPow(c, d, n);
 }
 
 uint64_t RSACipher::generatePrimeStatic(int bits)
@@ -281,7 +136,7 @@ uint64_t RSACipher::generatePrimeStatic(int bits)
     do {
         candidate = dist(gen);
         if (candidate % 2 == 0) candidate++;
-    } while (!isPrimeStatic(candidate, 10));
+    } while (!CoreMath::isPrime(candidate, 10));
 
     return candidate;
 }
@@ -297,31 +152,12 @@ uint64_t RSACipher::generateEStatic(uint64_t phi)
     uint64_t e;
     do {
         e = dist(gen);
-    } while (gcdStatic(e, phi) != 1);
+    } while (CoreMath::gcd(e, phi) != 1);
 
     return e;
 }
 
-QVector<uint64_t> RSACipher::textToNumbers(const QString& text) const
-{
-    QVector<uint64_t> numbers;
-    QString filtered = CipherUtils::filterAlphabetOnly(text, m_alphabet);
-    QVector<int> indices = CipherUtils::textToIndices(filtered, m_alphabet);
-    for (int idx : indices) {
-        numbers.append(static_cast<uint64_t>(idx));
-    }
-    return numbers;
-}
 
-
-QString RSACipher::numbersToText(const QVector<uint64_t>& numbers) const
-{
-    QVector<int> indices;
-    for (uint64_t num : numbers) {
-        indices.append(static_cast<int>(num));
-    }
-    return CipherUtils::indicesToText(indices, m_alphabet);
-}
 
 // Шифрование
 CipherResult RSACipher::encrypt(const QString& text, const QVariantMap& params)
@@ -357,7 +193,7 @@ CipherResult RSACipher::encrypt(const QString& text, const QVariantMap& params)
 
     uint64_t n = p * q;
     uint64_t phi = (p - 1) * (q - 1);
-    uint64_t d = modInverse(e, phi);
+    uint64_t d = CoreMath::modInverse(e, phi);
 
     if (e == d) {
          result.result = "ОШИБКА: Открытый ключ E равен закрытому ключу D! "
@@ -392,7 +228,7 @@ CipherResult RSACipher::encrypt(const QString& text, const QVariantMap& params)
         "Подготовка данных"));
 
     // Преобразуем текст в числа (каждая буква -> число 0-31)
-    QVector<uint64_t> numbers = textToNumbers(filteredText);
+    QVector<uint64_t> numbers = CipherUtils::textToNumbers<uint64_t>(filteredText, m_alphabet);
 
     // Показываем оригинальные числа
     QString numbersStr;
@@ -522,7 +358,7 @@ CipherResult RSACipher::decrypt(const QString& text, const QVariantMap& params)
         "Расшифрованные числа"));
 
     // Преобразуем числа обратно в текст
-    QString resultText = numbersToText(decryptedNumbers);
+    QString resultText = CipherUtils::numbersToText(decryptedNumbers, m_alphabet);
 
     steps.append(CipherStep(4, QChar(),
         QString("Результат: %1").arg(resultText),
@@ -669,8 +505,7 @@ RSACipherRegister::RSACipherRegister()
 
                 // Вычисляем D (закрытый ключ)
                 uint64_t n = p * q;
-                RSACipher temp;
-                uint64_t d = temp.modInverse(e, phi);
+                uint64_t d = CoreMath::modInverse(e, phi);
 
                 pEdit->setValue(p);
                 qEdit->setValue(q);

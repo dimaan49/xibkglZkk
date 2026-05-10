@@ -25,12 +25,6 @@ public:
 private:
     // Алфавит для преобразования текста в числа
     QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
-
-    // Вспомогательные математические функции
-    bool isPrime(uint64_t n, int k = 5) const;
-    uint64_t gcd(uint64_t a, uint64_t b) const;
-    uint64_t modPow(uint64_t base, uint64_t exp, uint64_t mod) const;
-    uint64_t modInverse(uint64_t a, uint64_t mod) const;
     bool isPrimitiveRoot(uint64_t g, uint64_t p) const;
 
     // Проверка параметров
@@ -41,10 +35,6 @@ private:
     uint64_t generatePrime(int bits = 16) const;
     uint64_t generatePrimitiveRoot(uint64_t p) const;
     uint64_t generateRandomK(uint64_t p) const;
-
-    // Преобразование текста в числа (каждая буква -> число 1-32)
-    QVector<uint64_t> textToNumbers(const QString& text) const;
-    QString numbersToText(const QVector<uint64_t>& numbers) const;
 
     // Основные операции ElGamal
     QPair<uint64_t, uint64_t> encryptNumber(uint64_t m, uint64_t p, uint64_t g, uint64_t y, uint64_t k) const;
@@ -57,8 +47,6 @@ public:
     static uint64_t generatePrimeStatic(int bits = 16);
     static uint64_t generatePrimitiveRootStatic(uint64_t p);
     static uint64_t generateRandomKStatic(uint64_t p);
-    static bool isPrimeStatic(uint64_t n, int k = 5);
-    static uint64_t modPowStatic(uint64_t base, uint64_t exp, uint64_t mod);
 };
 
 // Виджет для ввода чисел

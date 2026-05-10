@@ -29,15 +29,7 @@ public:
     static uint64_t generatePrimeStatic(int bits);
     static uint64_t generatePrimitiveRootStatic(uint64_t p);
     static uint64_t generateRandomKStatic(uint64_t p);
-    static uint64_t modPowStatic(uint64_t base, uint64_t exp, uint64_t mod);
-    static uint64_t gcdStatic(uint64_t a, uint64_t b);
-    static bool isPrimeStatic(uint64_t n, int k = 10);
 
-    // Методы для работы с числами
-    uint64_t modPow(uint64_t base, uint64_t exp, uint64_t mod) const;
-    uint64_t modInverse(uint64_t a, uint64_t mod) const;
-    uint64_t gcd(uint64_t a, uint64_t b) const;
-    bool isPrime(uint64_t n, int k = 10) const;
     bool isPrimitiveRoot(uint64_t g, uint64_t p) const;
 
     // Хеш-функция квадратичной свертки
@@ -48,12 +40,6 @@ private:
 
     // Проверка параметров
     bool validateParameters(uint64_t p, uint64_t g, uint64_t x, uint64_t p_hash, QString& errorMessage) const;
-
-    // Преобразование текста в числа и обратно
-    int charToNumber(QChar ch) const;
-    QChar numberToChar(int num) const;
-    QVector<uint64_t> textToNumbers(const QString& text) const;
-    QString numbersToText(const QVector<uint64_t>& numbers) const;
 };
 
 // ==================== Регистратор ====================

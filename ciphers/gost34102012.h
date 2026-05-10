@@ -106,11 +106,6 @@ public:
 private:
     const QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 
-    // Преобразование текста в числа
-    QVector<uint64_t> textToNumbers(const QString& text) const;
-    QString numbersToText(const QVector<uint64_t>& numbers) const;
-    int charToNumber(QChar ch) const;
-    QChar numberToChar(int num) const;
 
     // Проверка параметров
     bool validateParameters(const BigInt& p, const BigInt& a, const BigInt& b,

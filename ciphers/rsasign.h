@@ -49,13 +49,6 @@ public:
     // Статические методы для генерации ключей
     static uint64_t generatePrimeStatic(int bits);
     static uint64_t generateEStatic(uint64_t phi);
-    static bool isPrimeStatic(uint64_t n, int k = 10);
-    static uint64_t modPowStatic(uint64_t base, uint64_t exp, uint64_t mod);
-    static uint64_t gcdStatic(uint64_t a, uint64_t b);
-
-    // Методы для работы с числами
-    uint64_t modInverse(uint64_t e, uint64_t phi) const;
-    uint64_t modPow(uint64_t base, uint64_t exp, uint64_t mod) const;
 
     // Хеш-функция квадратичной свертки
     uint64_t computeHash(const QString& text, uint64_t p, QVector<CipherStep>& steps, int stepOffset) const;
@@ -66,19 +59,11 @@ private:
     // Проверка параметров (с учетом p_hash)
     bool validateParameters(uint64_t p, uint64_t q, uint64_t e, uint64_t p_hash, QString& errorMessage) const;
 
-    // Преобразование текста в числа и обратно
-    int charToNumber(QChar ch) const;
-    QChar numberToChar(int num) const;
-    QVector<uint64_t> textToNumbers(const QString& text) const;
-    QString numbersToText(const QVector<uint64_t>& numbers) const;
 
     // Основные криптографические операции
     uint64_t encryptNumber(uint64_t m, uint64_t e, uint64_t n) const;
     uint64_t decryptNumber(uint64_t c, uint64_t d, uint64_t n) const;
 
-    // Вспомогательные методы
-    bool isPrime(uint64_t n, int k = 10) const;
-    uint64_t gcd(uint64_t a, uint64_t b) const;
 };
 
 // ==================== Регистратор ====================

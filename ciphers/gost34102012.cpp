@@ -544,36 +544,7 @@ BigInt GOST34102012Cipher::computeHash(const QString& text, const BigInt& p,
     return BigInt(h);
 }
 
-int GOST34102012Cipher::charToNumber(QChar ch) const {
-    return m_alphabet.indexOf(ch);
-}
 
-QChar GOST34102012Cipher::numberToChar(int num) const {
-    if (num >= 0 && num < m_alphabet.length()) {
-        return m_alphabet[num];
-    }
-    return '?';
-}
-
-QVector<uint64_t> GOST34102012Cipher::textToNumbers(const QString& text) const
-{
-    QVector<uint64_t> numbers;
-    QString filtered = CipherUtils::filterAlphabetOnly(text, m_alphabet);
-    QVector<int> indices = CipherUtils::textToIndices(filtered, m_alphabet);
-    for (int idx : indices) {
-        numbers.append(static_cast<uint64_t>(idx));
-    }
-    return numbers;
-}
-
-QString GOST34102012Cipher::numbersToText(const QVector<uint64_t>& numbers) const
-{
-    QVector<int> indices;
-    for (uint64_t num : numbers) {
-        indices.append(static_cast<int>(num));
-    }
-    return CipherUtils::indicesToText(indices, m_alphabet);
-}
 
 bool GOST34102012Cipher::validateParameters(const BigInt& p, const BigInt& a, const BigInt& b,
                                              const BigInt& q, const ECPoint& P,
@@ -915,14 +886,7 @@ void GOST34102012Cipher::computeCurveOrder(const BigInt& p, const BigInt& a, con
     uint64_t q_val = 1;
     for (uint64_t i = 2; i <= totalPoints; ++i) {
         if (totalPoints % i == 0) {
-            bool isPrime = true;
-            for (uint64_t j = 2; j * j <= i; ++j) {
-                if (i % j == 0) {
-                    isPrime = false;
-                    break;
-                }
-            }
-            if (isPrime) {
+            if (CoreMath::isPrime(i)) {
                 q_val = i;
             }
         }

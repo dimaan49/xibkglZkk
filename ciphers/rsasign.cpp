@@ -62,146 +62,6 @@ RSASignCipher::RSASignCipher()
 {
 }
 
-bool RSASignCipher::isPrime(uint64_t n, int k) const
-{
-    if (n <= 1) return false;
-    if (n <= 3) return true;
-    if (n % 2 == 0) return false;
-
-    uint64_t d = n - 1;
-    int r = 0;
-    while (d % 2 == 0) {
-        d /= 2;
-        r++;
-    }
-
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, n - 2);
-
-    for (int i = 0; i < k; ++i) {
-        uint64_t a = dist(gen);
-        uint64_t x = modPow(a, d, n);
-
-        if (x == 1 || x == n - 1) continue;
-
-        bool composite = true;
-        for (int j = 0; j < r - 1; ++j) {
-            x = modPow(x, 2, n);
-            if (x == n - 1) {
-                composite = false;
-                break;
-            }
-        }
-        if (composite) return false;
-    }
-    return true;
-}
-
-bool RSASignCipher::isPrimeStatic(uint64_t n, int k)
-{
-    if (n <= 1) return false;
-    if (n <= 3) return true;
-    if (n % 2 == 0) return false;
-
-    uint64_t d = n - 1;
-    int r = 0;
-    while (d % 2 == 0) {
-        d /= 2;
-        r++;
-    }
-
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, n - 2);
-
-    for (int i = 0; i < k; ++i) {
-        uint64_t a = dist(gen);
-        uint64_t x = modPowStatic(a, d, n);
-
-        if (x == 1 || x == n - 1) continue;
-
-        bool composite = true;
-        for (int j = 0; j < r - 1; ++j) {
-            x = modPowStatic(x, 2, n);
-            if (x == n - 1) {
-                composite = false;
-                break;
-            }
-        }
-        if (composite) return false;
-    }
-    return true;
-}
-
-uint64_t RSASignCipher::gcd(uint64_t a, uint64_t b) const
-{
-    while (b != 0) {
-        uint64_t temp = b;
-        b = a % b;
-        a = temp;
-    }
-    return a;
-}
-
-uint64_t RSASignCipher::gcdStatic(uint64_t a, uint64_t b)
-{
-    while (b != 0) {
-        uint64_t temp = b;
-        b = a % b;
-        a = temp;
-    }
-    return a;
-}
-
-uint64_t RSASignCipher::modPow(uint64_t base, uint64_t exp, uint64_t mod) const
-{
-    uint64_t result = 1;
-    base %= mod;
-    while (exp > 0) {
-        if (exp & 1) {
-            result = (result * base) % mod;
-        }
-        base = (base * base) % mod;
-        exp >>= 1;
-    }
-    return result;
-}
-
-uint64_t RSASignCipher::modPowStatic(uint64_t base, uint64_t exp, uint64_t mod)
-{
-    uint64_t result = 1;
-    base %= mod;
-    while (exp > 0) {
-        if (exp & 1) {
-            result = (result * base) % mod;
-        }
-        base = (base * base) % mod;
-        exp >>= 1;
-    }
-    return result;
-}
-
-uint64_t RSASignCipher::modInverse(uint64_t e, uint64_t phi) const
-{
-    int64_t t = 0, new_t = 1;
-    int64_t r = phi, new_r = e;
-
-    while (new_r != 0) {
-        int64_t quotient = r / new_r;
-        int64_t temp_t = t;
-        t = new_t;
-        new_t = temp_t - quotient * new_t;
-
-        int64_t temp_r = r;
-        r = new_r;
-        new_r = temp_r - quotient * new_r;
-    }
-
-    if (r > 1) return 0;
-    if (t < 0) t += phi;
-    return static_cast<uint64_t>(t);
-}
 
 // ==================== Хеш-функция квадратичной свертки ====================
 uint64_t RSASignCipher::computeHash(const QString& text, uint64_t p, QVector<CipherStep>& steps, int stepOffset) const
@@ -256,11 +116,11 @@ bool RSASignCipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, uint6
         return false;
     }
 
-    if (!isPrime(p)) {
+    if (!CoreMath::isPrime(p)) {
         errorMessage = QString("P = %1 не является простым числом").arg(p);
         return false;
     }
-    if (!isPrime(q)) {
+    if (!CoreMath::isPrime(q)) {
         errorMessage = QString("Q = %1 не является простым числом").arg(q);
         return false;
     }
@@ -281,7 +141,7 @@ bool RSASignCipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, uint6
         errorMessage = QString("E должно быть в диапазоне 1 < E < φ(N) = %1").arg(phi);
         return false;
     }
-    if (gcd(e, phi) != 1) {
+    if (CoreMath::gcd(e, phi) != 1) {
         errorMessage = QString("E и φ(N) = %1 не являются взаимно простыми").arg(phi);
         return false;
     }
@@ -289,27 +149,15 @@ bool RSASignCipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, uint6
     return true;
 }
 
-int RSASignCipher::charToNumber(QChar ch) const
-{
-    return m_alphabet.indexOf(ch);
-}
-
-QChar RSASignCipher::numberToChar(int num) const
-{
-    if (num >= 0 && num < m_alphabet.length()) {
-        return m_alphabet[num];
-    }
-    return '?';
-}
 
 uint64_t RSASignCipher::encryptNumber(uint64_t m, uint64_t e, uint64_t n) const
 {
-    return modPow(m, e, n);
+    return CoreMath::modPow(m, e, n);
 }
 
 uint64_t RSASignCipher::decryptNumber(uint64_t c, uint64_t d, uint64_t n) const
 {
-    return modPow(c, d, n);
+    return CoreMath::modPow(c, d, n);
 }
 
 uint64_t RSASignCipher::generatePrimeStatic(int bits)
@@ -322,7 +170,7 @@ uint64_t RSASignCipher::generatePrimeStatic(int bits)
     do {
         candidate = dist(gen);
         if (candidate % 2 == 0) candidate++;
-    } while (!isPrimeStatic(candidate, 10));
+    } while (!CoreMath::isPrime(candidate, 10));
 
     return candidate;
 }
@@ -336,30 +184,12 @@ uint64_t RSASignCipher::generateEStatic(uint64_t phi)
     uint64_t e;
     do {
         e = dist(gen);
-    } while (gcdStatic(e, phi) != 1);
+    } while (CoreMath::gcd(e, phi) != 1);
 
     return e;
 }
 
-QVector<uint64_t> RSASignCipher::textToNumbers(const QString& text) const
-{
-    QVector<uint64_t> numbers;
-    QString filtered = CipherUtils::filterAlphabetOnly(text, m_alphabet);
-    QVector<int> indices = CipherUtils::textToIndices(filtered, m_alphabet);
-    for (int idx : indices) {
-        numbers.append(static_cast<uint64_t>(idx));
-    }
-    return numbers;
-}
 
-QString RSASignCipher::numbersToText(const QVector<uint64_t>& numbers) const
-{
-    QVector<int> indices;
-    for (uint64_t num : numbers) {
-        indices.append(static_cast<int>(num));
-    }
-    return CipherUtils::indicesToText(indices, m_alphabet);
-}
 
 // ==================== Шифрование с подписью ====================
 CipherResult RSASignCipher::encrypt(const QString& text, const QVariantMap& params)
@@ -382,11 +212,11 @@ CipherResult RSASignCipher::encrypt(const QString& text, const QVariantMap& para
     }
 
     // Проверка простоты P и Q
-    if (!isPrime(p)) {
+    if (!CoreMath::isPrime(p)) {
         result.result = QString("ОШИБКА: P = %1 не является простым числом").arg(p);
         return result;
     }
-    if (!isPrime(q)) {
+    if (!CoreMath::isPrime(q)) {
         result.result = QString("ОШИБКА: Q = %1 не является простым числом").arg(q);
         return result;
     }
@@ -408,12 +238,12 @@ CipherResult RSASignCipher::encrypt(const QString& text, const QVariantMap& para
         result.result = QString("ОШИБКА: E должно быть в диапазоне 1 < E < φ(N) = %1").arg(phi);
         return result;
     }
-    if (gcd(e, phi) != 1) {
+    if (CoreMath::gcd(e, phi) != 1) {
         result.result = QString("ОШИБКА: E и φ(N) = %1 не являются взаимно простыми").arg(phi);
         return result;
     }
 
-    uint64_t d = modInverse(e, phi);
+    uint64_t d = CoreMath::modInverse(e, phi);
 
 
     // Проверка: e и d не должны быть равны
@@ -447,7 +277,7 @@ CipherResult RSASignCipher::encrypt(const QString& text, const QVariantMap& para
     stepCounter += filteredText.length() + 2;
 
     // Вычисляем подпись
-    uint64_t signature = modPow(hash, d, n);
+    uint64_t signature = CoreMath::modPow(hash, d, n);
 
     steps.append(CipherStep(stepCounter++, QChar(),
         QString("Подпись: S = H^D mod N = %1^%2 mod %3 = %4")
@@ -527,7 +357,7 @@ CipherResult RSASignCipher::decrypt(const QString& text, const QVariantMap& para
     stepCounter += message.length() + 2;
 
     // Расшифровываем подпись (получаем хеш)
-    uint64_t decryptedHash = modPow(signature, e, n);
+    uint64_t decryptedHash = CoreMath::modPow(signature, e, n);
     steps.append(CipherStep(stepCounter++, QChar(),
         QString("Расшифрованная подпись: H2 = S^E mod N = %1^%2 mod %3 = %4")
             .arg(signature).arg(e).arg(n).arg(decryptedHash),
@@ -707,8 +537,7 @@ RSASignCipherRegister::RSASignCipherRegister()
                 uint64_t n = p * q;
 
                 // Вычисляем D через временный объект
-                RSASignCipher temp;
-                uint64_t d = temp.modInverse(e, phi);
+                uint64_t d = CoreMath::modInverse(e, phi);
 
                 pEdit->setText(QString::number(p));
                 qEdit->setText(QString::number(q));

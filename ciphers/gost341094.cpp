@@ -20,144 +20,6 @@ GOST341094Cipher::GOST341094Cipher()
 {
 }
 
-bool GOST341094Cipher::isPrime(uint64_t n, int k) const
-{
-    if (n <= 1) return false;
-    if (n <= 3) return true;
-    if (n % 2 == 0) return false;
-
-    uint64_t d = n - 1;
-    int r = 0;
-    while (d % 2 == 0) {
-        d /= 2;
-        r++;
-    }
-
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, n - 2);
-
-    for (int i = 0; i < k; ++i) {
-        uint64_t a = dist(gen);
-        uint64_t x = modPow(a, d, n);
-
-        if (x == 1 || x == n - 1) continue;
-
-        bool composite = true;
-        for (int j = 0; j < r - 1; ++j) {
-            x = modPow(x, 2, n);
-            if (x == n - 1) {
-                composite = false;
-                break;
-            }
-        }
-        if (composite) return false;
-    }
-    return true;
-}
-
-bool GOST341094Cipher::isPrimeStatic(uint64_t n, int k)
-{
-    if (n <= 1) return false;
-    if (n <= 3) return true;
-    if (n % 2 == 0) return false;
-
-    uint64_t d = n - 1;
-    int r = 0;
-    while (d % 2 == 0) {
-        d /= 2;
-        r++;
-    }
-
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, n - 2);
-
-    for (int i = 0; i < k; ++i) {
-        uint64_t a = dist(gen);
-        uint64_t x = modPowStatic(a, d, n);
-
-        if (x == 1 || x == n - 1) continue;
-
-        bool composite = true;
-        for (int j = 0; j < r - 1; ++j) {
-            x = modPowStatic(x, 2, n);
-            if (x == n - 1) {
-                composite = false;
-                break;
-            }
-        }
-        if (composite) return false;
-    }
-    return true;
-}
-
-uint64_t GOST341094Cipher::gcd(uint64_t a, uint64_t b) const
-{
-    while (b != 0) {
-        uint64_t temp = b;
-        b = a % b;
-        a = temp;
-    }
-    return a;
-}
-
-uint64_t GOST341094Cipher::gcdStatic(uint64_t a, uint64_t b)
-{
-    while (b != 0) {
-        uint64_t temp = b;
-        b = a % b;
-        a = temp;
-    }
-    return a;
-}
-
-uint64_t GOST341094Cipher::modPow(uint64_t base, uint64_t exp, uint64_t mod) const
-{
-    uint64_t result = 1;
-    base %= mod;
-    while (exp > 0) {
-        if (exp & 1) {
-            result = (result * base) % mod;
-        }
-        base = (base * base) % mod;
-        exp >>= 1;
-    }
-    return result;
-}
-
-uint64_t GOST341094Cipher::modPowStatic(uint64_t base, uint64_t exp, uint64_t mod)
-{
-    uint64_t result = 1;
-    base %= mod;
-    while (exp > 0) {
-        if (exp & 1) result = (result * base) % mod;
-        base = (base * base) % mod;
-        exp >>= 1;
-    }
-    return result;
-}
-
-uint64_t GOST341094Cipher::modInverse(uint64_t a, uint64_t mod) const
-{
-    int64_t t = 0, new_t = 1;
-    int64_t r = mod, new_r = a;
-
-    while (new_r != 0) {
-        int64_t quotient = r / new_r;
-        int64_t temp_t = t;
-        t = new_t;
-        new_t = temp_t - quotient * new_t;
-
-        int64_t temp_r = r;
-        r = new_r;
-        new_r = temp_r - quotient * new_r;
-    }
-
-    if (r > 1) return 0;
-    if (t < 0) t += mod;
-    return static_cast<uint64_t>(t);
-}
 
 uint64_t GOST341094Cipher::generatePrimeStatic(int bits)
 {
@@ -169,7 +31,7 @@ uint64_t GOST341094Cipher::generatePrimeStatic(int bits)
     do {
         candidate = dist(gen);
         if (candidate % 2 == 0) candidate++;
-    } while (!isPrimeStatic(candidate, 10));
+    } while (!CoreMath::isPrime(candidate, 10));
 
     return candidate;
 }
@@ -222,38 +84,7 @@ uint64_t GOST341094Cipher::computeHash(const QString& text, uint64_t p,
     return h;
 }
 
-int GOST341094Cipher::charToNumber(QChar ch) const
-{
-    return m_alphabet.indexOf(ch);
-}
 
-QChar GOST341094Cipher::numberToChar(int num) const
-{
-    if (num >= 0 && num < m_alphabet.length()) {
-        return m_alphabet[num];
-    }
-    return '?';
-}
-
-QVector<uint64_t> GOST341094Cipher::textToNumbers(const QString& text) const
-{
-    QVector<uint64_t> numbers;
-    QString filtered = CipherUtils::filterAlphabetOnly(text, m_alphabet);
-    QVector<int> indices = CipherUtils::textToIndices(filtered, m_alphabet);
-    for (int idx : indices) {
-        numbers.append(static_cast<uint64_t>(idx));
-    }
-    return numbers;
-}
-
-QString GOST341094Cipher::numbersToText(const QVector<uint64_t>& numbers) const
-{
-    QVector<int> indices;
-    for (uint64_t num : numbers) {
-        indices.append(static_cast<int>(num));
-    }
-    return CipherUtils::indicesToText(indices, m_alphabet);
-}
 
 bool GOST341094Cipher::validateParameters(uint64_t p, uint64_t q, uint64_t a, uint64_t x, uint64_t k, uint64_t p_hash, QString& errorMessage) const
 {
@@ -264,12 +95,12 @@ bool GOST341094Cipher::validateParameters(uint64_t p, uint64_t q, uint64_t a, ui
         return false;
     }
 
-    if (!isPrime(p)) {
+    if (!CoreMath::isPrime(p)) {
         errorMessage = QString("P = %1 не является простым числом").arg(p);
         return false;
     }
 
-    if (!isPrime(q)) {
+    if (!CoreMath::isPrime(q)) {
         errorMessage = QString("Q = %1 не является простым числом").arg(q);
         return false;
     }
@@ -279,9 +110,9 @@ bool GOST341094Cipher::validateParameters(uint64_t p, uint64_t q, uint64_t a, ui
         return false;
     }
 
-    if (modPow(a, q, p) != 1) {
+    if (CoreMath::modPow(a, q, p) != 1) {
         errorMessage = QString("Условие a^q mod p = 1 не выполняется. %1^%2 mod %3 = %4")
-                           .arg(a).arg(q).arg(p).arg(modPow(a, q, p));
+                           .arg(a).arg(q).arg(p).arg(CoreMath::modPow(a, q, p));
         return false;
     }
 
@@ -365,7 +196,7 @@ CipherResult GOST341094Cipher::encrypt(const QString& text, const QVariantMap& p
         "Вычисление хеша"));
 
     // Шаг 2: Вычисляем r = (a^k mod p) mod q
-    uint64_t ak = modPow(a, k, p);
+    uint64_t ak = CoreMath::modPow(a, k, p);
     uint64_t r = ak % q;
 
     steps.append(CipherStep(stepCounter++, QChar(),
@@ -402,7 +233,7 @@ CipherResult GOST341094Cipher::encrypt(const QString& text, const QVariantMap& p
     }
 
     // Вычисляем y = a^x mod p (открытый ключ)
-    uint64_t y = modPow(a, x, p);
+    uint64_t y = CoreMath::modPow(a, x, p);
 
     steps.append(CipherStep(stepCounter++, QChar(),
         QString("Открытый ключ: y = a^x mod p = %1^%2 mod %3 = %4")
@@ -525,7 +356,7 @@ CipherResult GOST341094Cipher::decrypt(const QString& text, const QVariantMap& p
         "Вычисление хеша"));
 
     // Шаг 3: Вычисляем v = H(m)^(q-2) mod q
-    uint64_t v = modPow(hm, q - 2, q);
+    uint64_t v = CoreMath::modPow(hm, q - 2, q);
 
     steps.append(CipherStep(stepCounter++, QChar(),
         QString("Шаг 3: v = H(m)^(q-2) mod q = %1^(%2-2) mod %3 = %4")
@@ -550,8 +381,8 @@ CipherResult GOST341094Cipher::decrypt(const QString& text, const QVariantMap& p
         "Вычисление z2"));
 
     // Шаг 6: Вычисляем u = (a^z1 * y^z2 mod p) mod q
-    uint64_t a_z1 = modPow(a, z1, p);
-    uint64_t y_z2 = modPow(y, z2, p);
+    uint64_t a_z1 = CoreMath::modPow(a, z1, p);
+    uint64_t y_z2 = CoreMath::modPow(y, z2, p);
     uint64_t product = (a_z1 * y_z2) % p;
     uint64_t u = product % q;
 
@@ -759,14 +590,14 @@ GOST341094CipherRegister::GOST341094CipherRegister()
 
                 // Находим a: a^q mod p = 1
                 uint64_t a = 2;
-                while (GOST341094Cipher::modPowStatic(a, q, p) != 1) {
+                while (CoreMath::modPow(a, q, p) != 1) {
                     a++;
                     if (a >= p) break;
                 }
 
                 uint64_t x = GOST341094Cipher::generateRandomStatic(q);
                 uint64_t k = GOST341094Cipher::generateRandomStatic(q);
-                uint64_t y = GOST341094Cipher::modPowStatic(a, x, p);
+                uint64_t y = CoreMath::modPow(a, x, p);
 
                 pEdit->setText(QString::number(p));
                 qEdit->setText(QString::number(q));

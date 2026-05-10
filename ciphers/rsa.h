@@ -24,20 +24,14 @@ public:
     virtual CipherResult decrypt(const QString& text, const QVariantMap& params) override;
 
     // Статические методы для генерации ключей
-    static uint64_t generatePrimeStatic(int bits = 16);
     static uint64_t generateEStatic(uint64_t phi);
-    static bool isPrimeStatic(uint64_t n, int k = 5);
-    static uint64_t modPowStatic(uint64_t base, uint64_t exp, uint64_t mod);
-    static uint64_t gcdStatic(uint64_t a, uint64_t b);
+    static uint64_t generatePrimeStatic(int bits);
+
 
 private:
     // Алфавит для преобразования текста в числа
     QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 
-    // Вспомогательные математические функции
-    bool isPrime(uint64_t n, int k = 5) const;
-    uint64_t gcd(uint64_t a, uint64_t b) const;
-    uint64_t modPow(uint64_t base, uint64_t exp, uint64_t mod) const;
 
     // Проверка параметров RSA
     bool validateParameters(uint64_t p, uint64_t q, uint64_t e, QString& errorMessage) const;

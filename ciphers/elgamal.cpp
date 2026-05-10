@@ -121,87 +121,6 @@ ElGamalCipher::ElGamalCipher()
 {
 }
 
-// Алгоритм Миллера-Рабина для проверки простоты
-bool ElGamalCipher::isPrime(uint64_t n, int k) const
-{
-    if (n <= 1) return false;
-    if (n <= 3) return true;
-    if (n % 2 == 0) return false;
-
-    uint64_t d = n - 1;
-    int r = 0;
-    while (d % 2 == 0) {
-        d /= 2;
-        r++;
-    }
-
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, n - 2);
-
-    for (int i = 0; i < k; ++i) {
-        uint64_t a = dist(gen);
-        uint64_t x = modPow(a, d, n);
-
-        if (x == 1 || x == n - 1) continue;
-
-        bool composite = true;
-        for (int j = 0; j < r - 1; ++j) {
-            x = modPow(x, 2, n);
-            if (x == n - 1) {
-                composite = false;
-                break;
-            }
-        }
-        if (composite) return false;
-    }
-    return true;
-}
-
-uint64_t ElGamalCipher::gcd(uint64_t a, uint64_t b) const
-{
-    while (b != 0) {
-        uint64_t temp = b;
-        b = a % b;
-        a = temp;
-    }
-    return a;
-}
-
-uint64_t ElGamalCipher::modPow(uint64_t base, uint64_t exp, uint64_t mod) const
-{
-    uint64_t result = 1;
-    base %= mod;
-    while (exp > 0) {
-        if (exp & 1) {
-            result = (result * base) % mod;
-        }
-        base = (base * base) % mod;
-        exp >>= 1;
-    }
-    return result;
-}
-
-uint64_t ElGamalCipher::modInverse(uint64_t a, uint64_t mod) const
-{
-    int64_t t = 0, new_t = 1;
-    int64_t r = mod, new_r = a;
-
-    while (new_r != 0) {
-        int64_t quotient = r / new_r;
-        int64_t temp_t = t;
-        t = new_t;
-        new_t = temp_t - quotient * new_t;
-
-        int64_t temp_r = r;
-        r = new_r;
-        new_r = temp_r - quotient * new_r;
-    }
-
-    if (r > 1) return 0;
-    if (t < 0) t += mod;
-    return static_cast<uint64_t>(t);
-}
 
 bool ElGamalCipher::isPrimitiveRoot(uint64_t g, uint64_t p) const
 {
@@ -222,7 +141,7 @@ bool ElGamalCipher::isPrimitiveRoot(uint64_t g, uint64_t p) const
 
     // Проверяем g^(phi/p) mod p != 1 для каждого простого делителя
     for (uint64_t factor : factors) {
-        if (modPow(g, phi / factor, p) == 1) {
+        if (CoreMath::modPow(g, phi / factor, p) == 1) {
             return false;
         }
     }
@@ -234,7 +153,7 @@ bool ElGamalCipher::validateParameters(uint64_t p, uint64_t g, uint64_t x, QStri
     const uint64_t ALPHABET_SIZE = 32;
 
     // Проверка 1: p - простое число
-    if (!isPrime(p)) {
+    if (!CoreMath::isPrime(p)) {
         errorMessage = QString("P = %1 не является простым числом").arg(p);
         return false;
     }
@@ -287,7 +206,7 @@ uint64_t ElGamalCipher::generatePrime(int bits) const
     do {
         candidate = dist(gen);
         if (candidate % 2 == 0) candidate++;
-    } while (!isPrime(candidate, 10));
+    } while (!CoreMath::isPrime(candidate, 10));
 
     return candidate;
 }
@@ -315,81 +234,28 @@ uint64_t ElGamalCipher::generateRandomK(uint64_t p) const
     uint64_t k;
     do {
         k = dist(gen);
-    } while (gcd(k, p - 1) != 1);
+    } while (CoreMath::gcd(k, p - 1) != 1);
 
     return k;
 }
 
 
 
-QVector<uint64_t> ElGamalCipher::textToNumbers(const QString& text) const
-{
-    QVector<uint64_t> numbers;
-    QString filtered = CipherUtils::filterAlphabetOnly(text, m_alphabet);
-    QVector<int> indices = CipherUtils::textToIndices(filtered, m_alphabet);
-    for (int idx : indices) {
-        numbers.append(static_cast<uint64_t>(idx));
-    }
-    return numbers;
-}
-
-QString ElGamalCipher::numbersToText(const QVector<uint64_t>& numbers) const
-{
-    QVector<int> indices;
-    for (uint64_t num : numbers) {
-        indices.append(static_cast<int>(num));
-    }
-    return CipherUtils::indicesToText(indices, m_alphabet);
-}
-
 QPair<uint64_t, uint64_t> ElGamalCipher::encryptNumber(uint64_t m, uint64_t p, uint64_t g, uint64_t y, uint64_t k) const
 {
-    uint64_t a = modPow(g, k, p);
-    uint64_t b = (modPow(y, k, p) * (m % p)) % p;
+    uint64_t a = CoreMath::modPow(g, k, p);
+    uint64_t b = (CoreMath::modPow(y, k, p) * (m % p)) % p;
     return qMakePair(a, b);
 }
 
 uint64_t ElGamalCipher::decryptNumber(uint64_t a, uint64_t b, uint64_t p, uint64_t x) const
 {
-    uint64_t ax = modPow(a, x, p);
-    uint64_t axInv = modInverse(ax, p);
+    uint64_t ax = CoreMath::modPow(a, x, p);
+    uint64_t axInv = CoreMath::modInverse(ax, p);
     return (b * axInv) % p;
 }
 
-// Статические методы
-bool ElGamalCipher::isPrimeStatic(uint64_t n, int k)
-{
-    if (n <= 1) return false;
-    if (n <= 3) return true;
-    if (n % 2 == 0) return false;
 
-    uint64_t d = n - 1;
-    int r = 0;
-    while (d % 2 == 0) {
-        d /= 2;
-        r++;
-    }
-
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist(2, n - 2);
-
-    for (int i = 0; i < k; ++i) {
-        uint64_t a = dist(gen);
-        uint64_t x = modPowStatic(a, d, n);
-        if (x == 1 || x == n - 1) continue;
-        bool composite = true;
-        for (int j = 0; j < r - 1; ++j) {
-            x = modPowStatic(x, 2, n);
-            if (x == n - 1) {
-                composite = false;
-                break;
-            }
-        }
-        if (composite) return false;
-    }
-    return true;
-}
 
 uint64_t ElGamalCipher::generatePrimeStatic(int bits)
 {
@@ -401,7 +267,7 @@ uint64_t ElGamalCipher::generatePrimeStatic(int bits)
     do {
         candidate = dist(gen);
         if (candidate % 2 == 0) candidate++;
-    } while (!isPrimeStatic(candidate, 10));
+    } while (!CoreMath::isPrime(candidate, 10));
 
     return candidate;
 }
@@ -425,7 +291,7 @@ uint64_t ElGamalCipher::generatePrimitiveRootStatic(uint64_t p)
         }
         if (temp > 1) factors.append(temp);
         for (uint64_t factor : factors) {
-            if (modPowStatic(g, phi / factor, prime) == 1) return false;
+            if (CoreMath::modPow(g, phi / factor, prime) == 1) return false;
         }
         return true;
     };
@@ -444,34 +310,15 @@ uint64_t ElGamalCipher::generateRandomKStatic(uint64_t p)
     std::mt19937_64 gen(rd());
     std::uniform_int_distribution<uint64_t> dist(2, p - 2);
 
-    auto gcdStatic = [](uint64_t a, uint64_t b) -> uint64_t {
-        while (b != 0) {
-            uint64_t temp = b;
-            b = a % b;
-            a = temp;
-        }
-        return a;
-    };
-
     uint64_t k;
     do {
         k = dist(gen);
-    } while (gcdStatic(k, p - 1) != 1);
+    } while (CoreMath::gcd(k, p - 1) != 1);
 
     return k;
 }
 
-uint64_t ElGamalCipher::modPowStatic(uint64_t base, uint64_t exp, uint64_t mod)
-{
-    uint64_t result = 1;
-    base %= mod;
-    while (exp > 0) {
-        if (exp & 1) result = (result * base) % mod;
-        base = (base * base) % mod;
-        exp >>= 1;
-    }
-    return result;
-}
+
 
 // Шифрование
 CipherResult ElGamalCipher::encrypt(const QString& text, const QVariantMap& params)
@@ -512,7 +359,7 @@ CipherResult ElGamalCipher::encrypt(const QString& text, const QVariantMap& para
         QString("Параметры: P=%1, G=%2, X=%3").arg(p).arg(g).arg(x),
         "Проверка параметров"));
 
-    uint64_t y = modPow(g, x, p);
+    uint64_t y = CoreMath::modPow(g, x, p);
     steps.append(CipherStep(2, QChar(),
         QString("Открытый ключ Y = G^X mod P = %1^%2 mod %3 = %4").arg(g).arg(x).arg(p).arg(y),
         "Вычисление открытого ключа"));
@@ -538,7 +385,7 @@ CipherResult ElGamalCipher::encrypt(const QString& text, const QVariantMap& para
         "Подготовка данных"));
 
     // Преобразуем текст в числа
-    QVector<uint64_t> numbers = textToNumbers(filteredText);
+    QVector<uint64_t> numbers = CipherUtils::textToNumbers<uint64_t>(filteredText, m_alphabet);
 
     // Проверяем, что все числа меньше P
     for (int i = 0; i < numbers.size(); ++i) {
@@ -599,7 +446,7 @@ CipherResult ElGamalCipher::encrypt(const QString& text, const QVariantMap& para
         // Проверяем, что все рандомизаторы взаимно просты с p-1
         bool hasError = false;
         for (int i = 0; i < randomizers.size(); ++i) {
-            if (gcd(randomizers[i], p - 1) != 1) {
+            if (CoreMath::gcd(randomizers[i], p - 1) != 1) {
                 hasError = true;
                 steps.append(CipherStep(5 + i, QChar(),
                     QString("ОШИБКА: Рандомизатор K%1 = %2 не взаимно прост с φ(P)=%3")
@@ -731,8 +578,8 @@ CipherResult ElGamalCipher::decrypt(const QString& text, const QVariantMap& para
         uint64_t decrypted = decryptNumber(a, b, p, x);
         decryptedNumbers.append(decrypted);
 
-        uint64_t ax = modPow(a, x, p);
-        uint64_t axInv = modInverse(ax, p);
+        uint64_t ax = CoreMath::modPow(a, x, p);
+        uint64_t axInv = CoreMath::modInverse(ax, p);
 
         stepDetails.append(QString("Пара %1: (a=%2, b=%3) → a^x=%4^%5 mod %6=%7 → a^-x=%8 → M=%9×%10 mod %11=%12")
             .arg(i + 1)
@@ -750,7 +597,7 @@ CipherResult ElGamalCipher::decrypt(const QString& text, const QVariantMap& para
     }
 
     // Преобразуем числа обратно в текст
-    QString resultText = numbersToText(decryptedNumbers);
+    QString resultText = CipherUtils::numbersToText(decryptedNumbers, m_alphabet);
 
     steps.append(CipherStep(3, QChar(),
         QString("Результат: %1").arg(resultText),
@@ -903,7 +750,7 @@ ElGamalCipherRegister::ElGamalCipherRegister()
                             "X = %3 (секретный ключ)\n\n"
                             "Открытый ключ Y = %2^%3 mod %1 = %4")
                         .arg(p).arg(g).arg(x)
-                        .arg(ElGamalCipher::modPowStatic(g, x, p)));
+                        .arg(CoreMath::modPow(g, x, p)));
             });
         }
     );
