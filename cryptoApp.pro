@@ -49,6 +49,8 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     ciphers/vigenere_auto.cpp \
     ciphers/vigenere_ciphertext.cpp \
     classes/RestrictedSpinBox.cpp \
+    classes/hexedit.cpp \
+    classes/numberlneedit.cpp \
     core/ciphercore.cpp \
     fabrics/cipherfactory.cpp \
     fabrics/cipherwidgetfactory.cpp \
@@ -95,6 +97,8 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     ciphers/vigenere_auto.h \
     ciphers/vigenere_ciphertext.h \
     classes/RestrictedSpinBox.h \
+    classes/hexedit.h \
+    classes/numberlineedit.h \
     core/ciphercore.h \
     core/cipherinterface.h \
     fabrics/cipherfactory.h \
