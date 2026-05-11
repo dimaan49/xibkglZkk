@@ -24,10 +24,6 @@ public:
 
     bool isAvailable() const{ return true; }
 
-
-    // Хеш-функция квадратичной свертки
-    uint64_t computeHash(const QString& text, uint64_t p, QVector<CipherStep>& steps, int& stepCounter) const;
-
 private:
     const QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 

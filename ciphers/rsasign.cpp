@@ -63,47 +63,7 @@ RSASignCipher::RSASignCipher()
 }
 
 
-// ==================== Хеш-функция квадратичной свертки ====================
-uint64_t RSASignCipher::computeHash(const QString& text, uint64_t p, QVector<CipherStep>& steps, int stepOffset) const
-{
-    QString filtered = CipherUtils::filterAlphabetOnly(text, m_alphabet);
 
-    if (filtered.isEmpty()) return 0;
-
-    uint64_t h = 0;
-
-    if (steps.size() > 0) {
-        steps.append(CipherStep(stepOffset, QChar(),
-            QString("Начало вычисления хеша: h0 = 0, модуль p = %1").arg(p),
-            "Хеширование"));
-    }
-
-    for (int i = 0; i < filtered.length(); ++i) {
-        int charIndex = CipherUtils::charToIndex(filtered[i], m_alphabet);
-        uint64_t Mi = static_cast<uint64_t>(charIndex + 1);
-
-        uint64_t old_h = h;
-        uint64_t sum = (h + Mi) % p;
-        h = (sum * sum) % p;
-
-        if (steps.size() > 0) {
-            steps.append(CipherStep(stepOffset + i + 1, QChar(),
-                QString("  h%1 = (h%2 + M%3)^2 mod p = (%4 + %5)^2 mod %6 = %7^2 mod %6 = %8")
-                    .arg(i + 1).arg(i).arg(i + 1)
-                    .arg(old_h).arg(Mi).arg(p)
-                    .arg(sum).arg(h),
-                QString("Хеш шаг %1: буква '%2' (№%3)").arg(i + 1).arg(filtered[i]).arg(Mi)));
-        }
-    }
-
-    if (steps.size() > 0) {
-        steps.append(CipherStep(stepOffset + filtered.length() + 1, QChar(),
-            QString("Итоговый хеш: H = %1").arg(h),
-            "Хеш завершен"));
-    }
-
-    return h;
-}
 
 // ==================== Валидация параметров ====================
 bool RSASignCipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, uint64_t p_hash, QString& errorMessage) const
@@ -260,7 +220,7 @@ CipherResult RSASignCipher::encrypt(const QString& text, const QVariantMap& para
 
     // Вычисляем хеш с использованием N как модуля хеширования
     int stepCounter = 3;
-    uint64_t hash = computeHash(filteredText, n, steps, stepCounter);
+    uint64_t hash = CoreHash::quadraticHash(filteredText, n, &steps, stepCounter);
     stepCounter += filteredText.length() + 2;
 
     // Вычисляем подпись
@@ -340,7 +300,7 @@ CipherResult RSASignCipher::decrypt(const QString& text, const QVariantMap& para
 
     // Вычисляем хеш сообщения
     int stepCounter = 4;
-    uint64_t computedHash = computeHash(message, n, steps, stepCounter);
+    uint64_t computedHash = CoreHash::quadraticHash(message, n, &steps, stepCounter);
     stepCounter += message.length() + 2;
 
     // Расшифровываем подпись (получаем хеш)

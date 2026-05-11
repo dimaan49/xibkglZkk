@@ -21,48 +21,6 @@ GOST341094Cipher::GOST341094Cipher()
 }
 
 
-// ==================== Хеш-функция ====================
-
-uint64_t GOST341094Cipher::computeHash(const QString& text, uint64_t p,
-                                        QVector<CipherStep>& steps, int& stepCounter) const
-{
-    QString filtered = CipherUtils::filterAlphabetOnly(text, m_alphabet);
-
-    if (filtered.isEmpty()) return 0;
-
-    uint64_t mod = p;
-    if (mod < 32) mod = 257;
-
-    uint64_t h = 0;
-
-    steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Начало вычисления хеша: h0 = 0, модуль p = %1").arg(mod),
-        "Хеширование"));
-
-    for (int i = 0; i < filtered.length(); ++i) {
-        int charIndex = CipherUtils::charToIndex(filtered[i], m_alphabet);
-        uint64_t Mi = static_cast<uint64_t>(charIndex + 1);
-
-        uint64_t old_h = h;
-        uint64_t sum = (h + Mi) % mod;
-        h = (sum * sum) % mod;
-
-        steps.append(CipherStep(stepCounter++, QChar(),
-            QString("  h%1 = (h%2 + M%3)² mod %4 = (%5 + %6)² mod %4 = %7² mod %4 = %8")
-                .arg(i + 1).arg(i).arg(i + 1)
-                .arg(mod).arg(old_h).arg(Mi).arg(sum).arg(h),
-            QString("Хеш шаг %1: буква '%2' (№%3)").arg(i + 1).arg(filtered[i]).arg(Mi)));
-    }
-
-    steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Итоговый хеш: H = %1").arg(h),
-        "Хеш завершен"));
-
-    return h;
-}
-
-
-
 bool GOST341094Cipher::validateParameters(uint64_t p, uint64_t q, uint64_t a, uint64_t x, uint64_t k, uint64_t p_hash, QString& errorMessage) const
 {
     const uint64_t ALPHABET_SIZE = 32;
@@ -157,7 +115,7 @@ CipherResult GOST341094Cipher::encrypt(const QString& text, const QVariantMap& p
         "Сообщение"));
 
     // Шаг 1: Вычисляем хеш сообщения H(m)
-    uint64_t hash = computeHash(filteredText, p_hash, steps, stepCounter);
+    uint64_t hash = CoreHash::quadraticHash(filteredText, p_hash, &steps, stepCounter);
 
     // Коррекция: если H(m) mod q = 0, то H(m) = 1
     uint64_t hm = hash % q;
@@ -318,7 +276,7 @@ CipherResult GOST341094Cipher::decrypt(const QString& text, const QVariantMap& p
         "Проверка диапазона - OK"));
 
     // Шаг 2: Вычисляем хеш сообщения H(m)
-    uint64_t hash = computeHash(message, p_hash, steps, stepCounter);
+    uint64_t hash = CoreHash::quadraticHash(message, p_hash, &steps, stepCounter);
 
     uint64_t hm = hash % q;
     if (hm == 0) {

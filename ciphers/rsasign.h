@@ -46,9 +46,6 @@ public:
 
     static uint64_t generateEStatic(uint64_t phi);
 
-    // Хеш-функция квадратичной свертки
-    uint64_t computeHash(const QString& text, uint64_t p, QVector<CipherStep>& steps, int stepOffset) const;
-
 private:
     const QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 

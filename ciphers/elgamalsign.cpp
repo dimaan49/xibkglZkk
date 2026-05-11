@@ -19,51 +19,6 @@ ElGamalSignCipher::ElGamalSignCipher()
 {
 }
 
-
-
-
-// ==================== Хеш-функция квадратичной свертки ====================
-uint64_t ElGamalSignCipher::computeHash(const QString& text, uint64_t p, QVector<CipherStep>& steps, int stepOffset) const
-{
-    QString filtered = CipherUtils::filterAlphabetOnly(text, m_alphabet);
-
-    if (filtered.isEmpty()) return 0;
-
-    uint64_t h = 0;
-
-    if (steps.size() > 0) {
-        steps.append(CipherStep(stepOffset, QChar(),
-            QString("Начало вычисления хеша: h0 = 0, модуль p = %1").arg(p),
-            "Хеширование"));
-    }
-
-    for (int i = 0; i < filtered.length(); ++i) {
-        int charIndex = CipherUtils::charToIndex(filtered[i], m_alphabet);
-        uint64_t Mi = static_cast<uint64_t>(charIndex + 1);
-
-        uint64_t old_h = h;
-        uint64_t sum = (h + Mi) % p;
-        h = (sum * sum) % p;
-
-        if (steps.size() > 0) {
-            steps.append(CipherStep(stepOffset + i + 1, QChar(),
-                QString("  h%1 = (h%2 + M%3)^2 mod p = (%4 + %5)^2 mod %6 = %7^2 mod %6 = %8")
-                    .arg(i + 1).arg(i).arg(i + 1)
-                    .arg(old_h).arg(Mi).arg(p)
-                    .arg(sum).arg(h),
-                QString("Хеш шаг %1: буква '%2' (№%3)").arg(i + 1).arg(filtered[i]).arg(Mi)));
-        }
-    }
-
-    if (steps.size() > 0) {
-        steps.append(CipherStep(stepOffset + filtered.length() + 1, QChar(),
-            QString("Итоговый хеш: H = %1").arg(h),
-            "Хеш завершен"));
-    }
-
-    return h;
-}
-
 bool ElGamalSignCipher::validateParameters(uint64_t p, uint64_t g, uint64_t x, uint64_t p_hash, QString& errorMessage) const
 {
     const uint64_t ALPHABET_SIZE = 32;
@@ -166,7 +121,7 @@ CipherResult ElGamalSignCipher::encrypt(const QString& text, const QVariantMap& 
 
     // Вычисляем хеш сообщения
     int stepCounter = 3;
-    uint64_t hash = computeHash(filteredText, p_hash, steps, stepCounter);
+    uint64_t hash = CoreHash::quadraticHash(filteredText, p_hash, &steps, stepCounter);
     stepCounter += filteredText.length() + 2;
 
     // Генерируем случайное K, взаимно простое с P-1
@@ -296,7 +251,7 @@ CipherResult ElGamalSignCipher::decrypt(const QString& text, const QVariantMap& 
 
     // Вычисляем хеш сообщения
     int stepCounter = 4;
-    uint64_t hash = computeHash(message, p_hash, steps, stepCounter);
+    uint64_t hash = CoreHash::quadraticHash(message, p_hash, &steps, stepCounter);
     stepCounter += message.length() + 2;
 
     // Вычисляем A1 = Y^a * a^b mod P
