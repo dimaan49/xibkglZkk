@@ -43,8 +43,6 @@ private:
 
     // Преобразование строк в числа и обратно
     uint32_t stringToUint32(const QString& str, int start) const;
-    QString uint32ToHex(uint32_t value) const;
-    uint32_t hexToUint32(const QString& hex) const;
 
     // Развертывание ключа
     void expandKey(const QString& key);

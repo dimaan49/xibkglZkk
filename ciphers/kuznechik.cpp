@@ -1,6 +1,7 @@
 #include "kuznechik.h"
 #include "cipherfactory.h"
 #include "cipherwidgetfactory.h"
+#include "classes/hexedit.h"
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QLabel>
@@ -43,54 +44,6 @@ const std::array<uint8_t, 16> KuznechikCipher::L_VEC = {
     148, 32, 133, 16, 194, 192, 1, 251, 1, 192, 194, 16, 133, 32, 148, 1
 };
 
-// ==================== KuznechikHexEdit ====================
-KuznechikHexEdit::KuznechikHexEdit(QWidget* parent)
-    : QLineEdit(parent)
-{
-    m_originalStyle = styleSheet();
-    QRegularExpression hexRegex("^[0-9A-Fa-f]*$");
-    QRegularExpressionValidator* validator = new QRegularExpressionValidator(hexRegex, this);
-    setValidator(validator);
-    setPlaceholderText("HEX (0-9, A-F)");
-}
-
-void KuznechikHexEdit::setValid(bool valid)
-{
-    m_valid = valid;
-    if (!valid) {
-        setStyleSheet("KuznechikHexEdit { border: 2px solid red; background-color: #ffeeee; }");
-    } else {
-        setStyleSheet(m_originalStyle);
-    }
-}
-
-void KuznechikHexEdit::setExpectedLength(int bytes)
-{
-    m_expectedBytes = bytes;
-    if (bytes > 0) {
-        setPlaceholderText(QString("HEX (%1 байт, %2 символа)").arg(bytes).arg(bytes * 2));
-        setMaxLength(bytes * 2);
-    }
-}
-
-void KuznechikHexEdit::focusInEvent(QFocusEvent* event)
-{
-    if (!m_valid) setValid(true);
-    QLineEdit::focusInEvent(event);
-}
-
-void KuznechikHexEdit::focusOutEvent(QFocusEvent* event)
-{
-    QString txt = text().trimmed();
-    if (!txt.isEmpty() && m_expectedBytes > 0 && txt.length() != m_expectedBytes * 2) {
-        setValid(false);
-        setToolTip(QString("Требуется %1 HEX-символов (%2 байт)").arg(m_expectedBytes * 2).arg(m_expectedBytes));
-    }
-    QLineEdit::focusOutEvent(event);
-}
-
-QString KuznechikHexEdit::getHex() const { return text().trimmed().toUpper(); }
-void KuznechikHexEdit::setHex(const QString& hex) { setText(hex.toUpper()); }
 
 // ==================== Арифметика GF(2^8) ====================
 // Исправленная функция умножения с неприводимым многочленом x^8 + x^7 + x^6 + x + 1 (0x1C3)
@@ -273,34 +226,6 @@ std::array<std::array<uint8_t, 16>, 10> KuznechikCipher::expandKey(const std::ar
     return roundKeys;
 }
 
-// ==================== Вспомогательные функции ====================
-QString KuznechikCipher::prepareHexInput(const QString& text) const
-{
-    QString filtered;
-    QRegularExpression hexRegex("[0-9A-Fa-f]");
-    QRegularExpressionMatchIterator it = hexRegex.globalMatch(text);
-    while (it.hasNext()) {
-        filtered.append(it.next().captured());
-    }
-    return filtered.toUpper();
-}
-
-QString KuznechikCipher::bytesToHex(const uint8_t* data, int len) const
-{
-    QString result;
-    for (int i = 0; i < len; ++i) {
-        result.append(QString("%1").arg(data[i], 2, 16, QChar('0')).toUpper());
-    }
-    return result;
-}
-
-void KuznechikCipher::hexToBytes(const QString& hex, uint8_t* out, int len) const
-{
-    QByteArray bytes = QByteArray::fromHex(hex.toLatin1());
-    for (int i = 0; i < len && i < bytes.size(); ++i) {
-        out[i] = static_cast<uint8_t>(bytes[i]);
-    }
-}
 
 // ==================== Конструктор ====================
 KuznechikCipher::KuznechikCipher()
@@ -319,7 +244,7 @@ CipherResult KuznechikCipher::encrypt(const QString& text, const QVariantMap& pa
     steps.append(CipherStep(0, QChar(), "Начало шифрования Кузнечик", "Инициализация"));
 
     QString keyHex = params.value("key", "").toString();
-    QString cleanedKey = prepareHexInput(keyHex);
+    QString cleanedKey = CoreHex::normalizeHex(keyHex);
 
     if (cleanedKey.length() != 64) {
         result.result = QString("ОШИБКА: Ключ должен быть 64 HEX символа. Получено: %1")
@@ -329,7 +254,7 @@ CipherResult KuznechikCipher::encrypt(const QString& text, const QVariantMap& pa
 
     steps.append(CipherStep(1, QChar(), QString("Ключ: %1").arg(cleanedKey), "Параметры"));
 
-    QString hexData = prepareHexInput(text);
+    QString hexData = CoreHex::normalizeHex(text);
     if (hexData.isEmpty()) {
         result.result = "ОШИБКА: Нет данных для шифрования";
         return result;
@@ -346,7 +271,7 @@ CipherResult KuznechikCipher::encrypt(const QString& text, const QVariantMap& pa
 
     // Преобразуем ключ
     std::array<uint8_t, 32> masterKey{};
-    hexToBytes(cleanedKey, masterKey.data(), 32);
+    CoreHex::hexToBytes(cleanedKey, masterKey.data(), 32);
 
     // Разворачиваем ключи
     std::array<std::array<uint8_t, 16>, 10> roundKeys = expandKey(masterKey);
@@ -354,7 +279,7 @@ CipherResult KuznechikCipher::encrypt(const QString& text, const QVariantMap& pa
     // Выводим все итерационные ключи
     steps.append(CipherStep(3, QChar(), "Развертывание ключа:", "Развертывание ключа"));
     for (int r = 0; r < 10; ++r) {
-        QString keyStr = bytesToHex(roundKeys[r].data(), 16);
+        QString keyStr = CoreHex::bytesToHex(roundKeys[r].data(), 16);
         steps.append(CipherStep(4 + r, QChar(),
             QString("K%1 = %2").arg(r + 1).arg(keyStr),
             QString("Раундовый ключ %1").arg(r + 1)));
@@ -379,10 +304,10 @@ CipherResult KuznechikCipher::encrypt(const QString& text, const QVariantMap& pa
 
         // Шифрование блока
         std::array<uint8_t, 16> state{};
-        hexToBytes(blockHex, state.data(), 16);
+        CoreHex::hexToBytes(blockHex, state.data(), 16);
 
         steps.append(CipherStep(stepCounter++, QChar(),
-            QString("Начальное состояние блока %1: %2").arg(blockIdx + 1).arg(bytesToHex(state.data(), 16)),
+            QString("Начальное состояние блока %1: %2").arg(blockIdx + 1).arg(CoreHex::bytesToHex(state.data(), 16)),
             QString("Состояние блока %1").arg(blockIdx + 1)));
 
         // Раунды 1-9: LSX[Ki]
@@ -390,30 +315,30 @@ CipherResult KuznechikCipher::encrypt(const QString& text, const QVariantMap& pa
             // X
             X(state, roundKeys[r]);
             steps.append(CipherStep(stepCounter++, QChar(),
-                QString("  Раунд %1: X[K%2] = %3").arg(r + 1).arg(r + 1).arg(bytesToHex(state.data(), 16)),
+                QString("  Раунд %1: X[K%2] = %3").arg(r + 1).arg(r + 1).arg(CoreHex::bytesToHex(state.data(), 16)),
                 QString("Блок %1 раунд %2 - X").arg(blockIdx + 1).arg(r + 1)));
             // S
             S(state);
             steps.append(CipherStep(stepCounter++, QChar(),
-                QString("  Раунд %1: S = %2").arg(r + 1).arg(bytesToHex(state.data(), 16)),
+                QString("  Раунд %1: S = %2").arg(r + 1).arg(CoreHex::bytesToHex(state.data(), 16)),
                 QString("Блок %1 раунд %2 - S").arg(blockIdx + 1).arg(r + 1)));
             // L
             L(state);
             steps.append(CipherStep(stepCounter++, QChar(),
-                QString("  Раунд %1: L = %2").arg(r + 1).arg(bytesToHex(state.data(), 16)),
+                QString("  Раунд %1: L = %2").arg(r + 1).arg(CoreHex::bytesToHex(state.data(), 16)),
                 QString("Блок %1 раунд %2 - L").arg(blockIdx + 1).arg(r + 1)));
         }
 
         // Финальный раунд: X[K10]
         X(state, roundKeys[9]);
         steps.append(CipherStep(stepCounter++, QChar(),
-            QString("Финальный X[K10] = %1").arg(bytesToHex(state.data(), 16)),
+            QString("Финальный X[K10] = %1").arg(CoreHex::bytesToHex(state.data(), 16)),
             QString("Блок %1 финальный раунд").arg(blockIdx + 1)));
 
-        encryptedHex += bytesToHex(state.data(), 16);
+        encryptedHex += CoreHex::bytesToHex(state.data(), 16);
 
         steps.append(CipherStep(stepCounter++, QChar(),
-            QString("Зашифрованный блок %1: %2").arg(blockIdx + 1).arg(bytesToHex(state.data(), 16)),
+            QString("Зашифрованный блок %1: %2").arg(blockIdx + 1).arg(CoreHex::bytesToHex(state.data(), 16)),
             QString("Результат блока %1").arg(blockIdx + 1)));
     }
 
@@ -439,7 +364,7 @@ CipherResult KuznechikCipher::decrypt(const QString& text, const QVariantMap& pa
     steps.append(CipherStep(0, QChar(), "Начало расшифрования Кузнечик", "Инициализация"));
 
     QString keyHex = params.value("key", "").toString();
-    QString cleanedKey = prepareHexInput(keyHex);
+    QString cleanedKey = CoreHex::normalizeHex(keyHex);
 
     if (cleanedKey.length() != 64) {
         result.result = QString("ОШИБКА: Ключ должен быть 64 HEX символа. Получено: %1")
@@ -449,7 +374,7 @@ CipherResult KuznechikCipher::decrypt(const QString& text, const QVariantMap& pa
 
     steps.append(CipherStep(1, QChar(), QString("Ключ: %1").arg(cleanedKey), "Параметры"));
 
-    QString hexData = prepareHexInput(text);
+    QString hexData = CoreHex::normalizeHex(text);
     if (hexData.isEmpty()) {
         result.result = "ОШИБКА: Нет данных для расшифрования";
         return result;
@@ -464,7 +389,7 @@ CipherResult KuznechikCipher::decrypt(const QString& text, const QVariantMap& pa
     steps.append(CipherStep(2, QChar(), QString("Входные данные: %1 (длина: %2 байт)").arg(hexData).arg(hexData.length() / 2), "Данные"));
 
     std::array<uint8_t, 32> masterKey{};
-    hexToBytes(cleanedKey, masterKey.data(), 32);
+    CoreHex::hexToBytes(cleanedKey, masterKey.data(), 32);
 
     std::array<std::array<uint8_t, 16>, 10> roundKeys = expandKey(masterKey);
 
@@ -487,16 +412,16 @@ CipherResult KuznechikCipher::decrypt(const QString& text, const QVariantMap& pa
             QString("Начало блока %1").arg(blockIdx + 1)));
 
         std::array<uint8_t, 16> state{};
-        hexToBytes(blockHex, state.data(), 16);
+        CoreHex::hexToBytes(blockHex, state.data(), 16);
 
         steps.append(CipherStep(stepCounter++, QChar(),
-            QString("Начальное состояние блока %1: %2").arg(blockIdx + 1).arg(bytesToHex(state.data(), 16)),
+            QString("Начальное состояние блока %1: %2").arg(blockIdx + 1).arg(CoreHex::bytesToHex(state.data(), 16)),
             QString("Состояние блока %1").arg(blockIdx + 1)));
 
         // X[K10]
         X(state, roundKeys[9]);
         steps.append(CipherStep(stepCounter++, QChar(),
-            QString("После X[K10]: %1").arg(bytesToHex(state.data(), 16)),
+            QString("После X[K10]: %1").arg(CoreHex::bytesToHex(state.data(), 16)),
             QString("Блок %1 начальный X").arg(blockIdx + 1)));
 
         // Раунды 8..1: invLSX
@@ -504,24 +429,24 @@ CipherResult KuznechikCipher::decrypt(const QString& text, const QVariantMap& pa
             // invL
             invL(state);
             steps.append(CipherStep(stepCounter++, QChar(),
-                QString("  Раунд %1: L⁻¹ = %2").arg(r + 1).arg(bytesToHex(state.data(), 16)),
+                QString("  Раунд %1: L⁻¹ = %2").arg(r + 1).arg(CoreHex::bytesToHex(state.data(), 16)),
                 QString("Блок %1 раунд %2 - L⁻¹").arg(blockIdx + 1).arg(r + 1)));
             // invS
             invS(state);
             steps.append(CipherStep(stepCounter++, QChar(),
-                QString("  Раунд %1: S⁻¹ = %2").arg(r + 1).arg(bytesToHex(state.data(), 16)),
+                QString("  Раунд %1: S⁻¹ = %2").arg(r + 1).arg(CoreHex::bytesToHex(state.data(), 16)),
                 QString("Блок %1 раунд %2 - S⁻¹").arg(blockIdx + 1).arg(r + 1)));
             // X[Kr]
             X(state, roundKeys[r]);
             steps.append(CipherStep(stepCounter++, QChar(),
-                QString("  Раунд %1: X[K%2] = %3").arg(r + 1).arg(r + 1).arg(bytesToHex(state.data(), 16)),
+                QString("  Раунд %1: X[K%2] = %3").arg(r + 1).arg(r + 1).arg(CoreHex::bytesToHex(state.data(), 16)),
                 QString("Блок %1 раунд %2 - X").arg(blockIdx + 1).arg(r + 1)));
         }
 
-        decryptedHex += bytesToHex(state.data(), 16);
+        decryptedHex += CoreHex::bytesToHex(state.data(), 16);
 
         steps.append(CipherStep(stepCounter++, QChar(),
-            QString("Расшифрованный блок %1: %2").arg(blockIdx + 1).arg(bytesToHex(state.data(), 16)),
+            QString("Расшифрованный блок %1: %2").arg(blockIdx + 1).arg(CoreHex::bytesToHex(state.data(), 16)),
             QString("Результат блока %1").arg(blockIdx + 1)));
     }
 
@@ -555,7 +480,7 @@ KuznechikCipherRegister::KuznechikCipherRegister()
             QHBoxLayout* keyRow = new QHBoxLayout();
             QLabel* keyLabel = new QLabel("Ключ (256 бит):");
             keyLabel->setFixedWidth(120);
-            KuznechikHexEdit* keyEdit = new KuznechikHexEdit();
+            HexEdit* keyEdit = new HexEdit();
             keyEdit->setExpectedLength(32);
             keyEdit->setObjectName("key");
             keyEdit->setHex("8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef");

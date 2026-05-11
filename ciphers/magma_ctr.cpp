@@ -1,6 +1,7 @@
 #include "magma_ctr.h"
 #include "cipherfactory.h"
 #include "cipherwidgetfactory.h"
+#include "classes/hexedit.h"
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QLabel>
@@ -19,113 +20,12 @@ const std::array<uint8_t, 16> MagmaCTRCipher::PI5 = {5, 13, 15, 6, 9, 2, 12, 10,
 const std::array<uint8_t, 16> MagmaCTRCipher::PI6 = {8, 14, 2, 5, 6, 9, 1, 12, 15, 4, 11, 0, 13, 10, 3, 7};
 const std::array<uint8_t, 16> MagmaCTRCipher::PI7 = {1, 7, 14, 13, 0, 5, 8, 3, 4, 15, 10, 6, 9, 12, 11, 2};
 
-// ==================== MagmaCTRHexEdit ====================
-MagmaCTRHexEdit::MagmaCTRHexEdit(QWidget* parent)
-    : QLineEdit(parent)
-{
-    m_originalStyle = styleSheet();
-    QRegularExpression hexRegex("^[0-9A-Fa-f]*$");
-    QRegularExpressionValidator* validator = new QRegularExpressionValidator(hexRegex, this);
-    setValidator(validator);
-    setPlaceholderText("HEX (0-9, A-F)");
-}
-
-void MagmaCTRHexEdit::setValid(bool valid)
-{
-    m_valid = valid;
-    if (!valid) {
-        setStyleSheet("MagmaCTRHexEdit { border: 2px solid red; background-color: #ffeeee; }");
-    } else {
-        setStyleSheet(m_originalStyle);
-    }
-}
-
-void MagmaCTRHexEdit::setExpectedLength(int bytes)
-{
-    m_expectedBytes = bytes;
-    if (bytes > 0) {
-        setPlaceholderText(QString("HEX (%1 байт, %2 символа)").arg(bytes).arg(bytes * 2));
-        setMaxLength(bytes * 2);
-    }
-}
-
-void MagmaCTRHexEdit::focusInEvent(QFocusEvent* event)
-{
-    if (!m_valid) setValid(true);
-    QLineEdit::focusInEvent(event);
-}
-
-void MagmaCTRHexEdit::focusOutEvent(QFocusEvent* event)
-{
-    QString txt = text().trimmed();
-    if (!txt.isEmpty() && m_expectedBytes > 0 && txt.length() != m_expectedBytes * 2) {
-        setValid(false);
-        setToolTip(QString("Требуется %1 HEX-символов (%2 байт)").arg(m_expectedBytes * 2).arg(m_expectedBytes));
-    }
-    QLineEdit::focusOutEvent(event);
-}
-
-QString MagmaCTRHexEdit::getHex() const { return text().trimmed().toUpper(); }
-void MagmaCTRHexEdit::setHex(const QString& hex) { setText(hex.toUpper()); }
 
 // ==================== MagmaCTRCipher Implementation ====================
 
 MagmaCTRCipher::MagmaCTRCipher()
 {
 }
-
-QString MagmaCTRCipher::prepareHexInput(const QString& text) const
-{
-    QString filtered;
-    QRegularExpression hexRegex("[0-9A-Fa-f]");
-    QRegularExpressionMatchIterator it = hexRegex.globalMatch(text);
-    while (it.hasNext()) {
-        filtered.append(it.next().captured());
-    }
-    return filtered.toUpper();
-}
-
-QString MagmaCTRCipher::bytesToHex(const uint8_t* data, int len) const
-{
-    QString result;
-    for (int i = 0; i < len; i++) {
-        result.append(QString("%1").arg(data[i], 2, 16, QChar('0')).toUpper());
-    }
-    return result;
-}
-
-void MagmaCTRCipher::hexToBytes(const QString& hex, uint8_t* out, int len) const
-{
-    QByteArray bytes = QByteArray::fromHex(hex.toLatin1());
-    for (int i = 0; i < len && i < bytes.size(); i++) {
-        out[i] = static_cast<uint8_t>(bytes[i]);
-    }
-}
-
-uint32_t MagmaCTRCipher::hexToUint32(const QString& hex) const
-{
-    bool ok;
-    uint32_t value = hex.toUInt(&ok, 16);
-    return ok ? value : 0;
-}
-
-QString MagmaCTRCipher::uint32ToHex(uint32_t value) const
-{
-    return QString("%1").arg(value, 8, 16, QChar('0')).toUpper();
-}
-
-uint64_t MagmaCTRCipher::hexToUint64(const QString& hex) const
-{
-    bool ok;
-    uint64_t value = hex.toULongLong(&ok, 16);
-    return ok ? value : 0;
-}
-
-QString MagmaCTRCipher::uint64ToHex(uint64_t value) const
-{
-    return QString("%1").arg(value, 16, 16, QChar('0')).toUpper();
-}
-
 // ==================== Преобразование t (формула 14) ====================
 // t(a) = t(a7||...||a0) = π7(a7)||...||π0(a0)
 uint32_t MagmaCTRCipher::tTransform(uint32_t x) const
@@ -187,7 +87,7 @@ std::array<uint32_t, 32> MagmaCTRCipher::keySchedule(const QString& keyHex) cons
     std::array<uint32_t, 32> roundKeys;
     roundKeys.fill(0);
 
-    QString cleanKey = prepareHexInput(keyHex);
+    QString cleanKey = CoreHex::normalizeHex(keyHex);
 
     // Ключ должен быть 64 HEX символа (256 бит)
     if (cleanKey.length() < 64) {
@@ -201,7 +101,7 @@ std::array<uint32_t, 32> MagmaCTRCipher::keySchedule(const QString& keyHex) cons
     std::array<uint32_t, 8> keyParts;
     for (int i = 0; i < 8; ++i) {
         QString partHex = cleanKey.mid(i * 8, 8);
-        keyParts[i] = hexToUint32(partHex);
+        keyParts[i] = CoreHex::hexToUint32(partHex);
     }
 
     // Формируем 32 итерационных ключа по формуле 18:
@@ -247,7 +147,7 @@ QByteArray MagmaCTRCipher::ctrProcess(const QByteArray& data, const QString& key
     std::array<uint32_t, 32> roundKeys = keySchedule(keyHex);
 
     // IV — 64-битная синхропосылка (16 HEX символов)
-    QString cleanIV = prepareHexInput(ivHex);
+    QString cleanIV = CoreHex::normalizeHex(ivHex);
     if (cleanIV.length() < 16) {
         cleanIV = cleanIV.leftJustified(16, '0', true);
     } else if (cleanIV.length() > 16) {
@@ -336,7 +236,7 @@ CipherResult MagmaCTRCipher::encrypt(const QString& text, const QVariantMap& par
     }
 
     // Подготавливаем входные данные
-    QString hexData = prepareHexInput(text);
+    QString hexData = CoreHex::normalizeHex(text);
     if (hexData.isEmpty()) {
         result.result = "ОШИБКА: Нет данных для шифрования (введите HEX-строку)";
         return result;
@@ -399,7 +299,7 @@ MagmaCTRCipherRegister::MagmaCTRCipherRegister()
             QHBoxLayout* keyRow = new QHBoxLayout();
             QLabel* keyLabel = new QLabel("Ключ (256 бит):");
             keyLabel->setFixedWidth(120);
-            MagmaCTRHexEdit* keyEdit = new MagmaCTRHexEdit();
+            HexEdit* keyEdit = new HexEdit();
             keyEdit->setExpectedLength(32);
             keyEdit->setObjectName("key");
             keyEdit->setHex("ffeeddccbbaa99887766554433221100f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff");
@@ -412,7 +312,7 @@ MagmaCTRCipherRegister::MagmaCTRCipherRegister()
             QHBoxLayout* ivRow = new QHBoxLayout();
             QLabel* ivLabel = new QLabel("Синхропосылка (IV):");
             ivLabel->setFixedWidth(120);
-            MagmaCTRHexEdit* ivEdit = new MagmaCTRHexEdit();
+            HexEdit* ivEdit = new HexEdit();
             ivEdit->setExpectedLength(8);
             ivEdit->setObjectName("iv");
             ivEdit->setHex("12345678");

@@ -9,24 +9,6 @@
 #include <array>
 #include <cstdint>
 
-// ==================== NumberLineEditSign ====================
-class NumberLineEditSign : public QLineEdit
-{
-    Q_OBJECT
-public:
-    explicit NumberLineEditSign(QWidget* parent = nullptr);
-    uint64_t getValue() const;
-    void setValue(uint64_t value);
-    void setValid(bool valid);
-
-protected:
-    void focusInEvent(QFocusEvent* event) override;
-
-private:
-    bool m_valid = true;
-    QString m_originalStyle;
-};
-
 // ==================== RSASignCipher ====================
 class RSASignCipher : public CipherInterface
 {

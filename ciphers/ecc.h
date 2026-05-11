@@ -2,6 +2,7 @@
 #define ECC_H
 
 #include "cipherinterface.h"
+#include "classes/numberlineedit.h"
 #include "ciphercore.h"
 #include <QVector>
 #include <QPair>
@@ -56,25 +57,7 @@ private:
     static ECPoint stringToPoint(const QString& str);
 };
 
-// Виджет для ввода чисел
-class ECCNumberEdit : public QLineEdit
-{
-    Q_OBJECT
 
-public:
-    ECCNumberEdit(QWidget* parent = nullptr);
-    void setValid(bool valid);
-    bool isValid() const { return m_valid; }
-    uint64_t getValue() const;
-    void setValue(uint64_t value);
-
-protected:
-    void focusInEvent(QFocusEvent* event) override;
-
-private:
-    bool m_valid = true;
-    QString m_originalStyle;
-};
 
 // Виджет для ввода точки (x,y)
 class ECCPointEdit : public QWidget
@@ -89,8 +72,8 @@ public:
     bool isValid() const { return m_valid; }
 
 private:
-    ECCNumberEdit* m_xEdit;
-    ECCNumberEdit* m_yEdit;
+    NumberLineEdit* m_xEdit;
+    NumberLineEdit* m_yEdit;
     bool m_valid = true;
 };
 

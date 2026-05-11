@@ -51,40 +51,8 @@ private:
     // Режим CTR (ГОСТ Р 34.13-2015, раздел 5.2)
     QByteArray ctrProcess(const QByteArray& data, const QString& keyHex, const QString& ivHex) const;
 
-    // Вспомогательные функции
-    QString prepareHexInput(const QString& text) const;
-    QString bytesToHex(const uint8_t* data, int len) const;
-    void hexToBytes(const QString& hex, uint8_t* out, int len) const;
-    uint32_t hexToUint32(const QString& hex) const;
-    QString uint32ToHex(uint32_t value) const;
-    uint64_t hexToUint64(const QString& hex) const;
-    QString uint64ToHex(uint64_t value) const;
-
     // Алфавит для вывода
     QString m_alphabet = "HEX";
-};
-
-// Виджет для ввода HEX
-class MagmaCTRHexEdit : public QLineEdit
-{
-    Q_OBJECT
-
-public:
-    MagmaCTRHexEdit(QWidget* parent = nullptr);
-    void setValid(bool valid);
-    bool isValid() const { return m_valid; }
-    void setExpectedLength(int bytes);
-    QString getHex() const;
-    void setHex(const QString& hex);
-
-protected:
-    void focusInEvent(QFocusEvent* event) override;
-    void focusOutEvent(QFocusEvent* event) override;
-
-private:
-    bool m_valid = true;
-    int m_expectedBytes = 0;
-    QString m_originalStyle;
 };
 
 // Регистратор

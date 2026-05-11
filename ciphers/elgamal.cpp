@@ -1,7 +1,7 @@
-
 #include "elgamal.h"
 #include "cipherfactory.h"
 #include "cipherwidgetfactory.h"
+#include "classes/numberlineedit.h"
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QLabel>
@@ -14,53 +14,6 @@
 #include <QDebug>
 #include <random>
 
-// ==================== ElGamalNumberEdit Implementation ====================
-
-ElGamalNumberEdit::ElGamalNumberEdit(QWidget* parent)
-    : QLineEdit(parent)
-{
-    m_originalStyle = styleSheet();
-
-    QRegularExpression numRegex("^[0-9]{0,20}$");
-    QRegularExpressionValidator* validator = new QRegularExpressionValidator(numRegex, this);
-    setValidator(validator);
-
-    setPlaceholderText("Введите число");
-}
-
-void ElGamalNumberEdit::setValid(bool valid)
-{
-    m_valid = valid;
-    if (!valid) {
-        setStyleSheet("ElGamalNumberEdit { border: 2px solid red; background-color: #ffeeee; }");
-    } else {
-        setStyleSheet(m_originalStyle);
-    }
-}
-
-void ElGamalNumberEdit::focusInEvent(QFocusEvent* event)
-{
-    if (!m_valid) {
-        setValid(true);
-    }
-    QLineEdit::focusInEvent(event);
-}
-
-uint64_t ElGamalNumberEdit::getValue() const
-{
-    QString text = this->text();
-    if (text.isEmpty()) return 0;
-    bool ok;
-    uint64_t value = text.toULongLong(&ok);
-    return ok ? value : 0;
-}
-
-void ElGamalNumberEdit::setValue(uint64_t value)
-{
-    setText(QString::number(value));
-}
-
-// ==================== RandomizersEdit Implementation ====================
 
 RandomizersEdit::RandomizersEdit(QWidget* parent)
     : QTextEdit(parent)
@@ -543,7 +496,7 @@ ElGamalCipherRegister::ElGamalCipherRegister()
             QHBoxLayout* pRow = new QHBoxLayout();
             QLabel* pLabel = new QLabel("P (простое число):");
             pLabel->setFixedWidth(130);
-            ElGamalNumberEdit* pEdit = new ElGamalNumberEdit();
+            NumberLineEdit* pEdit = new NumberLineEdit();
             pEdit->setObjectName("p");
             pEdit->setPlaceholderText("Простое число (например, 257)");
             pRow->addWidget(pLabel);
@@ -555,7 +508,7 @@ ElGamalCipherRegister::ElGamalCipherRegister()
             QHBoxLayout* gRow = new QHBoxLayout();
             QLabel* gLabel = new QLabel("G (генератор):");
             gLabel->setFixedWidth(130);
-            ElGamalNumberEdit* gEdit = new ElGamalNumberEdit();
+            NumberLineEdit* gEdit = new NumberLineEdit();
             gEdit->setObjectName("g");
             gEdit->setPlaceholderText("Генератор группы (2 < G < P)");
             gRow->addWidget(gLabel);
@@ -567,7 +520,7 @@ ElGamalCipherRegister::ElGamalCipherRegister()
             QHBoxLayout* xRow = new QHBoxLayout();
             QLabel* xLabel = new QLabel("X (секретный ключ):");
             xLabel->setFixedWidth(130);
-            ElGamalNumberEdit* xEdit = new ElGamalNumberEdit();
+            NumberLineEdit* xEdit = new NumberLineEdit();
             xEdit->setObjectName("x");
             xEdit->setPlaceholderText("Секретный ключ (1 < X < P-1)");
             xRow->addWidget(xLabel);

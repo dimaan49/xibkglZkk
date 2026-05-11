@@ -45,26 +45,6 @@ public:
     static uint64_t generateRandomKStatic(uint64_t p);
 };
 
-// Виджет для ввода чисел
-class ElGamalNumberEdit : public QLineEdit
-{
-    Q_OBJECT
-
-public:
-    explicit ElGamalNumberEdit(QWidget* parent = nullptr);
-    void setValid(bool valid);
-    bool isValid() const { return m_valid; }
-    uint64_t getValue() const;
-    void setValue(uint64_t value);
-
-protected:
-    void focusInEvent(QFocusEvent* event) override;
-
-private:
-    bool m_valid = true;
-    QString m_originalStyle;
-};
-
 // Виджет для ввода рандомизаторов
 class RandomizersEdit : public QTextEdit
 {

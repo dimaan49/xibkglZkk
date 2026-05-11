@@ -49,31 +49,7 @@ uint32_t FeistelCipher::stringToUint32(const QString& str, int start) const
     return result;
 }
 
-QString FeistelCipher::uint32ToHex(uint32_t value) const
-{
-    return QString("%1").arg(value, 8, 16, QChar('0')).toUpper();
-}
 
-uint32_t FeistelCipher::hexToUint32(const QString& hex) const
-{
-    bool ok;
-    uint32_t value = hex.toUInt(&ok, 16);
-    if (!ok) return 0;
-    return value;
-}
-
-QString FeistelCipher::prepareInput(const QString& text) const
-{
-    // Фильтруем только шестнадцатеричные символы
-    QString filtered;
-    QRegularExpression hexRegex("[0-9A-Fa-f]");
-    QRegularExpressionMatchIterator it = hexRegex.globalMatch(text);
-    while (it.hasNext()) {
-        QRegularExpressionMatch match = it.next();
-        filtered.append(match.captured());
-    }
-    return filtered.toUpper();
-}
 
 // Преобразование t (нелинейное биективное преобразование)
 uint32_t FeistelCipher::t(uint32_t value) const
@@ -147,7 +123,7 @@ void FeistelCipher::expandKey(const QString& key)
     // Очищаем ключи
     m_roundKeys.fill(0);
 
-    QString hexKey = prepareInput(key);
+    QString hexKey = CoreHex::normalizeHex(key);
 
     // Для теста используем ключ из примера А.2.3
     if (hexKey.isEmpty() || hexKey.length() < 64) {
@@ -169,7 +145,7 @@ void FeistelCipher::expandKey(const QString& key)
     std::array<uint32_t, 8> keyParts;
     for (int i = 0; i < 8; ++i) {
         QString partHex = hexKey.mid(i * 8, 8);
-        keyParts[i] = hexToUint32(partHex);
+        keyParts[i] = CoreHex::hexToUint32(partHex);
     }
 
     // Формируем итерационные ключи согласно ГОСТ (формулы 18)
@@ -202,7 +178,7 @@ void FeistelCipher::expandKey(const QString& key)
     // Для отладки выводим ключи
     qDebug() << "Итерационные ключи:";
     for (int i = 0; i < 32; ++i) {
-        qDebug() << QString("K%1 = %2").arg(i + 1).arg(uint32ToHex(m_roundKeys[i]));
+        qDebug() << QString("K%1 = %2").arg(i + 1).arg(CoreHex::uint32ToHex(m_roundKeys[i]));
     }
 }
 
@@ -219,7 +195,7 @@ CipherResult FeistelCipher::encrypt(const QString& text, const QVariantMap& para
     steps.append(CipherStep(1, QChar(), "Ключ развернут в 32 итерационных ключа", "Развертывание ключа"));
 
     // Подготавливаем входной текст (должен быть в hex формате)
-    QString hexText = prepareInput(text);
+    QString hexText = CoreHex::normalizeHex(text);
 
     // Если текст пустой, используем тестовый из примера А.2.4
     if (hexText.isEmpty()) {
@@ -245,8 +221,8 @@ CipherResult FeistelCipher::encrypt(const QString& text, const QVariantMap& para
     QString a1_hex = hexText.left(8);  // старшие 32 бита
     QString a0_hex = hexText.right(8); // младшие 32 бита
 
-    uint32_t a1 = hexToUint32(a1_hex);
-    uint32_t a0 = hexToUint32(a0_hex);
+    uint32_t a1 = CoreHex::hexToUint32(a1_hex);
+    uint32_t a0 = CoreHex::hexToUint32(a0_hex);
 
     steps.append(CipherStep(4, QChar(),
         QString("a1 = %1, a0 = %2").arg(a1_hex).arg(a0_hex),
@@ -258,8 +234,8 @@ CipherResult FeistelCipher::encrypt(const QString& text, const QVariantMap& para
     for (int round = 0; round < 32; ++round) {
         uint32_t key = m_roundKeys[round];
 
-        QString old_a1_hex = uint32ToHex(a1);
-        QString old_a0_hex = uint32ToHex(a0);
+        QString old_a1_hex = CoreHex::uint32ToHex(a1);
+        QString old_a0_hex = CoreHex::uint32ToHex(a0);
 
         // Выполняем раунд
         auto result = G(a1, a0, key);
@@ -273,16 +249,16 @@ CipherResult FeistelCipher::encrypt(const QString& text, const QVariantMap& para
                     .arg(round + 1)
                     .arg(old_a1_hex)
                     .arg(old_a0_hex)
-                    .arg(uint32ToHex(a1))
-                    .arg(uint32ToHex(a0))
-                    .arg(uint32ToHex(key)),
+                    .arg(CoreHex::uint32ToHex(a1))
+                    .arg(CoreHex::uint32ToHex(a0))
+                    .arg(CoreHex::uint32ToHex(key)),
                 QString("Раунд %1").arg(round + 1)));
         }
     }
 
     // Согласно формуле 19: E(a) = G*[K32]G[K31]...G[K2]G[K1](a1, a0)
     uint64_t result = (static_cast<uint64_t>(a0) << 32) | static_cast<uint64_t>(a1);
-    QString resultHex = QString("%1%2").arg(uint32ToHex(a0), uint32ToHex(a1));
+    QString resultHex = QString("%1%2").arg(CoreHex::uint32ToHex(a0), CoreHex::uint32ToHex(a1));
 
     steps.append(CipherStep(38, QChar(),
         QString("Результат шифрования: %1").arg(resultHex),
@@ -304,7 +280,7 @@ CipherResult FeistelCipher::decrypt(const QString& text, const QVariantMap& para
     steps.append(CipherStep(1, QChar(), "Ключ развернут в 32 итерационных ключа", "Развертывание ключа"));
 
     // Подготавливаем входной шифртекст
-    QString hexText = prepareInput(text);
+    QString hexText = CoreHex::normalizeHex(text);
 
     // Если текст пустой, используем тестовый из примера А.2.5
     if (hexText.isEmpty()) {
@@ -327,8 +303,8 @@ CipherResult FeistelCipher::decrypt(const QString& text, const QVariantMap& para
         "Подготовка блока"));
 
     // Разбиваем на левую и правую части
-    uint32_t a1 = hexToUint32(hexText.left(8));
-    uint32_t a0 = hexToUint32(hexText.right(8));
+    uint32_t a1 = CoreHex::hexToUint32(hexText.left(8));
+    uint32_t a0 = CoreHex::hexToUint32(hexText.right(8));
 
     steps.append(CipherStep(4, QChar(),
         QString("a1 = %1, a2 = %2").arg(hexText.left(8)).arg(hexText.right(8)),
@@ -341,8 +317,8 @@ CipherResult FeistelCipher::decrypt(const QString& text, const QVariantMap& para
         // При дешифровании ключи используются в обратном порядке
         uint32_t key = m_roundKeys[31 - round];
 
-        QString old_a1_hex = uint32ToHex(a1);
-        QString old_a0_hex = uint32ToHex(a0);
+        QString old_a1_hex = CoreHex::uint32ToHex(a1);
+        QString old_a0_hex = CoreHex::uint32ToHex(a0);
 
         auto result = G(a1, a0, key);
         a1 = result.first;
@@ -355,13 +331,13 @@ CipherResult FeistelCipher::decrypt(const QString& text, const QVariantMap& para
                     .arg(32 - round)
                     .arg(old_a1_hex)
                     .arg(old_a0_hex)
-                    .arg(uint32ToHex(a1))
-                    .arg(uint32ToHex(a0)),
+                    .arg(CoreHex::uint32ToHex(a1))
+                    .arg(CoreHex::uint32ToHex(a0)),
                 QString("Раунд %1").arg(round + 1)));
         }
     }
 
-    QString resultHex = QString("%1%2").arg(uint32ToHex(a0), uint32ToHex(a1));
+    QString resultHex = QString("%1%2").arg(CoreHex::uint32ToHex(a0), CoreHex::uint32ToHex(a1));
 
     steps.append(CipherStep(38, QChar(),
         QString("Результат дешифрования: %1").arg(resultHex),

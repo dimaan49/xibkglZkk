@@ -12,51 +12,7 @@
 #include <QDebug>
 #include <random>
 
-// ==================== ECCNumberEdit Implementation ====================
 
-ECCNumberEdit::ECCNumberEdit(QWidget* parent)
-    : QLineEdit(parent)
-{
-    m_originalStyle = styleSheet();
-
-    QRegularExpression numRegex("^[0-9]{0,20}$");
-    QRegularExpressionValidator* validator = new QRegularExpressionValidator(numRegex, this);
-    setValidator(validator);
-
-    setPlaceholderText("Введите число");
-}
-
-void ECCNumberEdit::setValid(bool valid)
-{
-    m_valid = valid;
-    if (!valid) {
-        setStyleSheet("ECCNumberEdit { border: 2px solid red; background-color: #ffeeee; }");
-    } else {
-        setStyleSheet(m_originalStyle);
-    }
-}
-
-void ECCNumberEdit::focusInEvent(QFocusEvent* event)
-{
-    if (!m_valid) {
-        setValid(true);
-    }
-    QLineEdit::focusInEvent(event);
-}
-
-uint64_t ECCNumberEdit::getValue() const
-{
-    QString text = this->text();
-    if (text.isEmpty()) return 0;
-    bool ok;
-    uint64_t value = text.toULongLong(&ok);
-    return ok ? value : 0;
-}
-
-void ECCNumberEdit::setValue(uint64_t value)
-{
-    setText(QString::number(value));
-}
 
 // ==================== ECCPointEdit Implementation ====================
 
@@ -68,11 +24,11 @@ ECCPointEdit::ECCPointEdit(QWidget* parent)
     layout->setSpacing(5);
 
     QLabel* openLabel = new QLabel("(");
-    m_xEdit = new ECCNumberEdit();
+    m_xEdit = new NumberLineEdit();
     m_xEdit->setFixedWidth(80);
     m_xEdit->setPlaceholderText("x");
     QLabel* commaLabel = new QLabel(",");
-    m_yEdit = new ECCNumberEdit();
+    m_yEdit = new NumberLineEdit();
     m_yEdit->setFixedWidth(80);
     m_yEdit->setPlaceholderText("y");
     QLabel* closeLabel = new QLabel(")");
@@ -449,7 +405,7 @@ ECCCipherRegister::ECCCipherRegister()
             QHBoxLayout* aRow = new QHBoxLayout();
             QLabel* aLabel = new QLabel("a:");
             aLabel->setFixedWidth(50);
-            ECCNumberEdit* aEdit = new ECCNumberEdit();
+            NumberLineEdit* aEdit = new NumberLineEdit();
             aEdit->setObjectName("a");
             aEdit->setPlaceholderText("коэффициент a");
             aRow->addWidget(aLabel);
@@ -460,7 +416,7 @@ ECCCipherRegister::ECCCipherRegister()
             QHBoxLayout* bRow = new QHBoxLayout();
             QLabel* bLabel = new QLabel("b:");
             bLabel->setFixedWidth(50);
-            ECCNumberEdit* bEdit = new ECCNumberEdit();
+            NumberLineEdit* bEdit = new NumberLineEdit();
             bEdit->setObjectName("b");
             bEdit->setPlaceholderText("коэффициент b");
             bRow->addWidget(bLabel);
@@ -471,7 +427,7 @@ ECCCipherRegister::ECCCipherRegister()
             QHBoxLayout* pRow = new QHBoxLayout();
             QLabel* pLabel = new QLabel("p (простое):");
             pLabel->setFixedWidth(50);
-            ECCNumberEdit* pEdit = new ECCNumberEdit();
+            NumberLineEdit* pEdit = new NumberLineEdit();
             pEdit->setObjectName("p");
             pEdit->setPlaceholderText("модуль поля");
             pRow->addWidget(pLabel);
@@ -495,7 +451,7 @@ ECCCipherRegister::ECCCipherRegister()
             QHBoxLayout* cbRow = new QHBoxLayout();
             QLabel* cbLabel = new QLabel("Cb (секретный ключ):");
             cbLabel->setFixedWidth(120);
-            ECCNumberEdit* cbEdit = new ECCNumberEdit();
+            NumberLineEdit* cbEdit = new NumberLineEdit();
             cbEdit->setObjectName("cB");
             cbEdit->setPlaceholderText("секретный ключ (1 < Cb < p)");
             cbRow->addWidget(cbLabel);
@@ -507,7 +463,7 @@ ECCCipherRegister::ECCCipherRegister()
             QHBoxLayout* kRow = new QHBoxLayout();
             QLabel* kLabel = new QLabel("k (рандомизатор):");
             kLabel->setFixedWidth(120);
-            ECCNumberEdit* kEdit = new ECCNumberEdit();
+            NumberLineEdit* kEdit = new NumberLineEdit();
             kEdit->setObjectName("k");
             kEdit->setPlaceholderText("случайное число");
             kRow->addWidget(kLabel);

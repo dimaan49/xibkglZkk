@@ -51,37 +51,10 @@ private:
     // Итерационные константы C_i (раздел 4.3, формула 10)
     std::array<std::array<uint8_t, 16>, 32> generateIterConstants() const;
 
-    // Вспомогательные функции для работы с HEX
-    QString prepareHexInput(const QString& text) const;
-    QString bytesToHex(const uint8_t* data, int len) const;
-    void hexToBytes(const QString& hex, uint8_t* out, int len) const;
-
     // Алфавит для вывода
     QString m_alphabet = "HEX";
 };
 
-// Виджет для ввода HEX
-class KuznechikHexEdit : public QLineEdit
-{
-    Q_OBJECT
-
-public:
-    KuznechikHexEdit(QWidget* parent = nullptr);
-    void setValid(bool valid);
-    bool isValid() const { return m_valid; }
-    void setExpectedLength(int bytes);
-    QString getHex() const;
-    void setHex(const QString& hex);
-
-protected:
-    void focusInEvent(QFocusEvent* event) override;
-    void focusOutEvent(QFocusEvent* event) override;
-
-private:
-    bool m_valid = true;
-    int m_expectedBytes = 0;
-    QString m_originalStyle;
-};
 
 // Регистратор
 class KuznechikCipherRegister

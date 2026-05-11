@@ -1,6 +1,7 @@
 #include "aes.h"
 #include "cipherfactory.h"
 #include "cipherwidgetfactory.h"
+#include "classes/hexedit.h"
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QLabel>
@@ -60,54 +61,6 @@ const std::array<uint32_t, 10> AESCipher::RCON = {
     0x20000000, 0x40000000, 0x80000000, 0x1B000000, 0x36000000
 };
 
-// ==================== AESHexEdit ====================
-
-AESHexEdit::AESHexEdit(QWidget* parent) : QLineEdit(parent)
-{
-    m_originalStyle = styleSheet();
-    QRegularExpression hexRegex("^[0-9A-Fa-f]*$");
-    QRegularExpressionValidator* validator = new QRegularExpressionValidator(hexRegex, this);
-    setValidator(validator);
-    setPlaceholderText("HEX (0-9, A-F)");
-}
-
-void AESHexEdit::setValid(bool valid)
-{
-    m_valid = valid;
-    if (!valid) {
-        setStyleSheet("AESHexEdit { border: 2px solid red; background-color: #ffeeee; }");
-    } else {
-        setStyleSheet(m_originalStyle);
-    }
-}
-
-void AESHexEdit::setExpectedLength(int bytes)
-{
-    m_expectedBytes = bytes;
-    if (bytes > 0) {
-        setPlaceholderText(QString("HEX (%1 байт, %2 символа)").arg(bytes).arg(bytes * 2));
-        setMaxLength(bytes * 2);
-    }
-}
-
-void AESHexEdit::focusInEvent(QFocusEvent* event)
-{
-    if (!m_valid) setValid(true);
-    QLineEdit::focusInEvent(event);
-}
-
-void AESHexEdit::focusOutEvent(QFocusEvent* event)
-{
-    QString txt = text().trimmed();
-    if (!txt.isEmpty() && m_expectedBytes > 0 && txt.length() != m_expectedBytes * 2) {
-        setValid(false);
-        setToolTip(QString("Требуется %1 HEX-символов (%2 байт)").arg(m_expectedBytes * 2).arg(m_expectedBytes));
-    }
-    QLineEdit::focusOutEvent(event);
-}
-
-QString AESHexEdit::getHex() const { return text().trimmed().toUpper(); }
-void AESHexEdit::setHex(const QString& hex) { setText(hex.toUpper()); }
 
 // ==================== Арифметика GF(2^8) ====================
 
@@ -306,35 +259,7 @@ std::vector<std::array<uint8_t, 16>> AESCipher::expandKey(const std::array<uint8
     return roundKeys;
 }
 
-// ==================== Вспомогательные функции ====================
 
-QString AESCipher::prepareHexInput(const QString& text) const
-{
-    QString filtered;
-    QRegularExpression hexRegex("[0-9A-Fa-f]");
-    QRegularExpressionMatchIterator it = hexRegex.globalMatch(text);
-    while (it.hasNext()) {
-        filtered.append(it.next().captured());
-    }
-    return filtered.toUpper();
-}
-
-QString AESCipher::bytesToHex(const uint8_t* data, int len) const
-{
-    QString result;
-    for (int i = 0; i < len; i++) {
-        result.append(QString("%1").arg(data[i], 2, 16, QChar('0')).toUpper());
-    }
-    return result;
-}
-
-void AESCipher::hexToBytes(const QString& hex, uint8_t* out, int len) const
-{
-    QByteArray bytes = QByteArray::fromHex(hex.toLatin1());
-    for (int i = 0; i < len && i < bytes.size(); i++) {
-        out[i] = static_cast<uint8_t>(bytes[i]);
-    }
-}
 
 // ==================== Шифрование ====================
 
@@ -353,7 +278,7 @@ CipherResult AESCipher::encrypt(const QString& text, const QVariantMap& params)
     QString keySizeStr = params.value("keySize", "128").toString();
     int keySize = keySizeStr.toInt();  // 128, 192 или 256
 
-    QString cleanedKey = prepareHexInput(keyHex);
+    QString cleanedKey = CoreHex::normalizeHex(keyHex);
     int expectedKeyLen = keySize / 4;  // 32, 48 или 64 HEX символа
 
     if (cleanedKey.length() != expectedKeyLen) {
@@ -363,7 +288,7 @@ CipherResult AESCipher::encrypt(const QString& text, const QVariantMap& params)
     }
 
     // Подготавливаем входные данные
-    QString hexData = prepareHexInput(text);
+    QString hexData = CoreHex::normalizeHex(text);
     if (hexData.isEmpty()) {
         result.result = "ОШИБКА: Нет данных для шифрования (введите HEX-строку)";
         return result;
@@ -381,7 +306,7 @@ CipherResult AESCipher::encrypt(const QString& text, const QVariantMap& params)
 
     // Преобразуем ключ в байты
     std::array<uint8_t, 32> masterKey{};
-    hexToBytes(cleanedKey, masterKey.data(), keySize / 8);
+    CoreHex::hexToBytes(cleanedKey, masterKey.data(), keySize / 8);
 
     // Развертываем ключи
     std::vector<std::array<uint8_t, 16>> roundKeys = expandKey(masterKey, keySize);
@@ -401,7 +326,7 @@ CipherResult AESCipher::encrypt(const QString& text, const QVariantMap& params)
         blockCounter++;
 
         std::array<uint8_t, 16> state{};
-        hexToBytes(blockHex, state.data(), 16);
+        CoreHex::hexToBytes(blockHex, state.data(), 16);
 
         // Начальный раунд: AddRoundKey
         addRoundKey(state, roundKeys[0]);
@@ -419,7 +344,7 @@ CipherResult AESCipher::encrypt(const QString& text, const QVariantMap& params)
         shiftRows(state);
         addRoundKey(state, roundKeys[Nr]);
 
-        QString encryptedBlockHex = bytesToHex(state.data(), 16);
+        QString encryptedBlockHex = CoreHex::bytesToHex(state.data(), 16);
         encryptedHex.append(encryptedBlockHex);
 
         steps.append(CipherStep(3 + blockCounter, QChar(),
@@ -453,7 +378,7 @@ CipherResult AESCipher::decrypt(const QString& text, const QVariantMap& params)
     QString keySizeStr = params.value("keySize", "128").toString();
     int keySize = keySizeStr.toInt();
 
-    QString cleanedKey = prepareHexInput(keyHex);
+    QString cleanedKey = CoreHex::normalizeHex(keyHex);
     int expectedKeyLen = keySize / 4;
 
     if (cleanedKey.length() != expectedKeyLen) {
@@ -462,7 +387,7 @@ CipherResult AESCipher::decrypt(const QString& text, const QVariantMap& params)
         return result;
     }
 
-    QString hexData = prepareHexInput(text);
+    QString hexData = CoreHex::normalizeHex(text);
     if (hexData.isEmpty()) {
         result.result = "ОШИБКА: Нет данных для дешифрования (введите HEX-строку)";
         return result;
@@ -480,7 +405,7 @@ CipherResult AESCipher::decrypt(const QString& text, const QVariantMap& params)
 
     // Преобразуем ключ в байты
     std::array<uint8_t, 32> masterKey{};
-    hexToBytes(cleanedKey, masterKey.data(), keySize / 8);
+    CoreHex::hexToBytes(cleanedKey, masterKey.data(), keySize / 8);
 
     // Развертываем ключи
     std::vector<std::array<uint8_t, 16>> roundKeys = expandKey(masterKey, keySize);
@@ -499,7 +424,7 @@ CipherResult AESCipher::decrypt(const QString& text, const QVariantMap& params)
         blockCounter++;
 
         std::array<uint8_t, 16> state{};
-        hexToBytes(blockHex, state.data(), 16);
+        CoreHex::hexToBytes(blockHex, state.data(), 16);
 
         // Начальный раунд дешифрования
         addRoundKey(state, roundKeys[Nr]);
@@ -517,7 +442,7 @@ CipherResult AESCipher::decrypt(const QString& text, const QVariantMap& params)
         // Финальный раунд
         addRoundKey(state, roundKeys[0]);
 
-        QString decryptedBlockHex = bytesToHex(state.data(), 16);
+        QString decryptedBlockHex = CoreHex::bytesToHex(state.data(), 16);
         decryptedHex.append(decryptedBlockHex);
 
         steps.append(CipherStep(3 + blockCounter, QChar(),
@@ -570,7 +495,7 @@ AESCipherRegister::AESCipherRegister()
             QHBoxLayout* keyRow = new QHBoxLayout();
             QLabel* keyLabel = new QLabel("Ключ:");
             keyLabel->setFixedWidth(100);
-            AESHexEdit* keyEdit = new AESHexEdit();
+            HexEdit* keyEdit = new HexEdit();
             keyEdit->setExpectedLength(16);  // 128 бит по умолчанию
             keyEdit->setObjectName("key");
             keyEdit->setHex("000102030405060708090a0b0c0d0e0f");

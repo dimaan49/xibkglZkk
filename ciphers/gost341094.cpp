@@ -1,6 +1,7 @@
 #include "gost341094.h"
 #include "cipherfactory.h"
 #include "cipherwidgetfactory.h"
+#include "classes/numberlineedit.h"
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QGridLayout>
@@ -381,60 +382,54 @@ GOST341094CipherRegister::GOST341094CipherRegister()
             // p - простое число
             QLabel* pLabel = new QLabel("p (простое):");
             pLabel->setFixedWidth(100);
-            QLineEdit* pEdit = new QLineEdit();
+            NumberLineEdit* pEdit = new NumberLineEdit();
             pEdit->setObjectName("p");
             pEdit->setPlaceholderText("Простое число");
-            pEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("^[0-9]+$"), pEdit));
             grid->addWidget(pLabel, 0, 0);
             grid->addWidget(pEdit, 0, 1);
 
             // q - простой делитель p-1
             QLabel* qLabel = new QLabel("q (делитель p-1):");
             qLabel->setFixedWidth(100);
-            QLineEdit* qEdit = new QLineEdit();
+            NumberLineEdit* qEdit = new NumberLineEdit();
             qEdit->setObjectName("q");
             qEdit->setPlaceholderText("Простое число");
-            qEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("^[0-9]+$"), qEdit));
             grid->addWidget(qLabel, 0, 2);
             grid->addWidget(qEdit, 0, 3);
 
             // a - число, a^q mod p = 1
             QLabel* aLabel = new QLabel("a (основание):");
             aLabel->setFixedWidth(100);
-            QLineEdit* aEdit = new QLineEdit();
+            NumberLineEdit* aEdit = new NumberLineEdit();
             aEdit->setObjectName("a");
             aEdit->setPlaceholderText("1 < a < p-1");
-            aEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("^[0-9]+$"), aEdit));
             grid->addWidget(aLabel, 1, 0);
             grid->addWidget(aEdit, 1, 1);
 
             // x - секретный ключ
             QLabel* xLabel = new QLabel("x (секретный ключ):");
             xLabel->setFixedWidth(100);
-            QLineEdit* xEdit = new QLineEdit();
+            NumberLineEdit* xEdit = new NumberLineEdit();
             xEdit->setObjectName("x");
             xEdit->setPlaceholderText("0 < x < q");
-            xEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("^[0-9]+$"), xEdit));
             grid->addWidget(xLabel, 1, 2);
             grid->addWidget(xEdit, 1, 3);
 
             // k - случайное число
             QLabel* kLabel = new QLabel("k (случайное):");
             kLabel->setFixedWidth(100);
-            QLineEdit* kEdit = new QLineEdit();
+            NumberLineEdit* kEdit = new NumberLineEdit();
             kEdit->setObjectName("k");
             kEdit->setPlaceholderText("0 < k < q");
-            kEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("^[0-9]+$"), kEdit));
             grid->addWidget(kLabel, 2, 0);
             grid->addWidget(kEdit, 2, 1);
 
             // y - открытый ключ (вычисляется)
             QLabel* yLabel = new QLabel("y (открытый ключ):");
             yLabel->setFixedWidth(100);
-            QLineEdit* yEdit = new QLineEdit();
+            NumberLineEdit* yEdit = new NumberLineEdit();
             yEdit->setObjectName("y");
             yEdit->setPlaceholderText("y = a^x mod p (для проверки)");
-            yEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("^[0-9]+$"), yEdit));
             grid->addWidget(yLabel, 2, 2);
             grid->addWidget(yEdit, 2, 3);
 
@@ -456,11 +451,10 @@ GOST341094CipherRegister::GOST341094CipherRegister()
             // Модуль хеширования
             QLabel* pHashLabel = new QLabel("Модуль p (хеш):");
             pHashLabel->setFixedWidth(100);
-            QLineEdit* pHashEdit = new QLineEdit();
+            NumberLineEdit* pHashEdit = new NumberLineEdit();
             pHashEdit->setObjectName("p_hash");
             pHashEdit->setText("101");
             pHashEdit->setPlaceholderText(">32");
-            pHashEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("^[0-9]+$"), pHashEdit));
             commonGrid->addWidget(pHashLabel, 0, 0);
             commonGrid->addWidget(pHashEdit, 0, 1);
 

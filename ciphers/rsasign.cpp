@@ -1,6 +1,7 @@
 #include "rsasign.h"
 #include "cipherfactory.h"
 #include "cipherwidgetfactory.h"
+#include "classes/numberlineedit.h"
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QGridLayout>
@@ -14,47 +15,6 @@
 #include <random>
 #include <chrono>
 
-// ==================== NumberLineEdit ====================
-
-NumberLineEditSign::NumberLineEditSign(QWidget* parent)
-    : QLineEdit(parent)
-{
-    m_originalStyle = styleSheet();
-    QRegularExpression numRegex("^[0-9]{0,20}$");
-    QRegularExpressionValidator* validator = new QRegularExpressionValidator(numRegex, this);
-    setValidator(validator);
-    setPlaceholderText("Введите число");
-}
-
-void NumberLineEditSign::setValid(bool valid)
-{
-    m_valid = valid;
-    if (!valid) {
-        setStyleSheet("NumberLineEditSign { border: 2px solid red; background-color: #ffeeee; }");
-    } else {
-        setStyleSheet(m_originalStyle);
-    }
-}
-
-void NumberLineEditSign::focusInEvent(QFocusEvent* event)
-{
-    if (!m_valid) setValid(true);
-    QLineEdit::focusInEvent(event);
-}
-
-uint64_t NumberLineEditSign::getValue() const
-{
-    QString text = this->text();
-    if (text.isEmpty()) return 0;
-    bool ok;
-    uint64_t value = text.toULongLong(&ok);
-    return ok ? value : 0;
-}
-
-void NumberLineEditSign::setValue(uint64_t value)
-{
-    setText(QString::number(value));
-}
 
 // ==================== RSASignCipher Implementation ====================
 
@@ -359,17 +319,14 @@ RSASignCipherRegister::RSASignCipherRegister()
             // Строка 0: P и Q
             QLabel* pLabel = new QLabel("P (простое):");
             pLabel->setFixedWidth(100);
-            QLineEdit* pEdit = new QLineEdit();
-            pEdit->setObjectName("p");
+            NumberLineEdit* pEdit = new NumberLineEdit();
             pEdit->setPlaceholderText("61");
-            pEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("^[0-9]{1,20}$"), pEdit));
 
             QLabel* qLabel = new QLabel("Q (простое):");
             qLabel->setFixedWidth(100);
-            QLineEdit* qEdit = new QLineEdit();
+            NumberLineEdit* qEdit = new NumberLineEdit();
             qEdit->setObjectName("q");
             qEdit->setPlaceholderText("53");
-            qEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("^[0-9]{1,20}$"), qEdit));
 
             gridLayout->addWidget(pLabel, 0, 0);
             gridLayout->addWidget(pEdit, 0, 1);
@@ -379,7 +336,7 @@ RSASignCipherRegister::RSASignCipherRegister()
             // Строка 1: E
             QLabel* eLabel = new QLabel("E (открытый):");
             eLabel->setFixedWidth(100);
-            QLineEdit* eEdit = new QLineEdit();
+            NumberLineEdit* eEdit = new NumberLineEdit();
             eEdit->setObjectName("e");
             eEdit->setPlaceholderText("17");
             eEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("^[0-9]{1,20}$"), eEdit));
@@ -406,19 +363,18 @@ RSASignCipherRegister::RSASignCipherRegister()
             // N (модуль) - вычисляется автоматически из P и Q
             QLabel* nLabel = new QLabel("N = P × Q (модуль):");
             nLabel->setFixedWidth(120);
-            QLineEdit* nEdit = new QLineEdit();
+            NumberLineEdit* nEdit = new NumberLineEdit();
             nEdit->setObjectName("n");
             nEdit->setReadOnly(true);
             nEdit->setPlaceholderText("Вычисляется автоматически");
-            nEdit->setStyleSheet("QLineEdit { background-color: #f0f0f0; }");
+            nEdit->setStyleSheet("NumberLineEdit { background-color: #f0f0f0; }");
 
             // E (открытая экспонента) - для проверки
             QLabel* eCheckLabel = new QLabel("E (открытый ключ):");
             eCheckLabel->setFixedWidth(100);
-            QLineEdit* eCheckEdit = new QLineEdit();
+            NumberLineEdit* eCheckEdit = new NumberLineEdit();
             eCheckEdit->setObjectName("e");
             eCheckEdit->setPlaceholderText("Та же E");
-            eCheckEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("^[0-9]{1,20}$"), eCheckEdit));
 
             gridLayout2->addWidget(nLabel, 0, 0);
             gridLayout2->addWidget(nEdit, 0, 1);
@@ -472,8 +428,8 @@ RSASignCipherRegister::RSASignCipherRegister()
                 }
             };
 
-            QObject::connect(pEdit, &QLineEdit::textChanged, [updateN](const QString&) { updateN(); });
-            QObject::connect(qEdit, &QLineEdit::textChanged, [updateN](const QString&) { updateN(); });
+            QObject::connect(pEdit, &NumberLineEdit::textChanged, [updateN](const QString&) { updateN(); });
+            QObject::connect(qEdit, &NumberLineEdit::textChanged, [updateN](const QString&) { updateN(); });
 
             // Генерация ключей
             QObject::connect(generateButton, &QPushButton::clicked, [pEdit, qEdit, eEdit, nEdit]() {
