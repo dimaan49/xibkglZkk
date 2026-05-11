@@ -272,6 +272,19 @@ void MainWindow::setupUI()
     outputTextEdit->setPlaceholderText("Здесь появится результат...");
     outputLayout->addWidget(outputTextEdit);
 
+    QHBoxLayout* outputFormatLayout = new QHBoxLayout();
+    QLabel* formatLabel = new QLabel("Формат вывода:");
+    m_outputFormatRusRadio = new QRadioButton("Русский");
+    m_outputFormatRusRadio->setChecked(true);
+    m_outputFormatHexRadio = new QRadioButton("HEX");
+
+    outputFormatLayout->addWidget(formatLabel);
+    outputFormatLayout->addWidget(m_outputFormatRusRadio);
+    outputFormatLayout->addWidget(m_outputFormatHexRadio);
+    outputFormatLayout->addStretch();
+
+    // Вставляем в начало outputLayout (чтобы было над текстовым полем)
+    outputLayout->insertLayout(0, outputFormatLayout);
     // Кнопка очистки вывода
     QHBoxLayout *outputToolsLayout = new QHBoxLayout();
     clearOutputButton = new QPushButton("🗑️ Очистить");
@@ -543,6 +556,8 @@ void MainWindow::onCipherChanged(int index)
 
     // Обновляем видимость кнопки расширенных настроек
     updateAdvancedSettingsButton();
+    // Обновляем видимость радиокнопок rus/hex
+    updateOutputFormatVisibility();
 
     m_currentPreviewText = inputTextEdit->toPlainText();
     if (cipherId == 29) {  // ID для route (20)
@@ -635,6 +650,7 @@ void MainWindow::onEncryptClicked()
         handleError("Шифр не выбран!");
         return;
     }
+
     QString inputText = inputTextEdit->toPlainText().trimmed();
     if (inputText.isEmpty()) {
         handleError("Введите текст для шифрования!");
@@ -646,9 +662,32 @@ void MainWindow::onEncryptClicked()
     try {
         logToConsole("\n════════════════════════════════════════");
         logToConsole("ШИФРОВАНИЕ: " + m_currentCipher->name());
-        logToConsole("Входной текст: " + inputText);
 
-        // Собираем параметры из UI
+        // Определяем, HEX-ли шифр по alphabet()
+        bool isHexCipher = (m_currentCipher->alphabet() == "0123456789ABCDEF");
+
+        QString textForEncrypt = inputText;
+
+        // Если HEX-шифр и ввод не HEX → преобразуем русский → HEX
+        if (isHexCipher && !CoreHex::isValidHex(inputText)) {
+            // Фильтруем только русские буквы
+            QString russianAlphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+            QString filtered = CipherUtils::filterAlphabetOnly(inputText, russianAlphabet);
+
+            if (filtered.isEmpty()) {
+                handleError("Нет русских букв для преобразования в HEX");
+                return;
+            }
+
+            textForEncrypt = CoreHex::rusToHex(filtered);
+            logToConsole("Русский текст преобразован в HEX: " + textForEncrypt.left(64) + "...");
+        } else if (isHexCipher) {
+            logToConsole("Входной текст уже в HEX формате");
+        }
+
+        logToConsole("Входные данные для шифра: " + textForEncrypt.left(100));
+
+        // Собираем параметры
         QVariantMap params = collectParameters();
 
         // Логируем параметры
@@ -656,64 +695,49 @@ void MainWindow::onEncryptClicked()
             logToConsole(it.key() + ": " + it.value().toString());
         }
 
-        // Выполняем шифрование с параметрами
-        CipherResult result = m_currentCipher->encrypt(inputText, params);
+        // Выполняем шифрование
+        CipherResult result = m_currentCipher->encrypt(textForEncrypt, params);
 
-        // Безопасная проверка результата
-        QString resultText = result.result;
-        QString cipherName = result.cipherName;
-
-        // Проверяем результат на наличие ошибки
-        bool hasError = resultText.isEmpty() ||
-                       resultText.contains("ошибка", Qt::CaseInsensitive) ||
-                       resultText.contains("error", Qt::CaseInsensitive) ||
-                       cipherName.contains("ошибка", Qt::CaseInsensitive);
-
-        if (hasError) {
-            // Формируем сообщение об ошибке
-            QString errorMsg;
-            outputTextEdit->clear();
-            if (resultText.isEmpty()) {
-                errorMsg = "Пустой результат шифрования";
-            } else if (resultText.length() > 100) {
-                errorMsg = resultText.left(100) + "...";
-            } else {
-                errorMsg = resultText;
-            }
-
-            handleError(errorMsg);
-
-            // Безопасно логируем шаги, если они есть
-            if (!result.steps.isEmpty()) {
-                try {
-                    QString formatted = StepFormatter::formatResult(result, true, 5, " ");
-                    logToConsole(formatted);
-                } catch (...) {
-                    logToConsole("Ошибка при форматировании шагов");
-                }
-            }
+        if (result.result.isEmpty() || result.result.contains("ошибка", Qt::CaseInsensitive)) {
+            handleError(result.result.isEmpty() ? "Пустой результат" : result.result);
             return;
         }
 
-        // Успешное шифрование
-        outputTextEdit->setText(resultText);
+        // Форматируем вывод в зависимости от настроек
+        QString outputText = result.result;
+
+        if (isHexCipher && m_outputFormatRusRadio->isChecked()) {
+            // HEX-шифр, пользователь хочет русский текст
+            QString converted = CoreHex::hexToRus(result.result);
+            if (!converted.isEmpty()) {
+                outputText = converted;
+                logToConsole("HEX → русский: " + outputText.left(100));
+            } else {
+                logToConsole("Предупреждение: не удалось преобразовать HEX в русский текст");
+            }
+        } else if (!isHexCipher && m_outputFormatHexRadio->isChecked()) {
+            // Текстовый шифр, пользователь хочет HEX
+            outputText = CoreHex::rusToHex(result.result);
+            logToConsole("Русский → HEX: " + outputText.left(100));
+        }
+
+        outputTextEdit->setText(outputText);
         showSuccessAnimation();
 
-        // Форматируем и выводим результат
-        try {
-            if (!result.steps.isEmpty()) {
+        // Форматируем и выводим шаги
+        if (!result.steps.isEmpty()) {
+            try {
                 QString formatted = StepFormatter::formatResult(result, true, 5, " ");
                 logToConsole(formatted);
-            } else {
-                QString formatted = StepFormatter::formatResultOnly(result, 5, " ");
-                logToConsole(formatted);
+            } catch (...) {
+                logToConsole("Результат: " + result.result);
             }
-        } catch (...) {
-            logToConsole("Результат: " + resultText);
+        } else {
+            logToConsole("Результат: " + result.result);
         }
 
         handleSuccess("Шифрование успешно завершено! Получено символов: " +
-                     QString::number(resultText.length()));
+                     QString::number(outputText.length()));
 
     } catch (const std::exception& e) {
         handleError(QString("Исключение: ") + e.what());
@@ -740,69 +764,73 @@ void MainWindow::onDecryptClicked()
     try {
         logToConsole("\n════════════════════════════════════════");
         logToConsole("ДЕШИФРОВАНИЕ: " + m_currentCipher->name());
-        logToConsole("Входной текст: " + inputText);
 
-        // Собираем параметры из UI
+        bool isHexCipher = (m_currentCipher->alphabet() == "0123456789ABCDEF");
+        QString textForDecrypt = inputText;
+
+        // Для HEX-шифров вход должен быть HEX
+        if (isHexCipher) {
+            if (!CoreHex::isValidHex(inputText)) {
+                // Пробуем преобразовать русский → HEX (пользователь мог ввести текст)
+                QString russianAlphabet = QStringLiteral(u"АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+                QString filtered = CipherUtils::filterAlphabetOnly(inputText, russianAlphabet);
+                if (!filtered.isEmpty()) {
+                    textForDecrypt = CoreHex::rusToHex(filtered);
+                    logToConsole("Русский текст преобразован в HEX: " + textForDecrypt.left(64) + "...");
+                } else {
+                    handleError("Для этого шифра нужен HEX-ввод (0-9, A-F) или русский текст");
+                    return;
+                }
+            } else {
+                logToConsole("Входной текст уже в HEX формате");
+            }
+        }
+
+        logToConsole("Входные данные для шифра: " + textForDecrypt.left(100));
+
         QVariantMap params = collectParameters();
 
-        // Выполняем дешифрование
-        CipherResult result = m_currentCipher->decrypt(inputText, params);
+        for (auto it = params.constBegin(); it != params.constEnd(); ++it) {
+            logToConsole(it.key() + ": " + it.value().toString());
+        }
 
-        // Безопасная проверка результата
-        QString resultText = result.result;
-        QString cipherName = result.cipherName;
+        CipherResult result = m_currentCipher->decrypt(textForDecrypt, params);
 
-        // Проверяем результат на наличие ошибки
-        bool hasError = resultText.isEmpty() ||
-                       resultText.contains("ошибка", Qt::CaseInsensitive) ||
-                       resultText.contains("error", Qt::CaseInsensitive) ||
-                       cipherName.contains("ошибка", Qt::CaseInsensitive);
-
-        if (hasError) {
-            // Формируем сообщение об ошибке
-            outputTextEdit->clear();
-            QString errorMsg;
-            if (resultText.isEmpty()) {
-                errorMsg = "Пустой результат дешифрования";
-            } else if (resultText.length() > 100) {
-                errorMsg = resultText.left(100) + "...";
-            } else {
-                errorMsg = resultText;
-            }
-
-            handleError(errorMsg);
-
-            // Безопасно логируем шаги, если они есть
-            if (!result.steps.isEmpty()) {
-                try {
-                    QString formatted = StepFormatter::formatResult(result, true, 5, " ");
-                    logToConsole(formatted);
-                } catch (...) {
-                    logToConsole("Ошибка при форматировании шагов");
-                }
-            }
+        if (result.result.isEmpty() || result.result.contains("ошибка", Qt::CaseInsensitive)) {
+            handleError(result.result.isEmpty() ? "Пустой результат" : result.result);
             return;
         }
 
-        // Успешное дешифрование
-        outputTextEdit->setText(resultText);
+        // Форматируем вывод
+        QString outputText = result.result;
+
+        if (isHexCipher && m_outputFormatRusRadio->isChecked()) {
+            QString converted = CoreHex::hexToRus(result.result);
+            if (!converted.isEmpty()) {
+                outputText = converted;
+                logToConsole("HEX → русский: " + outputText.left(100));
+            }
+        } else if (!isHexCipher && m_outputFormatHexRadio->isChecked()) {
+            outputText = CoreHex::rusToHex(result.result);
+            logToConsole("Русский → HEX: " + outputText.left(100));
+        }
+
+        outputTextEdit->setText(outputText);
         showSuccessAnimation();
 
-        // Форматируем и выводим результат
-        try {
-            if (!result.steps.isEmpty()) {
+        if (!result.steps.isEmpty()) {
+            try {
                 QString formatted = StepFormatter::formatResult(result, true, 5, " ");
                 logToConsole(formatted);
-            } else {
-                QString formatted = StepFormatter::formatResultOnly(result, 5, " ");
-                logToConsole(formatted);
+            } catch (...) {
+                logToConsole("Результат: " + result.result);
             }
-        } catch (...) {
-            logToConsole("Результат: " + resultText);
+        } else {
+            logToConsole("Результат: " + result.result);
         }
 
         handleSuccess("Дешифрование успешно завершено! Получено символов: " +
-                     QString::number(resultText.length()));
+                     QString::number(outputText.length()));
 
     } catch (const std::exception& e) {
         handleError(QString("Исключение: ") + e.what());
@@ -1105,4 +1133,20 @@ void MainWindow::onLibraryWindowOpen()
     m_libraryWindow->show();
     m_libraryWindow->raise();
     m_libraryWindow->activateWindow();
+}
+
+void MainWindow::updateOutputFormatVisibility()
+{
+    if (!m_currentCipher) return;
+
+    bool isHexCipher = (m_currentCipher->alphabet() == "0123456789ABCDEF");
+
+    // Показываем/скрываем радиокнопки
+    m_outputFormatRusRadio->setVisible(isHexCipher);
+    m_outputFormatHexRadio->setVisible(isHexCipher);
+
+    // Для текстовых шифров сбрасываем на русский (значение по умолчанию)
+    if (!isHexCipher) {
+        m_outputFormatRusRadio->setChecked(true);
+    }
 }

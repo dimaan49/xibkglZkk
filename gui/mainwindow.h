@@ -24,6 +24,8 @@
 #include <QGraphicsDropShadowEffect>
 #include <QSequentialAnimationGroup>
 #include <QParallelAnimationGroup>
+#include <QRadioButton>
+#include <QHBoxLayout>
 #include <QPlainTextEdit>
 #include <QTimer>
 
@@ -56,6 +58,7 @@ private slots:
     void onInputTextChanged();
     void onAnalysisWindowOpen();
     void onLibraryWindowOpen();
+    void updateOutputFormatVisibility();
 
 private:
     void setupUI();
@@ -83,6 +86,8 @@ private:
     QPushButton* encryptButton;
     QPushButton* decryptButton;
     QPushButton* clearButton;
+    QRadioButton* m_outputFormatRusRadio;
+    QRadioButton* m_outputFormatHexRadio;
     QPushButton* clearInputButton;
     QPushButton* clearOutputButton;
     QPushButton* clearLogButton;
