@@ -14,10 +14,11 @@ public:
     virtual ~ShannonPadCipher() = default;
 
     // CipherInterface interface
-    virtual QString name() const override { return "Одноразовый блокнот Шеннона"; }
-    virtual QString description() const override { return "Потоковый шифр с линейным конгруэнтным генератором (гаммирование)"; }
-    virtual CipherResult encrypt(const QString& text, const QVariantMap& params) override;
-    virtual CipherResult decrypt(const QString& text, const QVariantMap& params) override;
+    QString name() const override { return "Одноразовый блокнот Шеннона"; }
+    QString description() const override { return "Потоковый шифр с линейным конгруэнтным генератором (гаммирование)"; }
+    QString alphabet() const override {return m_alphabet; }
+    CipherResult encrypt(const QString& text, const QVariantMap& params) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params) override;
 
     // Константы
     static const int ALPHABET_SIZE = 32; // Размер русского алфавита (А-Я без Ё)

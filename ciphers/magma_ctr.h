@@ -15,12 +15,13 @@ public:
     MagmaCTRCipher();
     virtual ~MagmaCTRCipher() = default;
 
-    virtual QString name() const override { return "Магма (ГОСТ Р 34.12-2015) - CTR"; }
-    virtual QString description() const override {
+    QString name() const override { return "Магма (ГОСТ Р 34.12-2015) - CTR"; }
+    QString description() const override {
         return "Блочный шифр с длиной блока 64 бит, режим гаммирования (CTR) по ГОСТ Р 34.13-2015";
     }
-    virtual CipherResult encrypt(const QString& text, const QVariantMap& params) override;
-    virtual CipherResult decrypt(const QString& text, const QVariantMap& params) override;
+    QString alphabet() const override {return m_alphabet; }
+    CipherResult encrypt(const QString& text, const QVariantMap& params) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params) override;
 
 private:
     // S-блоки из ГОСТ Р 34.12-2015, раздел 5.1.1 (π0'..π7')
@@ -52,7 +53,7 @@ private:
     QByteArray ctrProcess(const QByteArray& data, const QString& keyHex, const QString& ivHex) const;
 
     // Алфавит для вывода
-    QString m_alphabet = "HEX";
+    QString m_alphabet = CipherUtils::HEX_ALPHABET;
 };
 
 // Регистратор

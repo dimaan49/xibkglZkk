@@ -14,6 +14,7 @@ public:
     virtual CipherResult decrypt(const QString& text, const QVariantMap& params) override;
     virtual QString name() const override;
     virtual QString description() const override;
+    QString alphabet() const override {return m_alphabet; }
 
     // Константы
     QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;

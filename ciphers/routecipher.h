@@ -13,9 +13,9 @@ public:
 
     CipherResult encrypt(const QString& text, const QVariantMap& params = {}) override;
     CipherResult decrypt(const QString& text, const QVariantMap& params = {}) override;
-
     QString name() const override;
     QString description() const override;
+    QString alphabet() const override {return m_alphabet; }
 
     void getOptimalSize(int textLength, int& rows, int& cols) const;
 
@@ -35,6 +35,7 @@ private:
 
 
 protected:
+    QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
     // Внутренние методы остаются прежними
     CipherResult encryptImpl(const QString& text,
                             int rows, int cols,

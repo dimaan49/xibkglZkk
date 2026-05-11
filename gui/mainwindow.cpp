@@ -635,7 +635,6 @@ void MainWindow::onEncryptClicked()
         handleError("Шифр не выбран!");
         return;
     }
-
     QString inputText = inputTextEdit->toPlainText().trimmed();
     if (inputText.isEmpty()) {
         handleError("Введите текст для шифрования!");

@@ -11,11 +11,11 @@ class PlayfairCipher : public CipherInterface
 public:
     PlayfairCipher();
 
-    // CipherInterface interface
-    virtual CipherResult encrypt(const QString& text, const QVariantMap& params) override;
-    virtual CipherResult decrypt(const QString& text, const QVariantMap& params) override;
-    virtual QString name() const override;
-    virtual QString description() const override;
+    CipherResult encrypt(const QString& text, const QVariantMap& params) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params) override;
+    QString alphabet() const override {return m_alphabet; }
+    QString name() const override;
+    QString description() const override;
 
     // Публичные методы для использования в виджетах
     enum MatrixSize { Size5x6 = 0, Size4x8 = 1 };
@@ -35,6 +35,7 @@ private:
     static const QChar DEFAULT_FILLER;
     static const QString ALPHABET_5x6;
     static const QString ALPHABET_4x8;
+    QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 
     // Получение алфавита для заданного размера
     QString getAlphabet(MatrixSize size) const;

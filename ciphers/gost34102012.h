@@ -87,6 +87,7 @@ public:
         return "ГОСТ Р 34.10-2012 — алгоритм электронной цифровой подписи "
                "на основе эллиптических кривых (ECDSA).";
     }
+    QString alphabet() const override {return m_alphabet; }
 
     // Статические методы для генерации ключей
     static BigInt generatePrimeStatic(int bits);

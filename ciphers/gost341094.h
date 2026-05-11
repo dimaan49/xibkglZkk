@@ -21,6 +21,7 @@ public:
         return "ГОСТ Р 34.10-94 — алгоритм электронной цифровой подписи "
                "на основе дискретного логарифмирования.";
     }
+    QString alphabet() const override {return m_alphabet; }
 
     bool isAvailable() const{ return true; }
 

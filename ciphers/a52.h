@@ -15,10 +15,11 @@ public:
     virtual ~A52Cipher() = default;
 
     // CipherInterface interface
-    virtual QString name() const override { return "A5/2 (GSM)"; }
-    virtual QString description() const override { return "Потоковый шифр A5/2 с четырьмя РСЛОС и управлением тактированием через R4"; }
-    virtual CipherResult encrypt(const QString& text, const QVariantMap& params) override;
-    virtual CipherResult decrypt(const QString& text, const QVariantMap& params) override;
+    QString name() const override { return "A5/2 (GSM)"; }
+    QString description() const override { return "Потоковый шифр A5/2 с четырьмя РСЛОС и управлением тактированием через R4"; }
+    QString alphabet() const override {return m_alphabet; }
+    CipherResult encrypt(const QString& text, const QVariantMap& params) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params) override;
 
 private:
     // Длины регистров

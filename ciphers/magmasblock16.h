@@ -19,9 +19,10 @@ public:
                "Текст разбивается на блоки по 8 hex-символов (32 бита), "
                "каждый символ заменяется по соответствующей таблице замены (π0-π7).";
     }
+    QString alphabet() const override {return m_alphabet; }
 
 private:
-    QString m_alphabet = QStringLiteral(u"0123456789ABCDEF");
+    QString m_alphabet = CipherUtils::HEX_ALPHABET;
 
     // Таблицы замены S-блоков (индексы 0-7 соответствуют таблицам 1-8)
     QVector<QVector<int>> m_sBlocks;

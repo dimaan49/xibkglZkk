@@ -22,6 +22,7 @@ public:
                "Позволяет двум сторонам выработать общий секретный ключ "
                "через незащищенный канал связи.";
     }
+    QString alphabet() const override {return m_alphabet; }
 
 private:
     const QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;

@@ -19,6 +19,7 @@ public:
     // CipherInterface interface
     virtual QString name() const override { return "ElGamal"; }
     virtual QString description() const override { return "Асимметричный шифр ElGamal на основе дискретного логарифмирования"; }
+    QString alphabet() const override {return m_alphabet; }
     virtual CipherResult encrypt(const QString& text, const QVariantMap& params) override;
     virtual CipherResult decrypt(const QString& text, const QVariantMap& params) override;
 

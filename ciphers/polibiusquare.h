@@ -16,6 +16,7 @@ public:
     QString description() const override {
         return "Каждая буква заменяется на свои координаты в таблице 6×6. Координаты записываются слитно (например, А=11).";
     }
+    QString alphabet() const override {return m_alphabet; }
 
 private:
     QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;

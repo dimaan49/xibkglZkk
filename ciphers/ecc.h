@@ -35,10 +35,11 @@ public:
     ECCCipher();
     virtual ~ECCCipher() = default;
 
-    virtual QString name() const override { return "ECC (Эль-Гамаль)"; }
-    virtual QString description() const override { return "Асимметричный шифр на эллиптических кривых (схема Эль-Гамаля)"; }
-    virtual CipherResult encrypt(const QString& text, const QVariantMap& params) override;
-    virtual CipherResult decrypt(const QString& text, const QVariantMap& params) override;
+    QString name() const override { return "ECC (Эль-Гамаль)"; }
+    QString description() const override { return "Асимметричный шифр на эллиптических кривых (схема Эль-Гамаля)"; }
+    QString alphabet() const override {return m_alphabet; }
+    CipherResult encrypt(const QString& text, const QVariantMap& params) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params) override;
 
     // Статические методы для арифметики на кривой
     static ECPoint pointAdd(const ECPoint& P, const ECPoint& Q, uint64_t a, uint64_t p);
@@ -52,6 +53,7 @@ public:
                                    QString& errorMessage);
 
 private:
+    const QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
     // Преобразование числа в строку
     static QString pointToString(const ECPoint& P);
     static ECPoint stringToPoint(const QString& str);

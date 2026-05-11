@@ -13,6 +13,7 @@ public:
     // Переопределяем виртуальные методы
     QString name() const override;
     QString description() const override;
+    QString alphabet() const override {return m_alphabet; }
     CipherResult encrypt(const QString& text, const QVariantMap& params) override;
     CipherResult decrypt(const QString& text, const QVariantMap& params) override;
 

@@ -15,10 +15,11 @@ public:
     KuznechikCipher();
     virtual ~KuznechikCipher() = default;
 
-    virtual QString name() const override { return "Кузнечик (ГОСТ Р 34.12-2015)"; }
-    virtual QString description() const override { return "Блочный шифр с длиной блока 128 бит (SP-сеть)"; }
-    virtual CipherResult encrypt(const QString& text, const QVariantMap& params) override;
-    virtual CipherResult decrypt(const QString& text, const QVariantMap& params) override;
+    QString name() const override { return "Кузнечик (ГОСТ Р 34.12-2015)"; }
+    QString description() const override { return "Блочный шифр с длиной блока 128 бит (SP-сеть)"; }
+    QString alphabet() const override {return m_alphabet; }
+    CipherResult encrypt(const QString& text, const QVariantMap& params) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params) override;
 
 private:
     // S-блок из ГОСТ Р 34.12-2015 (раздел 4.1.1)
@@ -52,9 +53,8 @@ private:
     std::array<std::array<uint8_t, 16>, 32> generateIterConstants() const;
 
     // Алфавит для вывода
-    QString m_alphabet = "HEX";
+    QString m_alphabet = CipherUtils::HEX_ALPHABET;
 };
-
 
 // Регистратор
 class KuznechikCipherRegister

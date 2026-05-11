@@ -17,10 +17,11 @@ public:
     virtual ~RSACipher() = default;
 
     // CipherInterface interface
-    virtual QString name() const override { return "RSA"; }
-    virtual QString description() const override { return "Асимметричный шифр RSA (Rivest-Shamir-Adleman)"; }
-    virtual CipherResult encrypt(const QString& text, const QVariantMap& params) override;
-    virtual CipherResult decrypt(const QString& text, const QVariantMap& params) override;
+    QString name() const override { return "RSA"; }
+    QString description() const override { return "Асимметричный шифр RSA (Rivest-Shamir-Adleman)"; }
+    QString alphabet() const override {return m_alphabet; }
+    CipherResult encrypt(const QString& text, const QVariantMap& params) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params) override;
 
     // Статические методы для генерации ключей
     static uint64_t generateEStatic(uint64_t phi);

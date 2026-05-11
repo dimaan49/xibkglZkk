@@ -15,6 +15,7 @@ public:
     QString description() const override {
         return "Автоключевой шифр: ключ[i] = шифротекст[i-1] (для i>0)";
     }
+    QString alphabet() const override {return m_alphabet; }
 
 private:
     QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;

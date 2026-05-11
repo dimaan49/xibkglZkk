@@ -15,6 +15,7 @@ public:
     QString description() const override {
         return "Шифр сдвига. Каждая буква сдвигается на фиксированное количество позиций в алфавите.";
     }
+    QString alphabet() const override {return m_alphabet; }
 
 
 private:

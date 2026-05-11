@@ -16,12 +16,14 @@ public:
     virtual CipherResult decrypt(const QString& text, const QVariantMap& params) override;
     virtual QString name() const override;
     virtual QString description() const override;
+    QString alphabet() const override {return m_alphabet; }
 
     // Методы для тестирования и отладки
     std::array<uint32_t, 32> getRoundKeys() const { return m_roundKeys; }
     void setKey(const QString& hexKey);
 
 private:
+    const QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
     // Константы и таблицы подстановок (S-блоки) из ГОСТ Р 34.12-2015 (Приложение А.2)
     static const std::array<uint8_t, 16> PI0;
     static const std::array<uint8_t, 16> PI1;

@@ -24,6 +24,7 @@ public:
                "При шифровании создается подпись сообщения (a,b), "
                "при расшифровании подпись проверяется.";
     }
+    QString alphabet() const override {return m_alphabet; }
 
     static uint64_t generateRandomKStatic(uint64_t p);
 

@@ -14,10 +14,11 @@ public:
     AESCipher();
     virtual ~AESCipher() = default;
 
-    virtual QString name() const override { return "AES (Rijndael)"; }
-    virtual QString description() const override { return "Симметричный блочный шифр, стандарт FIPS-197"; }
-    virtual CipherResult encrypt(const QString& text, const QVariantMap& params) override;
-    virtual CipherResult decrypt(const QString& text, const QVariantMap& params) override;
+    QString name() const override { return "AES (Rijndael)"; }
+    QString description() const override { return "Симметричный блочный шифр, стандарт FIPS-197"; }
+    QString alphabet() const override {return m_alphabet; }
+    CipherResult encrypt(const QString& text, const QVariantMap& params) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params) override;
 
 private:
     // Константы
@@ -48,7 +49,7 @@ private:
 
 
     // Алфавит для вывода
-    QString m_alphabet = "HEX";
+    QString m_alphabet = CipherUtils::HEX_ALPHABET;
 };
 
 

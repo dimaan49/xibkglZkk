@@ -374,7 +374,6 @@ CipherResult A51Cipher::processText(const QString& text, const std::bitset<64>& 
 {
     CipherResult result;
     result.cipherName = name();
-    result.alphabet = m_alphabet;
     result.isNumeric = false;
 
     QVector<CipherStep> steps;
@@ -470,6 +469,7 @@ CipherResult A51Cipher::processText(const QString& text, const std::bitset<64>& 
 
     result.result = resultText;
     result.steps = steps;
+    result.alphabet= CipherUtils::RUSSIAN_ALPHABET_32;
 
     return result;
 }

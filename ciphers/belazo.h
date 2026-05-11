@@ -15,6 +15,7 @@ public:
     QString description() const override {
         return "Полиалфавитный шифр с ключевым словом";
     }
+    QString alphabet() const override {return m_alphabet; }
 
 private:
     QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;

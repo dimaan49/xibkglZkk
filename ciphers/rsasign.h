@@ -25,6 +25,7 @@ public:
                "При шифровании создается подпись хеша сообщения, "
                "при расшифровании подпись проверяется.";
     }
+    QString alphabet() const override {return m_alphabet; }
 
     static uint64_t generateEStatic(uint64_t phi);
 

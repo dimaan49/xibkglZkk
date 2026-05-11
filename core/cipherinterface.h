@@ -15,6 +15,7 @@ public:
 
     virtual QString name() const = 0;
     virtual QString description() const = 0;
+    virtual QString alphabet() const = 0;
 
 
 

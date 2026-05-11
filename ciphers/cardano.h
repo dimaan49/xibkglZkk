@@ -15,6 +15,7 @@ public:
 
     QString name() const override;
     QString description() const override;
+    QString alphabet() const override {return m_alphabet; }
 
     // Публичные методы для доступа к данным (для виджетов)
     std::vector<std::vector<bool>> getHoles() const;

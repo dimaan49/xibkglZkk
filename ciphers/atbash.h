@@ -20,6 +20,7 @@ public:
     QString description() const override {
         return "Зеркальный шифр. Каждая буква заменяется на симметричную относительно центра алфавита.";
     }
+    QString alphabet() const override {return m_alphabet; }
 
 private:
     QString m_alphabet =  CipherUtils::RUSSIAN_ALPHABET_32;

@@ -14,10 +14,11 @@ public:
     MagmaECBCipher();
     virtual ~MagmaECBCipher() = default;
 
-    virtual QString name() const override { return "Магма (ГОСТ Р 34.12-2015) - ECB"; }
-    virtual QString description() const override { return "Блочный шифр с длиной блока 64 бит, режим простой замены (ГОСТ Р 34.13-2015)"; }
-    virtual CipherResult encrypt(const QString& text, const QVariantMap& params) override;
-    virtual CipherResult decrypt(const QString& text, const QVariantMap& params) override;
+    QString name() const override { return "Магма (ГОСТ Р 34.12-2015) - ECB"; }
+    QString description() const override { return "Блочный шифр с длиной блока 64 бит, режим простой замены (ГОСТ Р 34.13-2015)"; }
+    QString alphabet() const override {return m_alphabet; }
+    CipherResult encrypt(const QString& text, const QVariantMap& params) override;
+    CipherResult decrypt(const QString& text, const QVariantMap& params) override;
 
 private:
     // S-блоки ГОСТ Р 34.12-2015 (раздел 5.1.1)
@@ -42,7 +43,7 @@ private:
     std::array<uint32_t, 32> keySchedule(const QString& keyHex) const;
 
     // Алфавит для вывода
-    QString m_alphabet = "HEX";
+    QString m_alphabet = CipherUtils::HEX_ALPHABET;
 };
 
 

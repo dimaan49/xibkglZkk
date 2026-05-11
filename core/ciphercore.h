@@ -6,6 +6,7 @@
 #include <QChar>
 #include <QLineEdit>
 #include <QKeyEvent>
+#include <QByteArray>
 
 #include <random>
 #include <cstdint>
@@ -108,6 +109,16 @@ const QString HEX_ALPHABET = QStringLiteral(u"0123456789ABCDEF");
 
 namespace CoreHex {
 
+    inline QString rusToHex(const QString& rusText) {
+        return rusText.toUtf8().toHex();
+    }
+
+    inline QString hexToRus(const QString& hexText) {
+        QString clean = hexText.simplified().remove(' ');
+        QByteArray bytes = QByteArray::fromHex(clean.toLatin1());
+        return QString::fromUtf8(bytes);
+    }
+
     // Проверка, является ли строка корректной HEX (только 0-9, A-F, a-f)
     inline bool isValidHex(const QString& hex) {
         if (hex.isEmpty()) return true;
@@ -209,6 +220,19 @@ namespace CoreHex {
         }
         return data.left(data.size() - padding);
     }
+
+/*
+    QString rusToHex(const QString& rusText) {
+        return rusText.toUtf8().toHex();
+    }
+
+    QString hexToRus(const QString& hexText) {
+        QString clean = hexText.simplified().remove(' ');
+        QByteArray bytes = QByteArray::fromHex(clean.toLatin1());
+        return QString::fromUtf8(bytes);
+    }
+*/
+
 }
 
 
