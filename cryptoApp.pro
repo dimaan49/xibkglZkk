@@ -52,6 +52,7 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     classes/hexedit.cpp \
     classes/numberlneedit.cpp \
     core/ciphercore.cpp \
+    core/texttransformer.cpp \
     fabrics/cipherfactory.cpp \
     fabrics/cipherwidgetfactory.cpp \
     gui/advancedsettingsdialog.cpp \
@@ -101,6 +102,7 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     classes/numberlineedit.h \
     core/ciphercore.h \
     core/cipherinterface.h \
+    core/texttransformer.h \
     fabrics/cipherfactory.h \
     fabrics/cipherwidgetfactory.h \
     gui/advancedsettingsdialog.h \

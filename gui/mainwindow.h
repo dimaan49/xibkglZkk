@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 #include "cipherinterface.h"
 #include <categoryfilterdialog.h>
+#include "texttransformer.h"
 #include "logwindow.h"
 #include "analysiswindow.h"
 #include "librarywindow.h"
@@ -59,6 +60,7 @@ private slots:
     void onAnalysisWindowOpen();
     void onLibraryWindowOpen();
     void updateOutputFormatVisibility();
+    void onTransformToggled(bool checked);
 
 private:
     void setupUI();
@@ -101,6 +103,8 @@ private:
     LibraryWindow* m_libraryWindow;
     QMenuBar* m_menuBar;
     QMenu* m_actionsMenu;
+    QString m_originalInputText;      // всегда оригинал (со знаками)
+    QCheckBox* m_transformCheckBox;
 
     // Filter dialog
     CategoryFilterDialog* m_filterDialog;   // Добавить
