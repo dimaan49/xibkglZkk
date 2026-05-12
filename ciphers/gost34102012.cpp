@@ -13,97 +13,6 @@
 #include <QFrame>
 #include <cstdint>
 
-// ==================== Арифметика эллиптической кривой ====================
-
-ECC_Point GOST34102012Cipher::pointDouble(const ECC_Point& P, uint64_t p, uint64_t a) const {
-    if (P.isInfinity) return P;
-
-    uint64_t x1 = P.x % p;
-    uint64_t y1 = P.y % p;
-
-    // Если y = 0, касательная вертикальна -> точка в бесконечности
-    if (y1 == 0) return ECC_Point();
-
-    // λ = (3x₁² + a) / (2y₁) mod p
-    uint64_t x1_sq = (x1 * x1) % p;
-    uint64_t num = (3 * x1_sq + (a % p)) % p;
-    uint64_t den = (2 * y1) % p;
-    uint64_t den_inv = CoreMath::modInverse(den, p);
-
-    if (den_inv == 0) return ECC_Point();
-
-    uint64_t lambda = (num * den_inv) % p;
-
-    // x₃ = λ² - 2x₁ mod p
-    uint64_t lambda2 = (lambda * lambda) % p;
-    uint64_t x3 = (lambda2 + p - (2 * x1) % p) % p;
-
-    // y₃ = λ(x₁ - x₃) - y₁ mod p
-    uint64_t x_diff = (x1 + p - x3) % p;
-    uint64_t y3 = (lambda * x_diff + p - y1) % p;
-
-    return ECC_Point(x3, y3);
-}
-
-ECC_Point GOST34102012Cipher::pointAdd(const ECC_Point& P, const ECC_Point& Q,
-                                        uint64_t p, uint64_t a) const {
-    if (P.isInfinity) return Q;
-    if (Q.isInfinity) return P;
-
-    uint64_t x1 = P.x % p;
-    uint64_t y1 = P.y % p;
-    uint64_t x2 = Q.x % p;
-    uint64_t y2 = Q.y % p;
-
-    // Если точки равны -> удвоение
-    if (x1 == x2 && y1 == y2) {
-        return pointDouble(P, p, a);
-    }
-
-    // Если x₁ == x₂, то P + Q = O
-    if (x1 == x2) {
-        return ECC_Point();
-    }
-
-    // λ = (y₂ - y₁) / (x₂ - x₁) mod p
-    uint64_t num = (y2 + p - y1) % p;
-    uint64_t den = (x2 + p - x1) % p;
-    uint64_t den_inv = CoreMath::modInverse(den, p);
-
-    if (den_inv == 0) return ECC_Point();
-
-    uint64_t lambda = (num * den_inv) % p;
-
-    // x₃ = λ² - x₁ - x₂ mod p
-    uint64_t lambda2 = (lambda * lambda) % p;
-    uint64_t x3 = (lambda2 + p - x1 + p - x2) % p;
-
-    // y₃ = λ(x₁ - x₃) - y₁ mod p
-    uint64_t x_diff = (x1 + p - x3) % p;
-    uint64_t y3 = (lambda * x_diff + p - y1) % p;
-
-    return ECC_Point(x3, y3);
-}
-
-ECC_Point GOST34102012Cipher::pointMul(uint64_t k, const ECC_Point& P,
-                                        uint64_t p, uint64_t a) const {
-    if (k == 0 || P.isInfinity) return ECC_Point();
-
-    ECC_Point result;
-    ECC_Point base = P;
-    uint64_t k_val = k;
-
-    while (k_val > 0) {
-        if (k_val & 1) {
-            result = pointAdd(result, base, p, a);
-        }
-        base = pointDouble(base, p, a);
-        k_val >>= 1;
-    }
-
-    return result;
-}
-
 // ==================== Парсинг чисел ====================
 
 uint64_t GOST34102012Cipher::parseUint64(const QString& str) const {
@@ -123,8 +32,6 @@ uint64_t GOST34102012Cipher::parseUint64(const QString& str) const {
     uint64_t val = s.toULongLong(&ok, 10);
     return ok ? val : 0;
 }
-
-// ==================== Формирование подписи ====================
 
 // ==================== Формирование подписи ====================
 
@@ -149,7 +56,7 @@ CipherResult GOST34102012Cipher::encrypt(const QString& text, const QVariantMap&
     uint64_t d = parseUint64(params.value("d", "").toString());
     uint64_t k = parseUint64(params.value("k", "").toString());
 
-    // Проверка параметров
+    // Проверка наличия параметров
     QString sp = params.value("p", "").toString().trimmed();
     QString sq = params.value("q", "").toString().trimmed();
     QString sxp = params.value("xp", "").toString().trimmed();
@@ -166,15 +73,15 @@ CipherResult GOST34102012Cipher::encrypt(const QString& text, const QVariantMap&
     ECC_Point G(xp, yp);
 
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Параметры: p=%1, a=%2, b=%3, q=%4, G=(%5,%6), d=%7, k=%8")
-            .arg(p).arg(a).arg(b).arg(q).arg(xp).arg(yp).arg(d).arg(k),
+        QString("Параметры: p=%1, a=%2, b=%3, q=%4, G=%5, d=%6, k=%7")
+            .arg(p).arg(a).arg(b).arg(q).arg(G.toString()).arg(d).arg(k),
         "Параметры схемы"));
 
     // Вычисление открытого ключа Q = d·G
-    ECC_Point Q = pointMul(d, G, p, a);
+    ECC_Point Q = CoreCurves::pointMultiply(G, d, p, a);
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Открытый ключ: Q = d·G = %1·(%2,%3) = (%4,%5)")
-            .arg(d).arg(G.x).arg(G.y).arg(Q.x).arg(Q.y),
+        QString("Открытый ключ: Q = d·G = %1·%2 = %3")
+            .arg(d).arg(G.toString()).arg(Q.toString()),
         "Вычисление открытого ключа Q"));
 
     // Хеш сообщения
@@ -184,10 +91,10 @@ CipherResult GOST34102012Cipher::encrypt(const QString& text, const QVariantMap&
         "Хеширование сообщения"));
 
     // Точка C = k·G
-    ECC_Point C = pointMul(k, G, p, a);
+    ECC_Point C = CoreCurves::pointMultiply(G, k, p, a);
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Шаг 2: C = k·G = %1·(%2,%3) = (%4,%5)")
-            .arg(k).arg(G.x).arg(G.y).arg(C.x).arg(C.y),
+        QString("Шаг 2: C = k·G = %1·%2 = %3")
+            .arg(k).arg(G.toString()).arg(C.toString()),
         "Вычисление точки C"));
 
     // r = x_C mod q
@@ -278,8 +185,8 @@ CipherResult GOST34102012Cipher::decrypt(const QString& text, const QVariantMap&
     ECC_Point Q(xq, yq);
 
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Параметры: p=%1, q=%2, G=(%3,%4), Q=(%5,%6)")
-            .arg(p).arg(q).arg(xp).arg(yp).arg(xq).arg(yq),
+        QString("Параметры: p=%1, q=%2, G=%3, Q=%4")
+            .arg(p).arg(q).arg(G.toString()).arg(Q.toString()),
         "Параметры схемы"));
 
     // Парсим подпись
@@ -330,12 +237,12 @@ CipherResult GOST34102012Cipher::decrypt(const QString& text, const QVariantMap&
         "Вычисление u1, u2"));
 
     // P = u1·G + u2·Q
-    ECC_Point P1 = pointMul(u1, G, p, a);
-    ECC_Point P2 = pointMul(u2, Q, p, a);
-    ECC_Point P = pointAdd(P1, P2, p, a);
+    ECC_Point P1 = CoreCurves::pointMultiply(G, u1, p, a);
+    ECC_Point P2 = CoreCurves::pointMultiply(Q, u2, p, a);
+    ECC_Point P = CoreCurves::pointAdd(P1, P2, p, a);
 
     steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Шаг 5: P = (%1, %2)").arg(P.x).arg(P.y),
+        QString("Шаг 5: P = %1").arg(P.toString()),
         "Вычисление точки P"));
 
     // R = x_P mod q
@@ -359,61 +266,17 @@ CipherResult GOST34102012Cipher::decrypt(const QString& text, const QVariantMap&
     return result;
 }
 
-// ==================== Вычисление порядка кривой ====================
+// ==================== Вычисление порядка кривой (делегирует в CoreCurves) ====================
 
 void GOST34102012Cipher::computeCurveOrder(uint64_t p, uint64_t a, uint64_t b,
                                            uint64_t& curveOrder, uint64_t& subgroupOrder,
                                            uint64_t& cofactor, QString& log) {
-    log.clear();
-    log += "=== Вычисление порядка эллиптической кривой перебором ===\n\n";
-    log += QString("Параметры кривой: p = %1, a = %2, b = %3\n").arg(p).arg(a).arg(b);
-    log += QString("Уравнение: y² = x³ + %1·x + %2 (mod %3)\n\n").arg(a).arg(b).arg(p);
-
-    // Предвычисляем квадраты по модулю p
-    QMap<uint64_t, QList<uint64_t>> squares;
-    for (uint64_t y = 0; y < p; ++y) {
-        uint64_t y2 = (y * y) % p;
-        squares[y2].append(y);
-    }
-
-    // Перебор точек
-    QVector<ECC_Point> points;
-    for (uint64_t x = 0; x < p; ++x) {
-        uint64_t x3 = CoreMath::modMul(CoreMath::modMul(x, x, p), x, p);
-        uint64_t ax = CoreMath::modMul(a, x, p);
-        uint64_t rhs = (x3 + ax + (b % p)) % p;
-
-        if (squares.contains(rhs)) {
-            for (uint64_t y : squares[rhs]) {
-                points.append(ECC_Point(x, y));
-            }
-        }
-    }
-
-    // +1 за точку в бесконечности
-    curveOrder = points.size() + 1;
-
-    // Находим наибольший простой делитель порядка кривой
-    subgroupOrder = 1;
-    for (uint64_t i = 2; i <= curveOrder; ++i) {
-        if (curveOrder % i == 0 && CoreMath::isPrime(i)) {
-            subgroupOrder = i;
-        }
-    }
-
-    cofactor = curveOrder / subgroupOrder;
-
-    log += QString("Количество точек: %1\n").arg(points.size());
-    log += QString("n = #E = %1 = h · q\n").arg(curveOrder);
-    log += QString("Кофактор h = %1\n").arg(cofactor);
-    log += QString("Порядок подгруппы q = %1\n").arg(subgroupOrder);
-    log += QString("Проверка: %1 = %2 · %3\n").arg(curveOrder).arg(cofactor).arg(subgroupOrder);
+    CoreCurves::computeCurveOrder(p, a, b, curveOrder, subgroupOrder, cofactor, log);
 }
 
 // ==================== Конструктор ====================
 
 GOST34102012Cipher::GOST34102012Cipher() {
-    // Конструктор по умолчанию
 }
 
 // ==================== Регистратор ====================

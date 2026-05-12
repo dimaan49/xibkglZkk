@@ -92,7 +92,7 @@ QVariantMap CipherWidgetFactory::collectValues(const QMap<QString, QWidget*>& wi
             params[paramId] = checkBox->isChecked();
         }
         else if (ECCPointEdit* pointEdit = qobject_cast<ECCPointEdit*>(widget)) {
-            ECPoint point = pointEdit->getPoint();
+            ECC_Point point = pointEdit->getPoint();
             if (!point.isInfinity) {
                 params[paramId] = QString("(%1,%2)").arg(point.x).arg(point.y);
             } else {
@@ -153,12 +153,12 @@ void CipherWidgetFactory::updateWidgets(const QMap<QString, QWidget*>& widgets, 
                 // Разбираем строку вида "(x,y)"
                 QString str = values[paramId].toString();
                 if (str == "inf") {
-                    pointEdit->setPoint(ECPoint());
+                    pointEdit->setPoint(ECC_Point());
                 } else {
                     QRegularExpression regex("\\((\\d+),(\\d+)\\)");
                     QRegularExpressionMatch match = regex.match(str);
                     if (match.hasMatch()) {
-                        ECPoint point(match.captured(1).toULongLong(),
+                        ECC_Point point(match.captured(1).toULongLong(),
                                       match.captured(2).toULongLong());
                         pointEdit->setPoint(point);
                     }

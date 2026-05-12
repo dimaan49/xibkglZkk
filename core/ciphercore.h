@@ -470,6 +470,206 @@ namespace CoreHash {
     }
 }
 
+// Точка на эллиптической кривой
+struct ECC_Point {
+    uint64_t x;
+    uint64_t y;
+    bool isInfinity;
+
+    ECC_Point() : x(0), y(0), isInfinity(true) {}
+    ECC_Point(uint64_t x_, uint64_t y_) : x(x_), y(y_), isInfinity(false) {}
+
+    bool operator==(const ECC_Point& other) const {
+        if (isInfinity && other.isInfinity) return true;
+        if (isInfinity != other.isInfinity) return false;
+        return x == other.x && y == other.y;
+    }
+
+    bool operator!=(const ECC_Point& other) const {
+        return !(*this == other);
+    }
+
+    QString toString() const {
+        if (isInfinity) return "Infinity";
+        return QString("(%1, %2)").arg(x).arg(y);
+    }
+};
+
+// Арифметика эллиптических кривых
+struct CoreCurves {
+    // Сложение двух точек
+    static ECC_Point pointAdd(const ECC_Point& P, const ECC_Point& Q, uint64_t p, uint64_t a) {
+        if (P.isInfinity) return Q;
+        if (Q.isInfinity) return P;
+
+        uint64_t x1 = P.x % p;
+        uint64_t y1 = P.y % p;
+        uint64_t x2 = Q.x % p;
+        uint64_t y2 = Q.y % p;
+
+        // Точки равны → удвоение
+        if (x1 == x2 && y1 == y2) {
+            return pointDouble(P, p, a);
+        }
+
+        // x₁ == x₂ → P + Q = O (бесконечность)
+        if (x1 == x2) {
+            return ECC_Point();
+        }
+
+        // λ = (y₂ - y₁) / (x₂ - x₁) mod p
+        uint64_t num = (y2 + p - y1) % p;
+        uint64_t den = (x2 + p - x1) % p;
+        uint64_t den_inv = CoreMath::modInverse(den, p);
+
+        if (den_inv == 0) return ECC_Point();
+
+        uint64_t lambda = CoreMath::modMul(num, den_inv, p);
+
+        // x₃ = λ² - x₁ - x₂ mod p
+        uint64_t lambda2 = CoreMath::modMul(lambda, lambda, p);
+        uint64_t x3 = (lambda2 + p - x1 + p - x2) % p;
+
+        // y₃ = λ(x₁ - x₃) - y₁ mod p
+        uint64_t x_diff = (x1 + p - x3) % p;
+        uint64_t y3 = (CoreMath::modMul(lambda, x_diff, p) + p - y1) % p;
+
+        return ECC_Point(x3, y3);
+    }
+
+    // Удвоение точки
+    static ECC_Point pointDouble(const ECC_Point& P, uint64_t p, uint64_t a) {
+        if (P.isInfinity) return P;
+
+        uint64_t x1 = P.x % p;
+        uint64_t y1 = P.y % p;
+
+        // y = 0 → касательная вертикальна → точка в бесконечности
+        if (y1 == 0) return ECC_Point();
+
+        // λ = (3x₁² + a) / (2y₁) mod p
+        uint64_t x1_sq = CoreMath::modMul(x1, x1, p);
+        uint64_t num = (3 * x1_sq + (a % p)) % p;
+        uint64_t den = (2 * y1) % p;
+        uint64_t den_inv = CoreMath::modInverse(den, p);
+
+        if (den_inv == 0) return ECC_Point();
+
+        uint64_t lambda = CoreMath::modMul(num, den_inv, p);
+
+        // x₃ = λ² - 2x₁ mod p
+        uint64_t lambda2 = CoreMath::modMul(lambda, lambda, p);
+        uint64_t x3 = (lambda2 + p - (2 * x1) % p) % p;
+
+        // y₃ = λ(x₁ - x₃) - y₁ mod p
+        uint64_t x_diff = (x1 + p - x3) % p;
+        uint64_t y3 = (CoreMath::modMul(lambda, x_diff, p) + p - y1) % p;
+
+        return ECC_Point(x3, y3);
+    }
+
+    // Умножение точки на скаляр (алгоритм удвоения-сложения)
+    static ECC_Point pointMultiply(const ECC_Point& P, uint64_t k, uint64_t p, uint64_t a) {
+        if (k == 0 || P.isInfinity) return ECC_Point();
+
+        ECC_Point result;      // точка в бесконечности
+        ECC_Point base = P;
+        uint64_t k_val = k;
+
+        while (k_val > 0) {
+            if (k_val & 1) {
+                result = pointAdd(result, base, p, a);
+            }
+            base = pointDouble(base, p, a);
+            k_val >>= 1;
+        }
+
+        return result;
+    }
+
+    // Проверка принадлежности точки кривой: y² ≡ x³ + a·x + b (mod p)
+    static bool isPointOnCurve(const ECC_Point& P, uint64_t p, uint64_t a, uint64_t b) {
+        if (P.isInfinity) return true;
+
+        uint64_t left = CoreMath::modMul(P.y, P.y, p);
+        uint64_t x3 = CoreMath::modMul(CoreMath::modMul(P.x, P.x, p), P.x, p);
+        uint64_t ax = CoreMath::modMul(a, P.x, p);
+        uint64_t right = (x3 + ax + (b % p)) % p;
+
+        return left == right;
+    }
+
+    static ECC_Point parsePoint(const QString& str) {
+        QString s = str.trimmed();
+        if (s.isEmpty() || s == "inf" || s == "Infinity" || s == "O") {
+            return ECC_Point(); // бесконечность
+        }
+
+        // Убираем скобки и пробелы
+        s.remove('(').remove(')').remove(' ');
+
+        QStringList parts = s.split(',');
+        if (parts.size() < 2) return ECC_Point();
+
+        bool ok1, ok2;
+        uint64_t x = parts[0].toULongLong(&ok1);
+        uint64_t y = parts[1].toULongLong(&ok2);
+
+        if (!ok1 || !ok2) return ECC_Point();
+
+        return ECC_Point(x, y);
+    }
+
+    static void computeCurveOrder(uint64_t p, uint64_t a, uint64_t b,
+                                  uint64_t& curveOrder, uint64_t& subgroupOrder,
+                                  uint64_t& cofactor, QString& log) {
+        log.clear();
+        log += "=== Вычисление порядка эллиптической кривой перебором ===\n\n";
+        log += QString("Параметры: p = %1, a = %2, b = %3\n").arg(p).arg(a).arg(b);
+        log += QString("Уравнение: y² = x³ + %1·x + %2 (mod %3)\n\n").arg(a).arg(b).arg(p);
+
+        // Предвычисляем квадраты по модулю p
+        QMap<uint64_t, QList<uint64_t>> squares;
+        for (uint64_t y = 0; y < p; ++y) {
+            uint64_t y2 = CoreMath::modMul(y, y, p);
+            squares[y2].append(y);
+        }
+
+        // Перебор точек
+        QVector<ECC_Point> points;
+        for (uint64_t x = 0; x < p; ++x) {
+            uint64_t x3 = CoreMath::modMul(CoreMath::modMul(x, x, p), x, p);
+            uint64_t ax = CoreMath::modMul(a, x, p);
+            uint64_t rhs = (x3 + ax + (b % p)) % p;
+
+            if (squares.contains(rhs)) {
+                for (uint64_t y : squares[rhs]) {
+                    points.append(ECC_Point(x, y));
+                }
+            }
+        }
+
+        // +1 за точку в бесконечности
+        curveOrder = points.size() + 1;
+
+        // Находим наибольший простой делитель порядка кривой
+        subgroupOrder = 1;
+        for (uint64_t i = 2; i <= curveOrder; ++i) {
+            if (curveOrder % i == 0 && CoreMath::isPrime(i)) {
+                subgroupOrder = i;
+            }
+        }
+
+        cofactor = curveOrder / subgroupOrder;
+
+        log += QString("Количество точек: %1\n").arg(points.size());
+        log += QString("n = #E = %1 = h · q\n").arg(curveOrder);
+        log += QString("Кофактор h = %1\n").arg(cofactor);
+        log += QString("Порядок подгруппы q = %1\n").arg(subgroupOrder);
+        log += QString("Проверка: %1 = %2 · %3\n").arg(curveOrder).arg(cofactor).arg(subgroupOrder);
+    }
+};
+
 
 
 enum Direction {

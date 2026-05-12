@@ -1,18 +1,16 @@
 #include "ecc.h"
 #include "cipherfactory.h"
 #include "cipherwidgetfactory.h"
+#include "texttransformer.h"
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QPushButton>
-#include <QComboBox>
 #include <QMessageBox>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include <QDebug>
 #include <random>
-
-
 
 // ==================== ECCPointEdit Implementation ====================
 
@@ -41,12 +39,12 @@ ECCPointEdit::ECCPointEdit(QWidget* parent)
     layout->addStretch();
 }
 
-ECPoint ECCPointEdit::getPoint() const
+ECC_Point ECCPointEdit::getPoint() const
 {
-    return ECPoint(m_xEdit->getValue(), m_yEdit->getValue());
+    return ECC_Point(m_xEdit->getValue(), m_yEdit->getValue());
 }
 
-void ECCPointEdit::setPoint(const ECPoint& point)
+void ECCPointEdit::setPoint(const ECC_Point& point)
 {
     if (point.isInfinity) {
         m_xEdit->clear();
@@ -73,146 +71,38 @@ ECCCipher::ECCCipher()
 {
 }
 
-
-ECPoint ECCCipher::pointAdd(const ECPoint& P, const ECPoint& Q, uint64_t a, uint64_t p)
-{
-    // Если P - бесконечная точка
-    if (P.isInfinity) return Q;
-    if (Q.isInfinity) return P;
-
-    // Если точки совпадают по x
-    if (P.x == Q.x) {
-        // Если y тоже совпадают (P = Q)
-        if (P.y == Q.y) {
-            return pointDouble(P, a, p);
-        }
-        // Иначе P = -Q (P + (-P) = бесконечность)
-        return ECPoint(); // бесконечная точка
-    }
-
-    // λ = (y2 - y1) * (x2 - x1)^(-1) mod p
-    uint64_t dx = CoreMath::modSub(Q.x, P.x, p);
-    uint64_t dy = CoreMath::modSub(Q.y, P.y, p);
-    uint64_t lambda = CoreMath::modMul(dy, CoreMath::modInverse(dx, p), p);
-
-    // x3 = λ^2 - x1 - x2 mod p
-    uint64_t x3 = CoreMath::modSub(CoreMath::modSub(CoreMath::modMul(lambda, lambda, p), P.x, p), Q.x, p);
-    // y3 = λ(x1 - x3) - y1 mod p
-    uint64_t y3 = CoreMath::modSub(CoreMath::modMul(lambda, CoreMath::modSub(P.x, x3, p), p), P.y, p);
-
-    return ECPoint(x3, y3);
-}
-
-ECPoint ECCCipher::pointDouble(const ECPoint& P, uint64_t a, uint64_t p)
-{
-    if (P.isInfinity || P.y == 0) {
-        return ECPoint(); // бесконечная точка
-    }
-
-    // λ = (3*x1^2 + a) * (2*y1)^(-1) mod p
-    uint64_t threeX2 = CoreMath::modMul(3, CoreMath::modMul(P.x, P.x, p), p);
-    uint64_t numerator = CoreMath::modAdd(threeX2, a, p);
-    uint64_t denominator = CoreMath::modMul(2, P.y, p);
-    uint64_t lambda = CoreMath::modMul(numerator, CoreMath::modInverse(denominator, p), p);
-
-    // x3 = λ^2 - 2*x1 mod p
-    uint64_t x3 = CoreMath::modSub(CoreMath::modMul(lambda, lambda, p), CoreMath::modMul(2, P.x, p), p);
-    // y3 = λ(x1 - x3) - y1 mod p
-    uint64_t y3 = CoreMath::modSub(CoreMath::modMul(lambda, CoreMath::modSub(P.x, x3, p), p), P.y, p);
-
-    return ECPoint(x3, y3);
-}
-
-ECPoint ECCCipher::pointMultiply(const ECPoint& P, uint64_t k, uint64_t a, uint64_t p)
-{
-    ECPoint result; // бесконечная точка
-    ECPoint base = P;
-    uint64_t multiplier = k;
-
-    while (multiplier > 0) {
-        if (multiplier & 1) {
-            result = pointAdd(result, base, a, p);
-        }
-        base = pointDouble(base, a, p);
-        multiplier >>= 1;
-    }
-
-    return result;
-}
-
-bool ECCCipher::isPointOnCurve(const ECPoint& P, uint64_t a, uint64_t b, uint64_t p)
-{
-    if (P.isInfinity) return true;
-
-    // y^2 mod p = (x^3 + a*x + b) mod p
-    uint64_t left = CoreMath::modMul(P.y, P.y, p);
-    uint64_t right = CoreMath::modAdd(CoreMath::modAdd(CoreMath::modMul(CoreMath::modMul(P.x, P.x, p), P.x, p), CoreMath::modMul(a, P.x, p), p), b, p);
-
-    return left == right;
-}
-
 bool ECCCipher::validateParameters(uint64_t a, uint64_t b, uint64_t p,
-                                   const ECPoint& G, uint64_t cB,
+                                   const ECC_Point& G, uint64_t cB,
                                    QString& errorMessage)
 {
-    // Проверка 1: p должно быть простым
-    auto isPrime = [](uint64_t n) -> bool {
-        if (n <= 1) return false;
-        if (n <= 3) return true;
-        if (n % 2 == 0) return false;
-        for (uint64_t i = 3; i * i <= n; i += 2) {
-            if (n % i == 0) return false;
-        }
-        return true;
-    };
-
-    if (!isPrime(p)) {
+    // p должно быть простым
+    if (!CoreMath::isPrime(p)) {
         errorMessage = QString("P = %1 не является простым числом").arg(p);
         return false;
     }
 
-    // Проверка 2: дискриминант 4a^3 + 27b^2 ≠ 0 mod p
+    // Дискриминант 4a³ + 27b² ≠ 0 mod p
     uint64_t a3 = CoreMath::modMul(CoreMath::modMul(a, a, p), a, p);
     uint64_t b2 = CoreMath::modMul(b, b, p);
-    uint64_t discriminant = CoreMath::modAdd(CoreMath::modMul(4, a3, p), CoreMath::modMul(27, b2, p), p);
+    uint64_t discriminant = (4 * a3 + 27 * b2) % p;
     if (discriminant == 0) {
         errorMessage = "Дискриминант кривой равен 0 (кривая сингулярна)";
         return false;
     }
 
-    // Проверка 3: G лежит на кривой
-    if (!isPointOnCurve(G, a, b, p)) {
+    // G лежит на кривой
+    if (!CoreCurves::isPointOnCurve(G, p, a, b)) {
         errorMessage = QString("Точка G(%1, %2) не лежит на кривой").arg(G.x).arg(G.y);
         return false;
     }
 
-    // Проверка 4: 1 < cB < p
+    // 1 < cB < p
     if (cB <= 1 || cB >= p) {
         errorMessage = QString("Cb должно быть в диапазоне 1 < Cb < P (P=%1)").arg(p);
         return false;
     }
 
     return true;
-}
-
-QString ECCCipher::pointToString(const ECPoint& P)
-{
-    if (P.isInfinity) return "inf";
-    return QString("(%1,%2)").arg(P.x).arg(P.y);
-}
-
-ECPoint ECCCipher::stringToPoint(const QString& str)
-{
-    if (str.trimmed() == "inf") return ECPoint();
-
-    // Формат: (x,y)
-    QRegularExpression regex("\\((\\d+),(\\d+)\\)");
-    QRegularExpressionMatch match = regex.match(str.trimmed());
-    if (match.hasMatch()) {
-        return ECPoint(match.captured(1).toULongLong(),
-                       match.captured(2).toULongLong());
-    }
-    return ECPoint();
 }
 
 CipherResult ECCCipher::encrypt(const QString& text, const QVariantMap& params)
@@ -233,7 +123,7 @@ CipherResult ECCCipher::encrypt(const QString& text, const QVariantMap& params)
     uint64_t cB = params.value("cB", 0).toULongLong();
     uint64_t k = params.value("k", 0).toULongLong();
 
-    ECPoint G = stringToPoint(gStr);
+    ECC_Point G = CoreCurves::parsePoint(gStr);
 
     // Проверяем параметры
     QString validationError;
@@ -244,7 +134,7 @@ CipherResult ECCCipher::encrypt(const QString& text, const QVariantMap& params)
 
     steps.append(CipherStep(1, QChar(),
         QString("Параметры: a=%1, b=%2, p=%3, G=%4, Cb=%5, k=%6")
-            .arg(a).arg(b).arg(p).arg(pointToString(G)).arg(cB).arg(k),
+            .arg(a).arg(b).arg(p).arg(G.toString()).arg(cB).arg(k),
         "Проверка параметров"));
 
     // Получаем сообщение M (число)
@@ -265,28 +155,28 @@ CipherResult ECCCipher::encrypt(const QString& text, const QVariantMap& params)
     }
 
     // Вычисляем открытый ключ: DB = [Cb]G
-    ECPoint DB = pointMultiply(G, cB, a, p);
+    ECC_Point DB = CoreCurves::pointMultiply(G, cB, p, a);
     steps.append(CipherStep(3, QChar(),
         QString("Открытый ключ DB = [Cb]G = [%1]%2 = %3")
-            .arg(cB).arg(pointToString(G)).arg(pointToString(DB)),
+            .arg(cB).arg(G.toString()).arg(DB.toString()),
         "Вычисление открытого ключа"));
 
     // Шифрование:
     // R = [k]G
-    ECPoint R = pointMultiply(G, k, a, p);
+    ECC_Point R = CoreCurves::pointMultiply(G, k, p, a);
     // P = [k]DB = (x, y)
-    ECPoint P = pointMultiply(DB, k, a, p);
-    // e = M * x mod p (где x - координата x точки P)
+    ECC_Point P = CoreCurves::pointMultiply(DB, k, p, a);
+    // e = M * x mod p
     uint64_t e = CoreMath::modMul(M, P.x, p);
 
     steps.append(CipherStep(4, QChar(),
-        QString("Шифрование:\n  R = [k]G = [%1]%2 = %3\n  P = [k]DB = %4\n  e = M * x_P = %1 * %5 mod %6 = %7")
-            .arg(k).arg(pointToString(G)).arg(pointToString(R))
-            .arg(pointToString(P)).arg(P.x).arg(p).arg(e),
+        QString("Шифрование:\n  R = [k]G = [%1]%2 = %3\n  P = [k]DB = %4\n  e = M * x_P = %5 * %6 mod %7 = %8")
+            .arg(k).arg(G.toString()).arg(R.toString())
+            .arg(P.toString()).arg(M).arg(P.x).arg(p).arg(e),
         "Шифрование"));
 
     // Формируем результат: R(x,y) и e
-    QString resultStr = QString("%1 %2").arg(pointToString(R)).arg(e);
+    QString resultStr = QString("%1 %2").arg(R.toString()).arg(e);
 
     steps.append(CipherStep(5, QChar(),
         QString("Результат: %1").arg(resultStr),
@@ -315,7 +205,7 @@ CipherResult ECCCipher::decrypt(const QString& text, const QVariantMap& params)
     QString gStr = params.value("g", "").toString();
     uint64_t cB = params.value("cB", 0).toULongLong();
 
-    ECPoint G = stringToPoint(gStr);
+    ECC_Point G = CoreCurves::parsePoint(gStr);
 
     // Проверяем параметры
     QString validationError;
@@ -326,45 +216,61 @@ CipherResult ECCCipher::decrypt(const QString& text, const QVariantMap& params)
 
     steps.append(CipherStep(1, QChar(),
         QString("Параметры: a=%1, b=%2, p=%3, G=%4, Cb=%5")
-            .arg(a).arg(b).arg(p).arg(pointToString(G)).arg(cB),
+            .arg(a).arg(b).arg(p).arg(G.toString()).arg(cB),
         "Проверка параметров"));
 
     // Разбираем шифртекст: R(x,y) и e
     QString inputText = text.trimmed();
-    QRegularExpression regex("\\((\\d+),(\\d+)\\)\\s+(\\d+)");
-    QRegularExpressionMatch match = regex.match(inputText);
+    inputText = TextTransformer::fromLetterCodes(inputText);
 
-    if (!match.hasMatch()) {
-        result.result = "ОШИБКА: Неверный формат шифртекста. Ожидается: (x,y) e";
+    // Извлекаем все числа из строки
+    QVector<uint64_t> numbers;
+    QString current;
+    for (const QChar& ch : inputText) {
+        if (ch.isDigit()) {
+            current += ch;
+        } else if (!current.isEmpty()) {
+            numbers.append(current.toULongLong());
+            current.clear();
+        }
+    }
+    if (!current.isEmpty()) {
+        numbers.append(current.toULongLong());
+    }
+
+    if (numbers.size() != 3) {
+        result.result = "ОШИБКА: Неверный формат шифртекста. Ожидается: (x,y) e\nПолучено: " + inputText;
+        result.steps = steps;
         return result;
     }
 
-    ECPoint R(match.captured(1).toULongLong(), match.captured(2).toULongLong());
-    uint64_t e = match.captured(3).toULongLong();
+    ECC_Point R(numbers[0], numbers[1]);
+    uint64_t e = numbers[2];
 
     steps.append(CipherStep(2, QChar(),
-        QString("Получен шифртекст: R=%1, e=%2").arg(pointToString(R)).arg(e),
+        QString("Получен шифртекст: R=%1, e=%2").arg(R.toString()).arg(e),
         "Подготовка данных"));
 
     // Проверяем, что R лежит на кривой
-    if (!isPointOnCurve(R, a, b, p)) {
+    if (!CoreCurves::isPointOnCurve(R, p, a, b)) {
         result.result = QString("ОШИБКА: Точка R(%1, %2) не лежит на кривой").arg(R.x).arg(R.y);
+        result.steps = steps;
         return result;
     }
 
-    // расшифрование:
+    // Расшифрование:
     // Q = [Cb]R = (x, y)
-    ECPoint Q = pointMultiply(R, cB, a, p);
+    ECC_Point Q = CoreCurves::pointMultiply(R, cB, p, a);
     // M = e * x^(-1) mod p
     uint64_t xInv = CoreMath::modInverse(Q.x, p);
     uint64_t M = CoreMath::modMul(e, xInv, p);
 
     steps.append(CipherStep(3, QChar(),
-        QString("расшифрование:\n  Q = [Cb]R = [%1]%2 = %3\n  x^(-1) = %4^(-1) mod %5 = %6\n  M = e * x^(-1) mod p = %7 * %8 mod %9 = %10")
-            .arg(cB).arg(pointToString(R)).arg(pointToString(Q))
+        QString("Расшифрование:\n  Q = [Cb]R = [%1]%2 = %3\n  x^(-1) = %4^(-1) mod %5 = %6\n  M = e * x^(-1) mod p = %7 * %8 mod %9 = %10")
+            .arg(cB).arg(R.toString()).arg(Q.toString())
             .arg(Q.x).arg(p).arg(xInv)
             .arg(e).arg(xInv).arg(p).arg(M),
-        "расшифрование"));
+        "Расшифрование"));
 
     steps.append(CipherStep(4, QChar(),
         QString("Результат: M = %1").arg(M),
@@ -375,7 +281,6 @@ CipherResult ECCCipher::decrypt(const QString& text, const QVariantMap& params)
 
     return result;
 }
-
 // ==================== ECCCipherRegister Implementation ====================
 
 ECCCipherRegister::ECCCipherRegister()
@@ -390,7 +295,6 @@ ECCCipherRegister::ECCCipherRegister()
     CipherWidgetFactory::instance().registerCipherWidgets(
         23,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
-            // Пустые основные виджеты
             Q_UNUSED(parent);
             Q_UNUSED(layout);
             Q_UNUSED(widgets);
@@ -477,7 +381,7 @@ ECCCipherRegister::ECCCipherRegister()
                 "• Кривая: y² = x³ + a·x + b mod p\n"
                 "• Открытый ключ: DB = [Cb]G\n"
                 "• Шифрование: R = [k]G, P = [k]DB, e = M·x_P mod p\n"
-                "• расшифрование: M = e·(x_Q)⁻¹ mod p, где Q = [Cb]R\n"
+                "• Расшифрование: M = e·(x_Q)⁻¹ mod p, где Q = [Cb]R\n"
                 "• Вход/выход: одно число"
             );
             infoLabel->setStyleSheet("color: #666; font-style: italic; padding: 5px; background-color: #f5f5f5; border-radius: 3px;");

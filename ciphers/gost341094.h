@@ -23,8 +23,6 @@ public:
     }
     QString alphabet() const override {return m_alphabet; }
 
-    bool isAvailable() const{ return true; }
-
 private:
     const QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 
