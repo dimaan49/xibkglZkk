@@ -63,6 +63,7 @@ SOURCES += main.cpp $$files($$PWD/*/*.cpp) \
     gui/logger.cpp \
     gui/logwindow.cpp \
     gui/mainwindow.cpp \
+    gui/popupcombobox.cpp \
     gui/qcustomplot.cpp \
     gui/routecipherwidget.cpp \
     gui/stylemanager.cpp
@@ -113,6 +114,7 @@ HEADERS += $$files($$PWD/*/*.h) \    \
     gui/logger.h \
     gui/logwindow.h \
     gui/mainwindow.h \
+    gui/popupcombobox.h \
     gui/qcustomplot.h \
     gui/routecipherwidget.h \
     gui/stylemanager.h

@@ -5,13 +5,13 @@
 #include "stylemanager.h"
 #include "advancedsettingsdialog.h"
 #include "categoryfilterdialog.h"
+#include "popupcombobox.h"
 
 #include <iostream>
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGroupBox>
-#include <QComboBox>
 #include <QTextEdit>
 #include <QPushButton>
 #include <QLabel>
@@ -182,7 +182,7 @@ void MainWindow::setupUI()
     cipherContainerLayout->setSpacing(8);
 
     // Комбобокс с шифрами
-    m_cipherComboBox = new QComboBox(cipherContainer);
+    m_cipherComboBox = new PopupComboBox(cipherContainer);
     m_cipherComboBox->setMinimumWidth(250);
     m_cipherComboBox->setObjectName("cipherSelector");
     m_cipherComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
