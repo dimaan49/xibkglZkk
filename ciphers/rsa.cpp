@@ -435,6 +435,8 @@ RSACipherRegister::RSACipherRegister()
             widgets["p"] = pEdit;
             widgets["q"] = qEdit;
             widgets["e"] = eEdit;
+            widgets["n"] = nEdit;
+            widgets["d"] = dEdit;
             widgets["generateButton"] = generateButton;
 
             // Подключаем генерацию ключей - используем СТАТИЧЕСКИЕ методы

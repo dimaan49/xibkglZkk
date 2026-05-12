@@ -50,7 +50,7 @@ CipherResult BelazoCipher::encrypt(const QString& text, const QVariantMap& param
         QChar keyChar = generatedKey[i];
 
         int textPos = CipherUtils::charToIndex(ch, m_alphabet);
-        int keyPos = CipherUtils::charToIndex(ch, m_alphabet);
+        int keyPos = CipherUtils::charToIndex(keyChar, m_alphabet);
         int newPos = (textPos + keyPos) % n;
         QChar newChar = CipherUtils::indexToChar(newPos, m_alphabet);
         transformed.append(newChar);

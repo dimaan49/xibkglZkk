@@ -507,25 +507,79 @@ GOST341094CipherRegister::GOST341094CipherRegister()
             widgets["message"] = messageEdit;
             widgets["generateButton"] = generateButton;
 
-            // Генерация ключей
             QObject::connect(generateButton, &QPushButton::clicked, [pEdit, qEdit, aEdit, xEdit, kEdit, yEdit]() {
-                uint64_t p = CoreMath::generatePrime(16);
-                uint64_t q = CoreMath::generatePrime(12);
+                // Генерируем p (16 бит)
+                uint64_t p;
+                do {
+                    p = CoreMath::generatePrime(16);
+                } while (p < 100);
 
-                // Находим q | (p-1)
-                while ((p - 1) % q != 0) {
-                    q = CoreMath::generatePrime(12);
+                // Факторизуем p-1 и находим простые делители
+                uint64_t n = p - 1;
+                QVector<uint64_t> primeFactors;
+
+                // Извлекаем все двойки
+                while (n % 2 == 0) {
+                    primeFactors.append(2);
+                    n /= 2;
                 }
 
-                // Находим a: a^q mod p = 1
-                uint64_t a = 2;
-                while (CoreMath::modPow(a, q, p) != 1) {
-                    a++;
-                    if (a >= p) break;
+                // Нечётные делители
+                for (uint64_t d = 3; d * d <= n; d += 2) {
+                    while (n % d == 0) {
+                        if (CoreMath::isPrime(d)) {
+                            primeFactors.append(d);
+                        }
+                        n /= d;
+                    }
                 }
 
-                uint64_t x = CoreMath::generateRandom(q);
-                uint64_t k = CoreMath::generateRandom(q);
+                if (n > 1 && CoreMath::isPrime(n)) {
+                    primeFactors.append(n);
+                }
+
+                // Выбираем q — любой простой делитель p-1 подходящего размера
+                uint64_t q = 0;
+                for (uint64_t factor : primeFactors) {
+                    if (factor > 3 && factor < p / 2) {
+                        q = factor;
+                        break;
+                    }
+                }
+
+                // Если не нашли — берём наибольший
+                if (q == 0 && !primeFactors.isEmpty()) {
+                    q = primeFactors.last();
+                }
+
+                if (q == 0) {
+                    QMessageBox::warning(nullptr, "Ошибка",
+                        QString("Не удалось найти подходящий делитель для p-1 = %1").arg(p - 1));
+                    return;
+                }
+
+                // Ищем a: нужно a^q mod p = 1, 1 < a < p-1
+                // Используем факт: a = g^((p-1)/q) mod p, где g — образующая
+                uint64_t a = 0;
+                for (uint64_t g = 2; g < p && a == 0; g++) {
+                    uint64_t candidate = CoreMath::modPow(g, (p - 1) / q, p);
+                    if (candidate > 1 && candidate < p - 1) {
+                        if (CoreMath::modPow(candidate, q, p) == 1) {
+                            a = candidate;
+                        }
+                    }
+                }
+
+                if (a == 0) {
+                    QMessageBox::warning(nullptr, "Ошибка", "Не удалось найти подходящее a");
+                    return;
+                }
+
+                // x и k: 0 < x,k < q
+                uint64_t x, k;
+                do { x = CoreMath::generateRandom(q - 1); } while (x == 0);
+                do { k = CoreMath::generateRandom(q - 1); } while (k == 0);
+
                 uint64_t y = CoreMath::modPow(a, x, p);
 
                 pEdit->setText(QString::number(p));
@@ -536,8 +590,11 @@ GOST341094CipherRegister::GOST341094CipherRegister()
                 yEdit->setText(QString::number(y));
 
                 QMessageBox::information(nullptr, "Ключи сгенерированы",
-                    QString("p = %1\nq = %2\na = %3\nx = %4 (секретный)\nk = %5\n\ny = %6 (открытый ключ)\n\nСохраните p, q, a, y для проверки подписи!")
-                        .arg(p).arg(q).arg(a).arg(x).arg(k).arg(y));
+                    QString("p = %1 (простое)\nq = %2 (делитель p-1)\na = %3 (a^q mod p = 1)\n"
+                            "x = %4 (секретный)\nk = %5 (случайное)\ny = %6 (открытый ключ)\n\n"
+                            "Проверка: a^q mod p = %7")
+                        .arg(p).arg(q).arg(a).arg(x).arg(k).arg(y)
+                        .arg(CoreMath::modPow(a, q, p)));
             });
         }
     );

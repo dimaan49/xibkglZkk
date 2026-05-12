@@ -644,18 +644,25 @@ QVariantMap MainWindow::collectParameters() const
 {
     QVariantMap params = CipherWidgetFactory::collectValues(m_paramWidgets);
 
+    qDebug() << "=== collectParameters: basic params ===";
+    for (auto it = params.constBegin(); it != params.constEnd(); ++it) {
+        qDebug() << "  " << it.key() << "=" << it.value();
+    }
+
     QString currentCipherIdStr = QString::number(m_currentCipherId);
     if (m_cipherAdvancedSettings.contains(currentCipherIdStr)) {
         const QVariantMap& advancedParams = m_cipherAdvancedSettings[currentCipherIdStr];
+        qDebug() << "=== collectParameters: advanced params for" << currentCipherIdStr << "===";
         for (auto it = advancedParams.constBegin(); it != advancedParams.constEnd(); ++it) {
             params[it.key()] = it.value();
-            qDebug() << "  Added advanced param:" << it.key() << "=" << it.value().toString();
+            qDebug() << "  Added advanced param:" << it.key() << "=" << it.value();
         }
+    } else {
+        qDebug() << "No advanced params for cipher ID:" << currentCipherIdStr;
     }
 
     return params;
 }
-
 void MainWindow::onEncryptClicked()
 {
     if (!m_currentCipher) {

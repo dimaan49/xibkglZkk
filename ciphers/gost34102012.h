@@ -2,78 +2,34 @@
 #define GOST34102012_H
 
 #include "cipherinterface.h"
+#include "ciphercore.h"
 #include <QObject>
 #include <QWidget>
 #include <QVariantMap>
 #include <QVector>
 #include <cstdint>
-#include <vector>
-#include <string>
 
-// ==================== Big Integer для 512-битных чисел ====================
-class BigInt {
-private:
-    std::vector<uint64_t> limbs;
-    static const int BITS_PER_LIMB = 64;
-
-    void normalize();
-
-public:
-    BigInt();
-    BigInt(uint64_t value);
-    BigInt(const std::string& hex);
-    BigInt(const QByteArray& bytes);
-
-    bool isZero() const;
-    bool isOne() const;
-    bool operator==(const BigInt& other) const;
-    bool operator!=(const BigInt& other) const;
-    bool operator<(const BigInt& other) const;
-    bool operator<=(const BigInt& other) const;
-    bool operator>(const BigInt& other) const;
-    bool operator>=(const BigInt& other) const;
-
-    BigInt operator+(const BigInt& other) const;
-    BigInt operator-(const BigInt& other) const;
-    BigInt operator*(const BigInt& other) const;
-    BigInt operator/(const BigInt& other) const;
-    BigInt operator%(const BigInt& other) const;
-    BigInt& operator+=(const BigInt& other);
-    BigInt& operator-=(const BigInt& other);
-    BigInt& operator*=(const BigInt& other);
-    BigInt& operator/=(const BigInt& other);
-    BigInt& operator%=(const BigInt& other);
-
-    BigInt modPow(const BigInt& exp, const BigInt& mod) const;
-    BigInt modInverse(const BigInt& mod) const;
-
-    std::string toHex() const;
-    QString toQString() const;
-    uint64_t toUInt64() const;
-    QString toDecQString() const;
-
-    int bitLength() const;
-
-    static BigInt random(int bits);
-    static BigInt random(const BigInt& max);
-};
-
-// ==================== Точка эллиптической кривой ====================
-struct ECPoint {
-    BigInt x;
-    BigInt y;
+// Точка на эллиптической кривой (малые числа)
+struct ECC_Point {
+    uint64_t x;
+    uint64_t y;
     bool isInfinity;
 
-    ECPoint();
-    ECPoint(const BigInt& x_, const BigInt& y_);
+    ECC_Point() : x(0), y(0), isInfinity(true) {}
+    ECC_Point(uint64_t x_, uint64_t y_) : x(x_), y(y_), isInfinity(false) {}
 
-    bool operator==(const ECPoint& other) const;
-    bool operator!=(const ECPoint& other) const;
+    bool operator==(const ECC_Point& other) const {
+        if (isInfinity && other.isInfinity) return true;
+        if (isInfinity != other.isInfinity) return false;
+        return x == other.x && y == other.y;
+    }
 
-    QString toString() const;
+    QString toString() const {
+        if (isInfinity) return "Infinity";
+        return QString("(%1, %2)").arg(x).arg(y);
+    }
 };
 
-// ==================== GOST34102012Cipher ====================
 class GOST34102012Cipher : public CipherInterface
 {
 public:
@@ -85,38 +41,30 @@ public:
     QString name() const override { return "ГОСТ Р 34.10-2012 (ЭЦП на эллиптических кривых)"; }
     QString description() const override {
         return "ГОСТ Р 34.10-2012 — алгоритм электронной цифровой подписи "
-               "на основе эллиптических кривых (ECDSA).";
+               "на основе эллиптических кривых (малые числа).";
     }
-    QString alphabet() const override {return m_alphabet; }
+    QString alphabet() const override { return m_alphabet; }
 
-    // Статические методы для генерации ключей
-    static BigInt generatePrimeStatic(int bits);
-    static BigInt generateRandomStatic(const BigInt& max);
+    bool isAvailable() const { return true; }
 
-    // Арифметика эллиптической кривой
-    static ECPoint pointAdd(const ECPoint& P, const ECPoint& Q, const BigInt& p, const BigInt& a);
-    static ECPoint pointDouble(const ECPoint& P, const BigInt& p, const BigInt& a);
-    static ECPoint pointMul(const BigInt& k, const ECPoint& P, const BigInt& p, const BigInt& a);
-
-    // Хеш-функция квадратичной свертки
-    BigInt computeHash(const QString& text, const BigInt& p, QVector<CipherStep>& steps, int& stepCounter) const;
-    static void computeCurveOrder(const BigInt& p, const BigInt& a, const BigInt& b,
-                                  BigInt& curveOrder, BigInt& subgroupOrder, BigInt& cofactor,
+    // Статический метод для вычисления порядка кривой
+    static void computeCurveOrder(uint64_t p, uint64_t a, uint64_t b,
+                                  uint64_t& curveOrder, uint64_t& subgroupOrder, uint64_t& cofactor,
                                   QString& log);
 
 private:
     const QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 
+    // Арифметика эллиптической кривой (малые числа)
+    ECC_Point pointDouble(const ECC_Point& P, uint64_t p, uint64_t a) const;
+    ECC_Point pointAdd(const ECC_Point& P, const ECC_Point& Q, uint64_t p, uint64_t a) const;
+    ECC_Point pointMul(uint64_t k, const ECC_Point& P, uint64_t p, uint64_t a) const;
 
-    // Проверка параметров
-    bool validateParameters(const BigInt& p, const BigInt& a, const BigInt& b,
-                           const BigInt& q, const ECPoint& P, QString& errorMessage) const;
-
-    // Преобразование строки в BigInt
-    BigInt parseBigInt(const QString& str) const;
+    // Парсинг чисел
+    uint64_t parseUint64(const QString& str) const;
 };
 
-// ==================== Регистратор ====================
+// Регистратор
 class GOST34102012CipherRegister
 {
 public:

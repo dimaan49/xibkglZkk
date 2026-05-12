@@ -22,14 +22,21 @@ MatrixCipher::MatrixCipher() {}
 
 CipherResult MatrixCipher::encrypt(const QString& text, const QVariantMap& params)
 {
+    CipherResult result;
+    result.cipherName = name();
+    result.alphabet = m_alphabet;
+    result.isNumeric = true;
+
     QVector<CipherStep> steps;
     steps.append(CipherStep(0, QChar(), "Начало шифрования", "Инициализация"));
 
     try {
         // Шаг 1: Получение и проверка матрицы
-        if (!params.contains("matrix")) {
-            steps.append(CipherStep(1, QChar(), "Ошибка: матрица не задана", "Проверка параметров"));
-            return CipherResult("", steps, "Матричный шифр (ошибка)", name(), true);
+        if (!params.contains("matrix") || params.value("matrix").toString().trimmed().isEmpty()) {
+            QString errorMsg = "ОШИБКА: Ключевая матрица не задана!";
+            result.result = errorMsg;
+            result.steps = steps;
+            return result;
         }
 
         QString matrixStr = params["matrix"].toString();
@@ -208,16 +215,23 @@ CipherResult MatrixCipher::encrypt(const QString& text, const QVariantMap& param
 
 CipherResult MatrixCipher::decrypt(const QString& text, const QVariantMap& params)
 {
+    CipherResult result;
+    result.cipherName = name();
+    result.alphabet = m_alphabet;
+    result.isNumeric = true;
     QVector<CipherStep> steps;
     steps.append(CipherStep(0, QChar(), "Начало дешифрования", "Инициализация"));
 
 
     try {
         // Шаг 1: Получение и проверка матрицы
-        if (!params.contains("matrix")) {
-            steps.append(CipherStep(1, QChar(), "Ошибка: матрица не задана", "Проверка параметров"));
-            return CipherResult("", steps, "Матричный шифр (дешифрование, ошибка)", name() + " (дешифрование)", false);
+        if (!params.contains("matrix") || params.value("matrix").toString().trimmed().isEmpty()) {
+            QString errorMsg = "ОШИБКА: Ключевая матрица не задана!";
+            result.result = errorMsg;
+            result.steps = steps;
+            return result;
         }
+
 
         QString matrixStr = params["matrix"].toString();
         QVector<QVector<int>> matrix;

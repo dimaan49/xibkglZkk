@@ -221,17 +221,6 @@ namespace CoreHex {
         return data.left(data.size() - padding);
     }
 
-/*
-    QString rusToHex(const QString& rusText) {
-        return rusText.toUtf8().toHex();
-    }
-
-    QString hexToRus(const QString& hexText) {
-        QString clean = hexText.simplified().remove(' ');
-        QByteArray bytes = QByteArray::fromHex(clean.toLatin1());
-        return QString::fromUtf8(bytes);
-    }
-*/
 
 }
 
