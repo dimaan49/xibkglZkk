@@ -304,11 +304,6 @@ namespace CoreMath {
         return a;
     }
 
-    // НОК
-    inline uint64_t lcm(uint64_t a, uint64_t b) {
-        return a / gcd(a, b) * b;
-    }
-
     // Проверка простоты (Миллер-Рабин)
     inline bool isPrime(uint64_t n, int k = 10) {
         if (n <= 1) return false;

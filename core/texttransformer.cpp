@@ -4,7 +4,7 @@
 const QVector<TextTransformer::Mapping> TextTransformer::TABLE = {
     {",", "ЗПТ"},
     {".", "ТЧК"},
-    {"--", "ТТРР"},
+    {"—", "ТТРР"},
     {"!", "ВВССКК"},
     {"?", "ВВППРР"},
     {":", "ДДВВТТ"},

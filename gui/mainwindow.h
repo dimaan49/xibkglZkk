@@ -6,6 +6,7 @@
 #include "logwindow.h"
 #include "analysiswindow.h"
 #include "librarywindow.h"
+#include "popupcombobox.h"
 
 
 #include <QMainWindow>
@@ -61,6 +62,7 @@ private slots:
     void onLibraryWindowOpen();
     void updateOutputFormatVisibility();
     void onTransformToggled(bool checked);
+    void onActionsSelected(int index);
 
 private:
     void setupUI();
@@ -80,8 +82,8 @@ private:
     void applyFilter();                // Добавить
 
     // UI Elements
-    QComboBox* m_cipherComboBox;
-    QComboBox* themeComboBox;
+    PopupComboBox* m_cipherComboBox;
+    PopupComboBox* themeComboBox;
     QTextEdit* inputTextEdit;
     QTextEdit* outputTextEdit;
     QTextEdit* debugConsole;
@@ -102,7 +104,7 @@ private:
     AnalysisWindow* m_analysisWindow;
     LibraryWindow* m_libraryWindow;
     QMenuBar* m_menuBar;
-    QMenu* m_actionsMenu;
+    PopupComboBox* m_actionsComboBox;
     QString m_originalInputText;      // всегда оригинал (со знаками)
     QCheckBox* m_transformCheckBox;
 

@@ -5,7 +5,6 @@
 #include "stylemanager.h"
 #include "advancedsettingsdialog.h"
 #include "categoryfilterdialog.h"
-#include "popupcombobox.h"
 
 #include <iostream>
 
@@ -143,24 +142,24 @@ void MainWindow::setupUI()
     topPanelLayout->addWidget(logoLabel);
     topPanelLayout->addStretch();
 
-    // Меню действий
-    m_menuBar = new QMenuBar(this);
-    m_menuBar->setStyleSheet("QMenuBar { background-color: transparent; }");
+    QLabel *actionsLabel = new QLabel("Действия:");
+    topPanelLayout->addWidget(actionsLabel);
 
-    m_actionsMenu = m_menuBar->addMenu("Действия");
+    // Выпадающий список действий
+    m_actionsComboBox = new PopupComboBox();
+    m_actionsComboBox->addItem("Выберите действие");
+    m_actionsComboBox->addItem("Анализ");
+    m_actionsComboBox->addItem("Библиотека");
+    m_actionsComboBox->setMinimumWidth(120);
+    connect(m_actionsComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &MainWindow::onActionsSelected);
 
-    QAction* analysisAction = m_actionsMenu->addAction("Анализ");
-    QAction* libraryAction = m_actionsMenu->addAction("Библиотека");
-
-    connect(analysisAction, &QAction::triggered, this, &MainWindow::onAnalysisWindowOpen);
-    connect(libraryAction, &QAction::triggered, this, &MainWindow::onLibraryWindowOpen);
-
-    topPanelLayout->addWidget(m_menuBar);
-    topPanelLayout->addStretch();
+    topPanelLayout->addWidget(m_actionsComboBox);
+    topPanelLayout->addStretch();  // разделитель
 
     // Выбор темы
     QLabel *themeLabel = new QLabel("Тема:");
-    themeComboBox = new QComboBox();
+    themeComboBox = new PopupComboBox();
     themeComboBox->addItem("Cyber Midnight");
     themeComboBox->addItem("Dark Professional");
     themeComboBox->addItem("Reliable Orange");
@@ -279,12 +278,10 @@ void MainWindow::setupUI()
     outputLayout->addWidget(outputTextEdit);
 
     QHBoxLayout* outputFormatLayout = new QHBoxLayout();
-    QLabel* formatLabel = new QLabel("Формат вывода:");
     m_outputFormatRusRadio = new QRadioButton("Русский");
     m_outputFormatRusRadio->setChecked(true);
     m_outputFormatHexRadio = new QRadioButton("HEX");
 
-    outputFormatLayout->addWidget(formatLabel);
     outputFormatLayout->addWidget(m_outputFormatRusRadio);
     outputFormatLayout->addWidget(m_outputFormatHexRadio);
     outputFormatLayout->addStretch();
@@ -1156,4 +1153,18 @@ void MainWindow::onTransformToggled(bool checked)
         inputTextEdit->setPlainText(m_originalInputText);
         logToConsole("Отключено отображение кодов знаков");
     }
+}
+
+void MainWindow::onActionsSelected(int index)
+{
+    if (index == 1) {  // Анализ
+        onAnalysisWindowOpen();
+    } else if (index == 2) {  // Библиотека
+        onLibraryWindowOpen();
+    }
+
+    // Сбрасываем на первый элемент (чтобы можно было выбрать снова)
+    m_actionsComboBox->blockSignals(true);
+    m_actionsComboBox->setCurrentIndex(0);
+    m_actionsComboBox->blockSignals(false);
 }

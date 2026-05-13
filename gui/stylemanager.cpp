@@ -135,6 +135,26 @@ namespace {
                 max-width: 200px;
             }
 
+
+            PopupComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+
+            PopupComboBox::down-arrow {
+                image: none;
+            }
+
+            PopupComboBox QAbstractItemView {
+                background-color: #2d2d2d;
+                border: 1px solid #3d3d3d;
+                border-radius: 4px;
+                padding: 4px;
+                selection-background-color: #3a7afe;
+                selection-color: white;
+            }
+
+
             /* ====== SpinBox & LineEdit ====== */
             QSpinBox, QLineEdit {
                 background-color: %3;
@@ -277,9 +297,23 @@ namespace {
                 max-height: 20px;
             }
 
+
             QProgressBar::chunk {
                 background-color: %5;
                 border-radius: 3px;
+            }
+            QPushButton#filterButton {
+                background-color: #1e1e1e;
+                border: 1px solid #2a2a2a;
+                border-radius: 4px;
+                color: #e0e0e0;
+                padding: 4px 12px;
+                font-weight: normal;
+                min-height: 28px;
+                max-height: 28px;
+                /* Выравнивание текста по центру вертикально */
+                text-align: center;
+                vertical-align: middle;
             }
         )";
     }
@@ -303,23 +337,6 @@ namespace {
                 background-color: #2a6afe;
             }
 
-            /* Secondary Buttons */
-            QPushButton#clearButton,
-            QPushButton#swapButton {
-                background-color: #2d2d2d;
-                color: #e0e0e0;
-            }
-
-            QPushButton#clearButton:hover,
-            QPushButton#swapButton:hover {
-                background-color: #3d3d3d;
-                color: white;
-            }
-
-            QPushButton#clearButton:pressed,
-            QPushButton#swapButton:pressed {
-                background-color: #252525;
-            }
 
         /* Advanced Settings Button - Теперь в едином стиле с defaultTextButton */
         QPushButton#advancedSettingsButton {
@@ -343,6 +360,8 @@ namespace {
         QPushButton#advancedSettingsButton:pressed {
             background-color: rgba(58, 122, 254, 0.3);
         }
+
+
 
             /* Tertiary Buttons */
             QPushButton#clearInputButton,
@@ -387,6 +406,24 @@ namespace {
             QPushButton#defaultTextButton:pressed {
                 background-color: rgba(58, 122, 254, 0.3);
             }
+            /* Secondary Buttons */
+            QPushButton#clearButton,
+            QPushButton#swapButton,
+            QPushButton#filterButton {
+                background-color: #1e1e1e;
+                border: 1px solid #2a2a2a;
+                border-radius: 4px;
+                color: #e0e0e0;
+                padding: 4px 12px;
+                font-weight: normal;
+            }
+
+            QPushButton#clearButton:hover,
+            QPushButton#swapButton:hover,
+            QPushButton#filterButton:hover {
+                background-color: #2a2a2a;
+                border-color: #3a3a3a;
+            }
         )";
     }
 
@@ -425,20 +462,6 @@ namespace {
                     stop:0 #e65400, stop:1 #b34400);
             }
 
-            /* Secondary Buttons */
-            QPushButton#clearButton {
-                background-color: #2a3a4d;
-                color: #b4bece;
-            }
-
-            QPushButton#clearButton:hover {
-                background-color: #334155;
-                color: white;
-            }
-
-            QPushButton#clearButton:pressed {
-                background-color: #1f2b3a;
-            }
         /* Advanced Settings Button - В стиле Cyber Midnight */
         QPushButton#advancedSettingsButton {
             background-color: rgba(0, 150, 255, 0.1);
@@ -505,6 +528,23 @@ namespace {
             QPushButton#defaultTextButton:pressed {
                 background-color: rgba(0, 150, 255, 0.3);
             }
+            /* Secondary buttons */
+            QPushButton#clearButton,
+            QPushButton#swapButton,
+            QPushButton#filterButton {
+                background-color: #232f3f;
+                border: 1px solid #2a3a4d;
+                border-radius: 4px;
+                color: #b4bece;
+            }
+
+            QPushButton#clearButton:hover,
+            QPushButton#swapButton:hover,
+            QPushButton#filterButton:hover {
+                background-color: #2a3a4d;
+                border-color: #3a4a5d;
+            }
+
         )";
     }
 
@@ -528,23 +568,6 @@ namespace {
             QPushButton#decryptButton:pressed {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 #cc4d00, stop:1 #8c3300);
-            }
-
-            /* Secondary Buttons */
-            QPushButton#clearButton,
-            QPushButton#swapButton {
-                background-color: #8a9a5b;
-                color: white;
-            }
-
-            QPushButton#clearButton:hover,
-            QPushButton#swapButton:hover {
-                background-color: #9aab6b;
-            }
-
-            QPushButton#clearButton:pressed,
-            QPushButton#swapButton:pressed {
-                background-color: #7a8a4b;
             }
 
         /* Advanced Settings Button - В стиле Reliable Orange */
@@ -612,6 +635,22 @@ namespace {
 
             QPushButton#defaultTextButton:pressed {
                 background-color: rgba(230, 92, 0, 0.3);
+            }
+            /* Secondary Buttons */
+            QPushButton#clearButton,
+            QPushButton#swapButton,
+            QPushButton#filterButton {
+                background-color: #1a140d;
+                border: 1px solid #2a2319;
+                border-radius: 4px;
+                color: #b8a992;
+            }
+
+            QPushButton#clearButton:hover,
+            QPushButton#swapButton:hover,
+            QPushButton#filterButton:hover {
+                background-color: #2a2319;
+                border-color: #3a3229;
             }
         )";
     }
