@@ -22,7 +22,6 @@ public:
     void setTexts(const QString& original, const QString& encrypted);
 
 private slots:
-    void onRefresh();
     void onExportData();
     void onCopyToClipboard();
     void onHistogramModeChanged(int mode);
@@ -38,7 +37,6 @@ private:
     QTabWidget* m_tabWidget;
     QCustomPlot* m_histogramView;
     QTableView* m_frequencyTableView;
-    QPushButton* m_refreshButton;
     QPushButton* m_exportButton;
     QPushButton* m_copyButton;
     QButtonGroup* m_histogramModeGroup;

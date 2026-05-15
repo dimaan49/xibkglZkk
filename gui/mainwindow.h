@@ -63,6 +63,8 @@ private slots:
     void updateOutputFormatVisibility();
     void onTransformToggled(bool checked);
     void onActionsSelected(int index);
+    void onOutputTransformToggled(bool checked);
+    void onTableTypeChanged(int index);
 
 private:
     void setupUI();
@@ -107,6 +109,9 @@ private:
     PopupComboBox* m_actionsComboBox;
     QString m_originalInputText;      // всегда оригинал (со знаками)
     QCheckBox* m_transformCheckBox;
+    QCheckBox* m_outputTransformCheckBox;
+    QString m_originalOutputText;
+    PopupComboBox* m_tableComboBox;
 
     // Filter dialog
     CategoryFilterDialog* m_filterDialog;   // Добавить

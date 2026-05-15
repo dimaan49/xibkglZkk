@@ -7,23 +7,32 @@
 class TextTransformer
 {
 public:
-    // Заменяет знаки препинания на буквенные коды
+    enum TableType {
+        TABLE_SMALL,   // ЗПТ, ТЧК
+        TABLE_FULL     // ЗЗППТТ, ТТЧЧКК и т.д.
+    };
+
+    static void setTableType(TableType type);
+    static TableType getTableType();
+
     static QString toLetterCodes(const QString& text);
-
-    // Восстанавливает знаки препинания из буквенных кодов
     static QString fromLetterCodes(const QString& text);
-
-    // Проверяет, содержит ли текст буквенные коды
     static bool containsLetterCodes(const QString& text);
 
 private:
     struct Mapping {
-        QString symbol;  // знак (",", ".", "--" и т.д.)
-        QString code;    // буквенный код ("ЗЗППТТ", "ТТЧЧКК")
+        QString symbol;
+        QString code;
     };
 
-    static const QVector<Mapping> TABLE;
-    static const QVector<Mapping> TABLE_SORTED; // для замены от длинных к коротким
+    static const QVector<Mapping> SMALL_TABLE;
+    static const QVector<Mapping> FULL_TABLE;
+
+    static QVector<Mapping> currentTable;
+    static QVector<Mapping> currentTableSorted;
+    static TableType currentType;
+
+    static void updateCurrentTable();
 };
 
 #endif // TEXTTRANSFORMER_H

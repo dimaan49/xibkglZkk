@@ -21,7 +21,6 @@ AnalysisWindow::AnalysisWindow(QWidget* parent)
     , m_tabWidget(nullptr)
     , m_histogramView(nullptr)
     , m_frequencyTableView(nullptr)
-    , m_refreshButton(nullptr)
     , m_exportButton(nullptr)
     , m_copyButton(nullptr)
     , m_originalTotal(0)
@@ -45,19 +44,15 @@ void AnalysisWindow::setupUI()
 
     // Кнопки
     QHBoxLayout* buttonLayout = new QHBoxLayout();
-    m_refreshButton = new QPushButton("Обновить");
     m_exportButton = new QPushButton("Экспорт CSV");
     m_copyButton = new QPushButton("Копировать");
 
-    m_refreshButton->setMinimumHeight(30);
     m_exportButton->setMinimumHeight(30);
     m_copyButton->setMinimumHeight(30);
 
-    connect(m_refreshButton, &QPushButton::clicked, this, &AnalysisWindow::onRefresh);
     connect(m_exportButton, &QPushButton::clicked, this, &AnalysisWindow::onExportData);
     connect(m_copyButton, &QPushButton::clicked, this, &AnalysisWindow::onCopyToClipboard);
 
-    buttonLayout->addWidget(m_refreshButton);
     buttonLayout->addWidget(m_exportButton);
     buttonLayout->addWidget(m_copyButton);
     buttonLayout->addStretch();
@@ -278,7 +273,6 @@ void AnalysisWindow::updateAnalysis()
     createFrequencyTable();
 }
 
-void AnalysisWindow::onRefresh() { updateAnalysis(); }
 
 void AnalysisWindow::onExportData()
 {

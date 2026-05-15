@@ -214,7 +214,7 @@ void MainWindow::setupUI()
     QHBoxLayout* parametersHeaderLayout = new QHBoxLayout();
 
     // Кнопка расширенных настроек справа
-    m_advancedSettingsButton = new QPushButton("⚙ Расширенные", parametersGroup);
+    m_advancedSettingsButton = new QPushButton("⚙ Расширенные\n настройки", parametersGroup);
     m_advancedSettingsButton->setObjectName("advancedSettingsButton");
     m_advancedSettingsButton->setToolTip("Открыть расширенные настройки шифра\n"
                                          "Дополнительные параметры и режимы работы");
@@ -261,6 +261,15 @@ void MainWindow::setupUI()
     clearInputButton->setObjectName("clearInputButton");
     clearInputButton->setToolTip("Очистить поле ввода");
     clearInputButton->setMaximumWidth(100);
+    m_tableComboBox = new PopupComboBox();
+    m_tableComboBox->addItem("Мини", TextTransformer::TABLE_SMALL);
+    m_tableComboBox->addItem("Макс", TextTransformer::TABLE_FULL);
+    m_tableComboBox->setCurrentIndex(1);  // по умолчанию полная
+
+    connect(m_tableComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &MainWindow::onTableTypeChanged);
+
+    inputToolsLayout->addWidget(m_tableComboBox);
     inputToolsLayout->addWidget(m_transformCheckBox);
     inputToolsLayout->addStretch();
     inputToolsLayout->addWidget(clearInputButton);
@@ -289,11 +298,18 @@ void MainWindow::setupUI()
     // Вставляем в начало outputLayout (чтобы было над текстовым полем)
     outputLayout->insertLayout(0, outputFormatLayout);
     // Кнопка очистки вывода
+    // В outputGroup, внутри outputToolsLayout
     QHBoxLayout *outputToolsLayout = new QHBoxLayout();
+
+    // Чекбокс для преобразования знаков в поле вывода
+    m_outputTransformCheckBox = new QCheckBox("🔁 Преобразовать знаки в буквы");
+
     clearOutputButton = new QPushButton("🗑️ Очистить");
     clearOutputButton->setObjectName("clearOutputButton");
     clearOutputButton->setToolTip("Очистить поле вывода");
     clearOutputButton->setMaximumWidth(100);
+
+    outputToolsLayout->addWidget(m_outputTransformCheckBox);
     outputToolsLayout->addStretch();
     outputToolsLayout->addWidget(clearOutputButton);
     outputLayout->addLayout(outputToolsLayout);
@@ -421,6 +437,7 @@ void MainWindow::setupUI()
 
     // Подключаем чекбокс
     connect(m_transformCheckBox, &QCheckBox::toggled, this, &MainWindow::onTransformToggled);
+    connect(m_outputTransformCheckBox, &QCheckBox::toggled, this, &MainWindow::onOutputTransformToggled);
 
     // Подключаем изменение текста (уже должно быть, но проверь)
     connect(inputTextEdit, &QTextEdit::textChanged, this, &MainWindow::onInputTextChanged);
@@ -1167,4 +1184,47 @@ void MainWindow::onActionsSelected(int index)
     m_actionsComboBox->blockSignals(true);
     m_actionsComboBox->setCurrentIndex(0);
     m_actionsComboBox->blockSignals(false);
+}
+
+void MainWindow::onOutputTransformToggled(bool checked)
+{
+    QString currentText = outputTextEdit->toPlainText();
+
+    if (checked) {
+        // Показываем коды
+        QString converted = TextTransformer::toLetterCodes(currentText);
+        outputTextEdit->setPlainText(converted);
+        m_originalOutputText = converted;
+    } else {
+        // Показываем знаки
+        QString converted = TextTransformer::fromLetterCodes(currentText);
+        outputTextEdit->setPlainText(converted);
+        m_originalOutputText = converted;
+    }
+}
+
+
+void MainWindow::onTableTypeChanged(int index)
+{
+    TextTransformer::TableType type = static_cast<TextTransformer::TableType>(
+        m_tableComboBox->currentData().toInt()
+    );
+
+    TextTransformer::setTableType(type);
+
+    // Применить новую таблицу к текущему тексту в поле ввода
+    if (m_transformCheckBox->isChecked()) {
+        QString original = TextTransformer::fromLetterCodes(inputTextEdit->toPlainText());
+        QString converted = TextTransformer::toLetterCodes(original);
+        inputTextEdit->setPlainText(converted);
+    }
+
+    // И к полю вывода, если чекбокс включён
+    if (m_outputTransformCheckBox && m_outputTransformCheckBox->isChecked()) {
+        QString original = TextTransformer::fromLetterCodes(outputTextEdit->toPlainText());
+        QString converted = TextTransformer::toLetterCodes(original);
+        outputTextEdit->setPlainText(converted);
+    }
+
+    logToConsole("Таблица преобразования изменена на: " + m_tableComboBox->currentText());
 }
