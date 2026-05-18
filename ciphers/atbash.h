@@ -12,7 +12,7 @@ public:
     // Decrypt просто вызывает encrypt
     CipherResult encrypt(const QString& text, const QVariantMap& params = {}) override;
     CipherResult decrypt(const QString& text, const QVariantMap& params = {}) override {
-        // Для Atbash шифрование и дешифрование идентичны
+        // Для Atbash шифрование и расшифрование идентичны
         return encrypt(text, params);
     }
 

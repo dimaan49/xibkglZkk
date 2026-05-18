@@ -181,12 +181,12 @@ CipherResult RouteCipher::decrypt(const QString& text, const QVariantMap& params
 
     QVector<CipherStep> steps;
     steps.append(CipherStep(1, QChar(),
-        "Дешифрование RouteCipher",
+        "расшифрование RouteCipher",
         "Еще не реализовано"));
 
     return CipherResult(QString(), steps,
-                       "Дешифрование RouteCipher",
-                       name() + " (дешифрование)", false);
+                       "расшифрование RouteCipher",
+                       name() + " (расшифрование)", false);
 }
 
 // Вспомогательные методы

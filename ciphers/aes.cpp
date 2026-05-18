@@ -361,7 +361,7 @@ CipherResult AESCipher::encrypt(const QString& text, const QVariantMap& params)
     return result;
 }
 
-// ==================== Дешифрование ====================
+// ==================== расшифрование ====================
 
 CipherResult AESCipher::decrypt(const QString& text, const QVariantMap& params)
 {
@@ -371,7 +371,7 @@ CipherResult AESCipher::decrypt(const QString& text, const QVariantMap& params)
     result.isNumeric = true;
 
     QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), "Начало дешифрования AES (Rijndael)", "Инициализация"));
+    steps.append(CipherStep(0, QChar(), "Начало расшифрования AES (Rijndael)", "Инициализация"));
 
     // Получаем параметры
     QString keyHex = params.value("key", "").toString();
@@ -389,7 +389,7 @@ CipherResult AESCipher::decrypt(const QString& text, const QVariantMap& params)
 
     QString hexData = CoreHex::normalizeHex(text);
     if (hexData.isEmpty()) {
-        result.result = "ОШИБКА: Нет данных для дешифрования (введите HEX-строку)";
+        result.result = "ОШИБКА: Нет данных для расшифрования (введите HEX-строку)";
         return result;
     }
 
@@ -415,7 +415,7 @@ CipherResult AESCipher::decrypt(const QString& text, const QVariantMap& params)
         QString("Развернуто %1 раундовых ключей").arg(Nr + 1),
         "Развертывание ключей"));
 
-    // Дешифрование блоков
+    // расшифрование блоков
     QString decryptedHex;
     int blockCounter = 0;
 
@@ -426,7 +426,7 @@ CipherResult AESCipher::decrypt(const QString& text, const QVariantMap& params)
         std::array<uint8_t, 16> state{};
         CoreHex::hexToBytes(blockHex, state.data(), 16);
 
-        // Начальный раунд дешифрования
+        // Начальный раунд расшифрования
         addRoundKey(state, roundKeys[Nr]);
         invShiftRows(state);
         invSubBytes(state);
@@ -451,7 +451,7 @@ CipherResult AESCipher::decrypt(const QString& text, const QVariantMap& params)
     }
 
     steps.append(CipherStep(4 + blockCounter, QChar(),
-        "Дешифрование завершено", "Завершение"));
+        "расшифрование завершено", "Завершение"));
 
     result.result = decryptedHex;
     result.steps = steps;

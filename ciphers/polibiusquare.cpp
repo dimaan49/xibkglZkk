@@ -75,66 +75,54 @@ CipherResult PolybiusSquareCipher::decrypt(const QString& text, const QVariantMa
     result.cipherName = name();
     result.alphabet = m_alphabet;
 
-    // Для дешифрования используем исходный текст без фильтрации
-    // Потому что нам нужны цифры из текста
+    // Убираем все символы, кроме цифр (0-9)
+    QString digitsOnly = CipherUtils::filterAlphabetOnly(text, "0123456");
+
+    if (digitsOnly.length() < 2) {
+        result.result = "Недостаточно цифр для расшифрования";
+        return result;
+    }
 
     QString decryptedText;
-    QString filteredText;
-    filteredText = CipherUtils::filterAlphabetOnly(text, m_numeric);
-    int i = 0;
+    decryptedText.reserve(digitsOnly.length() / 2);
+    int stepIndex = 0;
 
-    while (i < filteredText.length()) {
-        // Берем по две цифры за раз (координаты)
-        if (i + 1 < text.length()) {
-            QString twoDigits = filteredText.mid(i, 2);
+    for (int i = 0; i + 1 < digitsOnly.length(); i += 2) {
+        QString coords = digitsOnly.mid(i, 2);
+        int row = coords[0].digitValue();
+        int col = coords[1].digitValue();
 
-            // Проверяем, что это две цифры
-            bool isTwoDigits = true;
-            for (int j = 0; j < 2; ++j) {
-                if (!twoDigits[j].isDigit()) {
-                    isTwoDigits = false;
-                    break;
-                }
-            }
-            QString decryptedChar;
-            if (isTwoDigits && m_coordsToChar.contains(twoDigits)) {
-                if ( twoDigits[1] > "2" && twoDigits[0] == "6") {
-                    decryptedChar = "";
-                    decryptedText.append(decryptedChar);
-                } else {
-                    decryptedChar = m_coordsToChar[twoDigits];
-                    decryptedText.append(decryptedChar);
-                }
+        bool isValid = false;
 
-                // Добавляем шаг для детализации
-                CipherStep step;
-                step.index = i / 2;  // Индекс в расшифрованном тексте
-                step.originalChar = twoDigits[0];  // Первая цифра координаты
-                step.resultValue = decryptedChar;
-                step.description = QString("Дешифрование: %1 → %2")
-                                  .arg(twoDigits)
-                                  .arg(decryptedChar);
-                result.steps.append(step);
-
-                i += 2;
-                continue;
+        // Проверка: цифры в диапазоне 1-6
+        if (row >= 1 && row <= 6 && col >= 1 && col <= 6) {
+            // Если строка 6, то столбец не больше 2 (т.к. букв 32, последняя позиция 62)
+            if (row == 6) {
+                isValid = (col <= 2);
+            } else {
+                isValid = true;
             }
         }
 
-        // Если не удалось расшифровать, оставляем символ как есть
-        QChar skippedChar = filteredText[i];
-        //decryptedText.append(skippedChar);
+        if (isValid && m_coordsToChar.contains(coords)) {
+            QChar ch = m_coordsToChar[coords];
+            decryptedText.append(ch);
 
-        // Добавляем шаг для пропущенного символа
-        CipherStep step;
-        step.index = i;
-        step.originalChar = skippedChar;
-        step.resultValue = skippedChar;
-        step.description = QString("Пропуск: символ '%1' не является валидными координатами")
-                          .arg(skippedChar);
-        result.steps.append(step);
-
-        i += 1;
+            CipherStep step;
+            step.index = stepIndex++;
+            step.originalChar = coords[0];
+            step.resultValue = ch;
+            step.description = QString("расшифрование: %1 → %2").arg(coords).arg(ch);
+            result.steps.append(step);
+        } else {
+            CipherStep step;
+            step.index = stepIndex++;
+            step.originalChar = coords[0];
+            step.resultValue = QString();
+            step.description = QString("Пропуск: '%1' невалидные координаты (row=%2, col=%3)")
+                              .arg(coords).arg(row).arg(col);
+            result.steps.append(step);
+        }
     }
 
     result.result = decryptedText;

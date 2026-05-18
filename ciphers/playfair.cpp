@@ -535,13 +535,13 @@ CipherResult PlayfairCipher::encrypt(const QString& text, const QVariantMap& par
 CipherResult PlayfairCipher::decrypt(const QString& text, const QVariantMap& params)
 {
     QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), QStringLiteral("Начало дешифрования"), QStringLiteral("Инициализация")));
+    steps.append(CipherStep(0, QChar(), QStringLiteral("Начало расшифрования"), QStringLiteral("Инициализация")));
 
     try {
         // Шаг 1: Получение параметров
         if (!params.contains("slogan") || !params.contains("matrixSize")) {
-            steps.append(CipherStep(1, QChar(), QStringLiteral("Ошибка: не заданы параметры дешифрования"), QStringLiteral("Проверка параметров")));
-            return CipherResult("", steps, QStringLiteral("Шифр Плейфера (дешифрование, ошибка)"), name() + QStringLiteral(" (дешифрование)"), false);
+            steps.append(CipherStep(1, QChar(), QStringLiteral("Ошибка: не заданы параметры расшифрования"), QStringLiteral("Проверка параметров")));
+            return CipherResult("", steps, QStringLiteral("Шифр Плейфера (расшифрование, ошибка)"), name() + QStringLiteral(" (расшифрование)"), false);
         }
 
         QString slogan = params["slogan"].toString();
@@ -580,7 +580,7 @@ CipherResult PlayfairCipher::decrypt(const QString& text, const QVariantMap& par
 
         if (encryptedBigrams.isEmpty()) {
             steps.append(CipherStep(3, QChar(), QStringLiteral("Ошибка: не удалось разобрать зашифрованный текст"), QStringLiteral("Разбор биграмм")));
-            return CipherResult("", steps, QStringLiteral("Шифр Плейфера (дешифрование, ошибка)"), name() + QStringLiteral(" (дешифрование)"), false);
+            return CipherResult("", steps, QStringLiteral("Шифр Плейфера (расшифрование, ошибка)"), name() + QStringLiteral(" (расшифрование)"), false);
         }
 
         QString bigramsStr = encryptedBigrams.join(' ');
@@ -636,7 +636,7 @@ CipherResult PlayfairCipher::decrypt(const QString& text, const QVariantMap& par
             QStringLiteral("Формирование результата")));
 
         // Формируем описание
-        QString description = QStringLiteral("Дешифрование шифра Плейфера\n"
+        QString description = QStringLiteral("расшифрование шифра Плейфера\n"
                                     "════════════════════════════════════════\n"
                                     "Размер таблицы: ") +
                                     (size == Size5x6 ? QStringLiteral("5x6") : QStringLiteral("4x8")) +
@@ -645,13 +645,13 @@ CipherResult PlayfairCipher::decrypt(const QString& text, const QVariantMap& par
                                     QStringLiteral("\nБиграмм в шифртексте: ") + QString::number(encryptedBigrams.size()) +
                                     QStringLiteral("\nПолучено символов: ") + QString::number(result.length());
 
-        return CipherResult(result, steps, description, name() + QStringLiteral(" (дешифрование)"), false);
+        return CipherResult(result, steps, description, name() + QStringLiteral(" (расшифрование)"), false);
 
     } catch (const std::exception& e) {
         steps.append(CipherStep(99, QChar(),
             QString(QStringLiteral("Исключение: %1")).arg(e.what()),
             QStringLiteral("Ошибка выполнения")));
-        return CipherResult("", steps, QStringLiteral("Шифр Плейфера (дешифрование, ошибка)"), name() + QStringLiteral(" (дешифрование)"), false);
+        return CipherResult("", steps, QStringLiteral("Шифр Плейфера (расшифрование, ошибка)"), name() + QStringLiteral(" (расшифрование)"), false);
     }
 }
 

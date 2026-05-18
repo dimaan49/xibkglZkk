@@ -269,8 +269,8 @@ CipherResult MagmaCTRCipher::encrypt(const QString& text, const QVariantMap& par
     return result;
 }
 
-// ==================== Дешифрование ====================
-// Для режима CTR дешифрование идентично шифрованию (XOR симметричен)
+// ==================== расшифрование ====================
+// Для режима CTR расшифрование идентично шифрованию (XOR симметричен)
 CipherResult MagmaCTRCipher::decrypt(const QString& text, const QVariantMap& params)
 {
     return encrypt(text, params);

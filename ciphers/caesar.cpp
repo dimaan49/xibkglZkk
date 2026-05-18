@@ -24,7 +24,7 @@ CipherResult CaesarCipher::encrypt(const QString& text, const QVariantMap& param
 
 CipherResult CaesarCipher::decrypt(const QString& text, const QVariantMap& params)
 {
-    return shiftText(text, -getShift(params), "дешифрование");
+    return shiftText(text, -getShift(params), "расшифрование");
 }
 
 CipherResult CaesarCipher::shiftText(const QString& text, int shift, const QString& operation)
@@ -44,7 +44,7 @@ CipherResult CaesarCipher::shiftText(const QString& text, int shift, const QStri
     int n = m_alphabet.length();
 
     // Нормализуем сдвиг (делаем положительным)
-    shift = (shift % n);
+     shift = ((shift % n) + n) % n;
 
     for (int i = 0; i < filtered.length(); ++i) {
         QChar ch = filtered[i];

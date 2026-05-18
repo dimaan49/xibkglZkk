@@ -178,7 +178,7 @@ CipherResult ShannonPadCipher::process(const QString& text, const QVariantMap& p
             newPos = (textPos + gammaValue) % n;
             operation = "+";
         } else {
-            // Дешифрование: mi = (ci - ki + n) mod n
+            // расшифрование: mi = (ci - ki + n) mod n
             newPos = (textPos - gammaValue + n) % n;
             operation = "-";
         }

@@ -63,7 +63,7 @@ QString MagmaSBlock16Cipher::process8HexBlock(const QString& block8, bool encryp
             }
         }
     } else {
-        // ДЕШИФРОВАНИЕ: применяем обратные S-блоки в том же порядке
+        // расшифРОВАНИЕ: применяем обратные S-блоки в том же порядке
         for (int i = 0; i < block8.length(); ++i) {
             QChar ch = block8[i];
             int value = m_alphabet.indexOf(ch.toUpper());
@@ -182,7 +182,7 @@ CipherResult MagmaSBlock16Cipher::decrypt(const QString& text, const QVariantMap
         QString block8 = filteredText.mid(i, 8);
         blockCounter++;
 
-        // Обрабатываем блок (дешифрование)
+        // Обрабатываем блок (расшифрование)
         QString processedBlock = process8HexBlock(block8, false);
         decrypted.append(processedBlock);
 

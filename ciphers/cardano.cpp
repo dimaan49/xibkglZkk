@@ -228,7 +228,7 @@ CipherResult CardanoCipher::decrypt(const QString& text, const QVariantMap& para
     Q_UNUSED(params);
 
     QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), "Начало дешифрования", "Инициализация"));
+    steps.append(CipherStep(0, QChar(), "Начало расшифрования", "Инициализация"));
 
     // Фильтруем входной текст (оставляем только буквы алфавита)
     QString filteredText = CipherUtils::filterAlphabetOnly(text, m_alphabet);

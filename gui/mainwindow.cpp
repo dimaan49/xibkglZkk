@@ -246,7 +246,7 @@ void MainWindow::setupUI()
     QVBoxLayout *inputLayout = new QVBoxLayout();
     inputTextEdit = new QTextEdit();
     inputTextEdit->setObjectName("inputText");
-    inputTextEdit->setPlaceholderText("Введите текст для шифрования/дешифрования...");
+    inputTextEdit->setPlaceholderText("Введите текст для шифрования/расшифрования...");
     inputTextEdit->setText("ОДИН ДУРАК МОЖЕТ БОЛЬШЕ СПРАШИВАТЬ ЗПТ ЧЕМ ДЕСЯТЬ УМНЫХ ОТВЕТИТЬ ТЧК");
     inputTextEdit->setAcceptRichText(false);
     inputLayout->addWidget(inputTextEdit);
@@ -336,7 +336,7 @@ void MainWindow::setupUI()
     swapButton->setMinimumSize(120, 40);
     swapButton->setMaximumSize(120, 40);
 
-    // Дешифровать
+    // расшифровать
     decryptButton = new AnimatedButton("🔓 Расшифровать", this);
     decryptButton->setObjectName("decryptButton");
     decryptButton->setMinimumSize(120, 40);
@@ -686,6 +686,7 @@ void MainWindow::onEncryptClicked()
 
     // ВСЕГДА берём оригинал и преобразуем в коды
     QString textForEncrypt = TextTransformer::toLetterCodes(m_originalInputText);
+    logToConsole("Преобразованный текст (коды):\n " + textForEncrypt);
 
     if (textForEncrypt.isEmpty()) {
         handleError("Нет текста для шифрования!");
@@ -768,17 +769,18 @@ void MainWindow::onDecryptClicked()
     // ВСЕГДА преобразуем в коды (буквенные обозначения знаков)
     QString textForDecrypt = TextTransformer::toLetterCodes(inputText);
 
+
     if (textForDecrypt.isEmpty()) {
-        handleError("Введите текст для дешифрования!");
+        handleError("Введите текст для расшифрования!");
         return;
     }
 
-    setStatusText("Выполняется дешифрование...", "info");
+    setStatusText("Выполняется расшифрование...", "info");
 
     try {
         logToConsole("\n════════════════════════════════════════");
-        logToConsole("ДЕШИФРОВАНИЕ: " + m_currentCipher->name());
-        logToConsole("Текст после преобразования в коды: " + textForDecrypt.left(100));
+        logToConsole("РАСШИФРОВАНИЕ: " + m_currentCipher->name());
+        logToConsole("Текст после преобразования в коды: " + textForDecrypt);
 
         bool isHexCipher = (m_currentCipher->alphabet() == "0123456789ABCDEF");
         QString processedInput = textForDecrypt;
@@ -826,12 +828,12 @@ void MainWindow::onDecryptClicked()
             logToConsole("Результат: " + result.result);
         }
 
-        handleSuccess("Дешифрование успешно завершено");
+        handleSuccess("Расшифрование успешно завершено");
 
     } catch (const std::exception& e) {
         handleError(QString("Исключение: ") + e.what());
     } catch (...) {
-        handleError("Неизвестное исключение при дешифровании");
+        handleError("Неизвестное исключение при расшифровании");
     }
 }
 
@@ -1165,10 +1167,13 @@ void MainWindow::onTransformToggled(bool checked)
         QString textToShow = TextTransformer::toLetterCodes(m_originalInputText);
         inputTextEdit->setPlainText(textToShow);
         logToConsole("Включено отображение кодов знаков");
+        logToConsole("Текст в кодах: " + textToShow);
     } else {
         // Показываем знаки
         inputTextEdit->setPlainText(m_originalInputText);
         logToConsole("Отключено отображение кодов знаков");
+        logToConsole("Текст со знаками: " + m_originalInputText);
+
     }
 }
 
@@ -1195,11 +1200,15 @@ void MainWindow::onOutputTransformToggled(bool checked)
         QString converted = TextTransformer::toLetterCodes(currentText);
         outputTextEdit->setPlainText(converted);
         m_originalOutputText = converted;
+        logToConsole("Поле вывода: включено отображение кодов");
+        logToConsole("Текст в кодах: " + converted);
     } else {
         // Показываем знаки
         QString converted = TextTransformer::fromLetterCodes(currentText);
         outputTextEdit->setPlainText(converted);
         m_originalOutputText = converted;
+        logToConsole("Поле вывода: отключено отображение кодов");
+        logToConsole("Текст со знаками: " + converted);
     }
 }
 

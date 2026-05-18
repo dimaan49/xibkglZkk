@@ -270,7 +270,7 @@ CipherResult FeistelCipher::encrypt(const QString& text, const QVariantMap& para
 CipherResult FeistelCipher::decrypt(const QString& text, const QVariantMap& params)
 {
     QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), "Начало дешифрования (ГОСТ Р 34.12-2015, Магма)", "Инициализация"));
+    steps.append(CipherStep(0, QChar(), "Начало расшифрования (ГОСТ Р 34.12-2015, Магма)", "Инициализация"));
 
     // Получаем ключ из параметров или используем тестовый
     QString keyHex = params.value("key", "FFEEDDCCBBAA99887766554433221100F0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF").toString();
@@ -310,11 +310,11 @@ CipherResult FeistelCipher::decrypt(const QString& text, const QVariantMap& para
         QString("a1 = %1, a2 = %2").arg(hexText.left(8)).arg(hexText.right(8)),
         "Разделение блока"));
 
-    // Дешифрование - используем ключи в обратном порядке (формула 20)
-    steps.append(CipherStep(5, QChar(), "Начало 32 раундов дешифрования (ключи в обратном порядке)", "Раунды"));
+    // расшифрование - используем ключи в обратном порядке (формула 20)
+    steps.append(CipherStep(5, QChar(), "Начало 32 раундов расшифрования (ключи в обратном порядке)", "Раунды"));
 
     for (int round = 0; round < 32; ++round) {
-        // При дешифровании ключи используются в обратном порядке
+        // При расшифровании ключи используются в обратном порядке
         uint32_t key = m_roundKeys[31 - round];
 
         QString old_a1_hex = CoreHex::uint32ToHex(a1);
@@ -340,7 +340,7 @@ CipherResult FeistelCipher::decrypt(const QString& text, const QVariantMap& para
     QString resultHex = QString("%1%2").arg(CoreHex::uint32ToHex(a0), CoreHex::uint32ToHex(a1));
 
     steps.append(CipherStep(38, QChar(),
-        QString("Результат дешифрования: %1").arg(resultHex),
+        QString("Результат расшифрования: %1").arg(resultHex),
         "Завершение"));
 
     return CipherResult(resultHex, steps, "Магма (ГОСТ Р 34.12-2015)", name(), false);

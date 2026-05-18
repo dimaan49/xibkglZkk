@@ -97,7 +97,7 @@ CipherResult MatrixCipher::encrypt(const QString& text, const QVariantMap& param
         }
 
         steps.append(CipherStep(3, QChar(),
-            QString("Обратная матрица %1x%1 (вычислена для дешифрования):\n%2").arg(size).arg(inverseDisplay),
+            QString("Обратная матрица %1x%1 (вычислена для расшифрования):\n%2").arg(size).arg(inverseDisplay),
             "Вычисление обратной матрицы"));
 
         // Шаг 4: Преобразование текста в числа
@@ -220,7 +220,7 @@ CipherResult MatrixCipher::decrypt(const QString& text, const QVariantMap& param
     result.alphabet = m_alphabet;
     result.isNumeric = true;
     QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), "Начало дешифрования", "Инициализация"));
+    steps.append(CipherStep(0, QChar(), "Начало расшифрования", "Инициализация"));
 
 
     try {
@@ -238,7 +238,7 @@ CipherResult MatrixCipher::decrypt(const QString& text, const QVariantMap& param
 
         if (!parseMatrix(matrixStr, matrix)) {
             steps.append(CipherStep(1, QChar(), "Ошибка: некорректный формат матрицы", "Парсинг матрицы"));
-            return CipherResult("", steps, "Матричный шифр (дешифрование, ошибка)", name() + " (дешифрование)", false);
+            return CipherResult("", steps, "Матричный шифр (расшифрование, ошибка)", name() + " (расшифрование)", false);
         }
 
         int size = matrix.size();
@@ -264,7 +264,7 @@ CipherResult MatrixCipher::decrypt(const QString& text, const QVariantMap& param
             steps.append(CipherStep(2, QChar(),
                 QString("Ошибка: матрица необратима (det = %1)").arg(det),
                 "Проверка обратимости"));
-            return CipherResult("", steps, "Матричный шифр (дешифрование, ошибка)", name() + " (дешифрование)", false);
+            return CipherResult("", steps, "Матричный шифр (расшифрование, ошибка)", name() + " (расшифрование)", false);
         }
 
         steps.append(CipherStep(2, QChar(),
@@ -275,7 +275,7 @@ CipherResult MatrixCipher::decrypt(const QString& text, const QVariantMap& param
         QVector<QVector<double>> inverseMatrix;
         if (!calculateInverse(matrix, inverseMatrix, det)) {
             steps.append(CipherStep(3, QChar(), "Ошибка: не удалось вычислить обратную матрицу", "Вычисление обратной матрицы"));
-            return CipherResult("", steps, "Матричный шифр (дешифрование, ошибка)", name() + " (дешифрование)", false);
+            return CipherResult("", steps, "Матричный шифр (расшифрование, ошибка)", name() + " (расшифрование)", false);
         }
 
         // Форматируем обратную матрицу для вывода
@@ -300,14 +300,14 @@ CipherResult MatrixCipher::decrypt(const QString& text, const QVariantMap& param
             steps.append(CipherStep(4, QChar(),
                 "Ошибка: не удалось распарсить числа",
                 "Парсинг чисел"));
-            return CipherResult("", steps, "Матричный шифр (дешифрование, ошибка)", name() + " (дешифрование)", false);
+            return CipherResult("", steps, "Матричный шифр (расшифрование, ошибка)", name() + " (расшифрование)", false);
         }
 
         if (numbers.size() % size != 0) {
             steps.append(CipherStep(4, QChar(),
                 QString("Ошибка: количество чисел (%1) не кратно размеру блока (%2)").arg(numbers.size()).arg(size),
                 "Проверка кратности"));
-            return CipherResult("", steps, "Матричный шифр (дешифрование, ошибка)", name() + " (дешифрование)", false);
+            return CipherResult("", steps, "Матричный шифр (расшифрование, ошибка)", name() + " (расшифрование)", false);
         }
 
         QString numbersStr;
@@ -321,7 +321,7 @@ CipherResult MatrixCipher::decrypt(const QString& text, const QVariantMap& param
             QString("Загружено %1 чисел: %2").arg(numbers.size()).arg(numbersStr),
             "Парсинг чисел"));
 
-        // Шаг 5: Дешифрование блоков
+        // Шаг 5: расшифрование блоков
         QVector<int> decryptedNumbers;
         int blockCount = numbers.size() / size;
 
@@ -394,7 +394,7 @@ CipherResult MatrixCipher::decrypt(const QString& text, const QVariantMap& param
                 .arg(decryptedText).arg(paddingRemoved).arg(lastChar),
             "Преобразование чисел в текст"));
         // Формируем описание
-        QString description = QString("Дешифрование матричного шифра\n"
+        QString description = QString("расшифрование матричного шифра\n"
                                     "════════════════════════════════════════\n"
                                     "Размер матрицы: %1x%1\n"
                                     "Определитель: %2\n"
@@ -405,13 +405,13 @@ CipherResult MatrixCipher::decrypt(const QString& text, const QVariantMap& param
                             .arg(blockCount)
                             .arg(decryptedText.length());
 
-        return CipherResult(decryptedText, steps, description, name() + " (дешифрование)", false);
+        return CipherResult(decryptedText, steps, description, name() + " (расшифрование)", false);
 
     } catch (const std::exception& e) {
         steps.append(CipherStep(99, QChar(),
             QString("Исключение: %1").arg(e.what()),
             "Ошибка выполнения"));
-        return CipherResult("", steps, "Матричный шифр (дешифрование, ошибка)", name() + " (дешифрование)", false);
+        return CipherResult("", steps, "Матричный шифр (расшифрование, ошибка)", name() + " (расшифрование)", false);
     }
 }
 QString MatrixCipher::name() const {

@@ -43,7 +43,7 @@ private:
     // Нормализация символа (замена Ё, Й, Ъ)
     QChar normalizeChar(const QChar& ch, MatrixSize size) const;
 
-    // Подготовка текста для шифрования/дешифрования
+    // Подготовка текста для шифрования/расшифрования
     QString prepareText(const QString& text, MatrixSize size, QChar filler, bool forEncrypt);
 
     // Разбивка на биграммы с обработкой повторяющихся букв
@@ -55,7 +55,7 @@ private:
     // Поиск позиции буквы в таблице
     Position findPosition(const QVector<QVector<QChar>>& table, QChar ch) const;
 
-    // Шифрование/дешифрование биграммы
+    // Шифрование/расшифрование биграммы
     QString processBigram(const QVector<QVector<QChar>>& table, const QString& bigram, bool encrypt);
 
     // Форматирование результата с пробелами между биграммами

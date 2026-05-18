@@ -385,11 +385,11 @@ CipherResult ColumnTranspositionCipher::decryptImpl(const QString& text,
     }
 
     // Формируем описание
-    QString description = QStringLiteral(u"ColumnTranspositionCipher - дешифрование\n")
+    QString description = QStringLiteral(u"ColumnTranspositionCipher - расшифрование\n")
                         + QStringLiteral(u"Размер таблицы: %1×%2\n").arg(rows).arg(cols)
                         + QStringLiteral(u"Ключ определяет порядок столбцов\n");
 
-    return CipherResult(decrypted, steps, description, name() + " (дешифрование)", false);
+    return CipherResult(decrypted, steps, description, name() + " (расшифрование)", false);
 }
 
 // ==================== РЕГИСТРАЦИЯ В ФАБРИКЕ ====================
