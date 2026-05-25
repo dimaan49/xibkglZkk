@@ -11,9 +11,9 @@ public:
     CipherResult encrypt(const QString& text, const QVariantMap& params = {}) override;
     CipherResult decrypt(const QString& text, const QVariantMap& params = {}) override;
 
-    QString name() const override { return "Виженер (шифротекст)"; }
+    QString name() const override { return "Виженер (шифртекст)"; }
     QString description() const override {
-        return "Автоключевой шифр: ключ[i] = шифротекст[i-1] (для i>0)";
+        return "Автоключевой шифр: ключ[i] = шифртекст[i-1] (для i>0)";
     }
     QString alphabet() const override {return m_alphabet; }
 

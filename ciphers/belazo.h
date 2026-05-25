@@ -11,6 +11,7 @@ public:
     CipherResult encrypt(const QString& text, const QVariantMap& params = {}) override;
     CipherResult decrypt(const QString& text, const QVariantMap& params = {}) override;
 
+
     QString name() const override { return "Шифр Белазо"; }
     QString description() const override {
         return "Полиалфавитный шифр с ключевым словом";

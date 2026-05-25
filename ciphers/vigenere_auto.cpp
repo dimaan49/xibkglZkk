@@ -144,7 +144,7 @@ VigenereAutoCipherRegister::VigenereAutoCipherRegister()
     );
 
     CipherWidgetFactory::instance().registerCipherWidgets(
-        8,
+        6,
         [](QWidget* parent, QVBoxLayout* layout, QMap<QString, QWidget*>& widgets) {
             QHBoxLayout* keyLayout = new QHBoxLayout();
             QLabel* keyLabel = new QLabel("Начальная буква ключа:");

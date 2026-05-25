@@ -41,11 +41,6 @@ CipherResult VigenereCiphertextCipher::process(const QString& text, QChar keyLet
         int textPos = CipherUtils::charToIndex(ch, m_alphabet);
         int keyPos = CipherUtils::charToIndex(currentKey, m_alphabet);
 
-        if (keyPos == -1) {
-            // Запасной ключ
-            keyPos = 0;
-        }
-
         int newPos;
         QString operation;
 
@@ -73,7 +68,7 @@ CipherResult VigenereCiphertextCipher::process(const QString& text, QChar keyLet
                 .arg(newChar).arg(newPos);
         } else {
             QChar prevChar = encrypt ? transformed[i-1] : filteredText[i-1];
-            stepDesc = QString("%1[%2] %3 %4[%5] = %6[%7] (ключ из шифротекста)")
+            stepDesc = QString("%1[%2] %3 %4[%5] = %6[%7] (ключ из шифртекста)")
                 .arg(ch).arg(textPos)
                 .arg(operation)
                 .arg(prevChar).arg(m_alphabet.indexOf(prevChar))
@@ -96,7 +91,7 @@ VigenereCiphertextCipherRegister::VigenereCiphertextCipherRegister()
 {
     CipherFactory::instance().registerCipher(
         7,
-        "Виженер с ключом-шифротекстом",
+        "Виженер с ключом-шифртекстом",
         []() -> CipherInterface* { return new VigenereCiphertextCipher(); },
         CipherCategory::Polyalphabetic
     );
@@ -113,7 +108,7 @@ VigenereCiphertextCipherRegister::VigenereCiphertextCipherRegister()
             keyLineEdit->setObjectName("keyLetter");
             keyLineEdit->setToolTip("Первая буква ключа (обычно 'А' или 'Ю')");
 
-            QLabel* infoLabel = new QLabel("Каждая следующая буква ключа = предыдущий шифротекст");
+            QLabel* infoLabel = new QLabel("Каждая следующая буква ключа = предыдущий шифртекст");
             infoLabel->setStyleSheet("color: #666; font-style: italic;");
 
             keyLayout->addWidget(keyLabel);
