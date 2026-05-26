@@ -453,6 +453,7 @@ void MainWindow::setupUI()
             this, &MainWindow::onClearLogClicked);
     connect(swapButton, &QPushButton::clicked,
             this, &MainWindow::onSwapClicked);
+    connect(m_outputFormatRusRadio, &QRadioButton::toggled, this, &MainWindow::onOutputFormatChanged);
 
     // LOG WINDOW
     connect(showLogButton, &QPushButton::clicked, this, &MainWindow::onShowLogClicked);
@@ -764,10 +765,8 @@ void MainWindow::onDecryptClicked()
     }
 
     // Берём текст из поля ввода (то, что видит пользователь)
-    QString inputText = inputTextEdit->toPlainText().trimmed();
+    QString  textForDecrypt = inputTextEdit->toPlainText().trimmed();
 
-    // ВСЕГДА преобразуем в коды (буквенные обозначения знаков)
-    QString textForDecrypt = TextTransformer::toLetterCodes(inputText);
 
 
     if (textForDecrypt.isEmpty()) {
@@ -1236,4 +1235,25 @@ void MainWindow::onTableTypeChanged(int index)
     }
 
     logToConsole("Таблица преобразования изменена на: " + m_tableComboBox->currentText());
+}
+
+void MainWindow::onOutputFormatChanged()
+{
+    // Берём текущий текст из поля вывода
+    QString currentText = outputTextEdit->toPlainText();
+    if (currentText.isEmpty()) return;
+
+    if (m_outputFormatRusRadio && m_outputFormatRusRadio->isChecked()) {
+        // Пытаемся преобразовать HEX → русский (только для отображения)
+        QString converted = CoreHex::hexToRus(currentText);
+        if (!converted.isEmpty() && !converted.contains(QChar::ReplacementCharacter)) {
+            outputTextEdit->setPlainText(converted);
+        }
+    } else {
+        // Пытаемся преобразовать русский → HEX (только для отображения)
+        QString converted = CoreHex::rusToHex(currentText);
+        if (!converted.isEmpty()) {
+            outputTextEdit->setPlainText(converted);
+        }
+    }
 }

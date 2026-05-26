@@ -202,24 +202,24 @@ namespace CoreHex {
     }
 
     // PKCS#7 паддинг
-    inline QByteArray pkcs7Pad(const QByteArray& data, int blockSize) {
-        int padding = blockSize - (data.size() % blockSize);
-        if (padding == 0) padding = blockSize;
-        QByteArray padded = data;
-        padded.append(padding, static_cast<char>(padding));
-        return padded;
-    }
-
-    // PKCS#7 удаление паддинга
-    inline QByteArray pkcs7Unpad(const QByteArray& data) {
-        if (data.isEmpty()) return data;
-        int padding = static_cast<int>(static_cast<uint8_t>(data[data.size() - 1]));
-        if (padding <= 0 || padding > data.size()) return data;
-        for (int i = data.size() - padding; i < data.size(); ++i) {
-            if (static_cast<uint8_t>(data[i]) != padding) return data;
+        inline QByteArray pkcs7Pad(const QByteArray& data, int blockSize) {
+            int padding = blockSize - (data.size() % blockSize);
+            if (padding == 0) padding = blockSize;
+            QByteArray padded = data;
+            padded.append(padding, static_cast<char>(padding));
+            return padded;
         }
-        return data.left(data.size() - padding);
-    }
+
+        // PKCS#7 удаление паддинга
+        inline QByteArray pkcs7Unpad(const QByteArray& data) {
+            if (data.isEmpty()) return data;
+            int padding = static_cast<int>(static_cast<uint8_t>(data[data.size() - 1]));
+            if (padding <= 0 || padding > data.size()) return data;
+            for (int i = data.size() - padding; i < data.size(); ++i) {
+                if (static_cast<uint8_t>(data[i]) != padding) return data;
+            }
+            return data.left(data.size() - padding);
+        }
 
 
 }

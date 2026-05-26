@@ -28,6 +28,7 @@ private:
     QVector<QVector<int>> m_sBlocks;
 
     // Вспомогательные методы
+    CipherResult process(const QString& text, const QVariantMap& params, bool encrypt);
     void initializeSBlocks();
     QString process8HexBlock(const QString& block8, bool encrypt);
     int applySBlock(int sBlockIndex, int value);

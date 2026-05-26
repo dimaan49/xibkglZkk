@@ -10,14 +10,14 @@ MagmaSBlock16Cipher::MagmaSBlock16Cipher()
 void MagmaSBlock16Cipher::initializeSBlocks()
 {
     m_sBlocks = {
-        {12, 4, 6, 2, 10, 5, 11, 9, 14, 8, 13, 7, 0, 3, 15, 1},  // π0'
-        {6, 8, 2, 3, 9, 10, 5, 12, 1, 14, 4, 7, 11, 13, 0, 15}, // π1'
-        {11, 3, 5, 8, 2, 15, 10, 13, 14, 1, 7, 4, 12, 9, 6, 0}, // π2'
-        {12, 8, 2, 1, 13, 4, 15, 6, 7, 0, 10, 5, 3, 14, 9, 11}, // π3'
-        {7, 15, 5, 10, 8, 1, 6, 13, 0, 9, 3, 14, 11, 4, 2, 12}, // π4'
-        {5, 13, 15, 6, 9, 2, 12, 10, 11, 7, 8, 1, 4, 3, 14, 0}, // π5'
-        {8, 14, 2, 5, 6, 9, 1, 12, 15, 4, 11, 0, 13, 10, 3, 7}, // π6'
-        {1, 7, 14, 13, 0, 5, 8, 3, 4, 15, 10, 6, 9, 12, 11, 2}  // π7'
+        {12, 4, 6, 2, 10, 5, 11, 9, 14, 8, 13, 7, 0, 3, 15, 1},
+        {6, 8, 2, 3, 9, 10, 5, 12, 1, 14, 4, 7, 11, 13, 0, 15},
+        {11, 3, 5, 8, 2, 15, 10, 13, 14, 1, 7, 4, 12, 9, 6, 0},
+        {12, 8, 2, 1, 13, 4, 15, 6, 7, 0, 10, 5, 3, 14, 9, 11},
+        {7, 15, 5, 10, 8, 1, 6, 13, 0, 9, 3, 14, 11, 4, 2, 12},
+        {5, 13, 15, 6, 9, 2, 12, 10, 11, 7, 8, 1, 4, 3, 14, 0},
+        {8, 14, 2, 5, 6, 9, 1, 12, 15, 4, 11, 0, 13, 10, 3, 7},
+        {1, 7, 14, 13, 0, 5, 8, 3, 4, 15, 10, 6, 9, 12, 11, 2}
     };
 }
 
@@ -41,169 +41,139 @@ int MagmaSBlock16Cipher::applyInverseSBlock(int sBlockIndex, int value)
     return value;
 }
 
-// Обработка 8-hex символов блока (32 бита)
 QString MagmaSBlock16Cipher::process8HexBlock(const QString& block8, bool encrypt)
 {
     QString result;
 
-    if (encrypt) {
-        // ШИФРОВАНИЕ: применяем S-блоки в обратном порядке
-        // a = a7||a6||a5||a4||a3||a2||a1||a0 ∈ V32, ai ∈ V4
-        // t(a) = t(a7||…||a0) = π7(a7)||π6(a6)||π5(a5)||π4(a4)||π3(a3)||π2(a2)||π1(a1)||π0(a0)
-        for (int i = 0; i < block8.length(); ++i) {
-            QChar ch = block8[i];
-            int value = m_alphabet.indexOf(ch.toUpper());
+    for (int i = 0; i < block8.length(); ++i) {
+        QChar ch = block8[i];
+        int value = m_alphabet.indexOf(ch.toUpper());
 
-            if (value >= 0) {
-                int sBlockIndex = 7 - i;
-                int outputValue = applySBlock(sBlockIndex, value);
-                result.append(m_alphabet[outputValue]);
-            } else {
-                result.append(ch);
-            }
+        if (value == -1) {
+            return QString();
         }
-    } else {
-        // расшифРОВАНИЕ: применяем обратные S-блоки в том же порядке
-        for (int i = 0; i < block8.length(); ++i) {
-            QChar ch = block8[i];
-            int value = m_alphabet.indexOf(ch.toUpper());
 
-            if (value >= 0) {
-                int sBlockIndex = 7 - i;
-                int outputValue = applyInverseSBlock(sBlockIndex, value);
-                result.append(m_alphabet[outputValue]);
-            } else {
-                result.append(ch);
-            }
+        int sBlockIndex = 7 - i;
+        int outputValue = encrypt ? applySBlock(sBlockIndex, value)
+                                  : applyInverseSBlock(sBlockIndex, value);
+        result.append(m_alphabet[outputValue]);
+    }
+
+    return result;
+}
+
+CipherResult MagmaSBlock16Cipher::process(const QString& text, const QVariantMap& params, bool encrypt)
+{
+    Q_UNUSED(params);
+
+    CipherResult result;
+    result.cipherName = name();
+    result.alphabet = m_alphabet;
+
+    QString direction = encrypt ? "Зашифрованный" : "Расшифрованный";
+    QString sBlocksDesc = encrypt ? "S-блоки π7-π0" : "обратные S-блоки π7-π0";
+
+    // Нормализуем HEX
+    QString hexText = CoreHex::normalizeHex(text);
+
+    if (hexText.isEmpty()) {
+        result.result = "Нет hex-символов для преобразования";
+        return result;
+    }
+
+
+    QString workingText = hexText;
+
+    // убрать блок если нужно пройти ГОСТ проверку, т.к. хоть алгоритм раотает правильно, но при вводе hex из ГОСТ добавить 4 лишних символа и все словмается
+    // === ПАДДИНГ (только при шифровании) ===
+    if (encrypt) {
+        QByteArray bytes = CoreHex::hexToBytes(hexText);
+        QByteArray paddedBytes = CoreHex::pkcs7Pad(bytes, 4);
+        workingText = CoreHex::bytesToHex(paddedBytes);
+
+        CipherStep padStep;
+        padStep.index = 0;
+        padStep.originalChar = QChar('P');
+        padStep.resultValue = workingText;
+        padStep.description = QString("Паддинг PKCS#7: %1 → %2 (добавлено %3 байт)")
+                             .arg(hexText)
+                             .arg(workingText)
+                             .arg(paddedBytes.size() - bytes.size());
+        result.steps.append(padStep);
+    } else {
+        // Проверяем кратность 8 при расшифровании
+        if (hexText.length() % 8 != 0) {
+            result.result = QString("Ошибка: длина шифртекста (%1 символов) должна быть кратна 8")
+                           .arg(hexText.length());
+            return result;
         }
     }
 
+    // Стартовый шаг
+    CipherStep startStep;
+    startStep.index = encrypt ? 1 : 0;
+    startStep.originalChar = QChar('T');
+    startStep.resultValue = QString("%1 hex-символов").arg(workingText.length());
+    startStep.description = QString("%1 текст: %2").arg(direction).arg(workingText);
+    result.steps.append(startStep);
+
+    // Поблочная обработка (блок = 8 HEX-символов)
+    QString output;
+    int blockCounter = 0;
+
+    for (int i = 0; i < workingText.length(); i += 8) {
+        QString block8 = workingText.mid(i, 8);
+        blockCounter++;
+
+        QString processedBlock = process8HexBlock(block8, encrypt);
+        output.append(processedBlock);
+
+        CipherStep blockStep;
+        blockStep.index = blockCounter;
+        blockStep.originalChar = QChar('0' + (blockCounter % 10));
+        blockStep.resultValue = processedBlock;
+        blockStep.description = QString("Блок %1: %2 → %3 (%4)")
+                              .arg(blockCounter).arg(block8).arg(processedBlock).arg(sBlocksDesc);
+        result.steps.append(blockStep);
+    }
+
+    // === УДАЛЕНИЕ ПАДДИНГА (только при расшифровании) ===
+    if (!encrypt) {
+        QByteArray decryptedBytes = CoreHex::hexToBytes(output);
+        QByteArray unpaddedBytes = CoreHex::pkcs7Unpad(decryptedBytes);
+        output = CoreHex::bytesToHex(unpaddedBytes);
+
+        CipherStep unpadStep;
+        unpadStep.index = 998;
+        unpadStep.originalChar = QChar('U');
+        unpadStep.resultValue = output;
+        unpadStep.description = QString("Удаление паддинга PKCS#7: %1 → %2 (удалено %3 байт)")
+                               .arg(CoreHex::bytesToHex(decryptedBytes))
+                               .arg(output)
+                               .arg(decryptedBytes.size() - unpaddedBytes.size());
+        result.steps.append(unpadStep);
+    }
+
+    // Финальный шаг
+    CipherStep finalStep;
+    finalStep.index = 999;
+    finalStep.originalChar = QChar('R');
+    finalStep.resultValue = output;
+    finalStep.description = QString("%1 текст: %2").arg(direction).arg(output);
+    result.steps.append(finalStep);
+
+    result.result = output;
     return result;
 }
 
 CipherResult MagmaSBlock16Cipher::encrypt(const QString& text, const QVariantMap& params)
 {
-    Q_UNUSED(params);
-
-    CipherResult result;
-    result.cipherName = name();
-    result.alphabet = m_alphabet;
-
-    // Фильтруем только hex-символы и приводим к верхнему регистру
-    QString filteredText = CipherUtils::filterAlphabetOnly(text.toUpper(), m_alphabet);
-
-    if (filteredText.isEmpty()) {
-        result.result = "Нет hex-символов для преобразования";
-        return result;
-    }
-
-    // Проверяем, что длина кратна 8 (32 бита)
-    if (filteredText.length() % 8 != 0) {
-        result.result = QString("Ошибка: длина текста (%1 символов) должна быть кратна 8 (для 32-битных блоков)")
-                       .arg(filteredText.length());
-        return result;
-    }
-
-    CipherStep step1;
-    step1.index = 0;
-    step1.originalChar = QChar('T');
-    step1.resultValue = QString("%1 hex-символов").arg(filteredText.length());
-    step1.description = QString("Исходный текст: %1").arg(filteredText);
-    result.steps.append(step1);
-
-    // Разбиваем на блоки по 8 hex-символов (32 бита)
-    QString encrypted;
-    int blockCounter = 0;
-
-    for (int i = 0; i < filteredText.length(); i += 8) {
-        QString block8 = filteredText.mid(i, 8);
-        blockCounter++;
-
-        // Обрабатываем блок
-        QString processedBlock = process8HexBlock(block8, true);
-        encrypted.append(processedBlock);
-
-        // Добавляем шаг для этого блока
-        CipherStep blockStep;
-        blockStep.index = blockCounter;
-        blockStep.originalChar = QChar('0' + (blockCounter % 10));
-        blockStep.resultValue = processedBlock;
-        blockStep.description = QString("Блок %1: %2 → %3 (S-блоки π7-π0)")
-                              .arg(blockCounter).arg(block8).arg(processedBlock);
-        result.steps.append(blockStep);
-    }
-
-    CipherStep finalStep;
-    finalStep.index = 999;
-    finalStep.originalChar = QChar('R');
-    finalStep.resultValue = encrypted;
-    finalStep.description = QString("Зашифрованный текст: %1").arg(encrypted);
-    result.steps.append(finalStep);
-
-    result.result = encrypted;
-    return result;
+    return process(text, params, true);
 }
 
 CipherResult MagmaSBlock16Cipher::decrypt(const QString& text, const QVariantMap& params)
 {
-    Q_UNUSED(params);
-
-    CipherResult result;
-    result.cipherName = name();
-    result.alphabet = m_alphabet;
-
-    // Фильтруем только hex-символы и приводим к верхнему регистру
-    QString filteredText = CipherUtils::filterAlphabetOnly(text.toUpper(), m_alphabet);
-
-    if (filteredText.isEmpty()) {
-        result.result = "Нет hex-символов для преобразования";
-        return result;
-    }
-
-    // Проверяем, что длина кратна 8 (32 бита)
-    if (filteredText.length() % 8 != 0) {
-        result.result = QString("Ошибка: длина текста (%1 символов) должна быть кратна 8 (для 32-битных блоков)")
-                       .arg(filteredText.length());
-        return result;
-    }
-
-    CipherStep step1;
-    step1.index = 0;
-    step1.originalChar = QChar('T');
-    step1.resultValue = QString("%1 hex-символов").arg(filteredText.length());
-    step1.description = QString("Зашифрованный текст: %1").arg(filteredText);
-    result.steps.append(step1);
-
-    // Разбиваем на блоки по 8 hex-символов (32 бита)
-    QString decrypted;
-    int blockCounter = 0;
-
-    for (int i = 0; i < filteredText.length(); i += 8) {
-        QString block8 = filteredText.mid(i, 8);
-        blockCounter++;
-
-        // Обрабатываем блок (расшифрование)
-        QString processedBlock = process8HexBlock(block8, false);
-        decrypted.append(processedBlock);
-
-        CipherStep blockStep;
-        blockStep.index = blockCounter;
-        blockStep.originalChar = QChar('0' + (blockCounter % 10));
-        blockStep.resultValue = processedBlock;
-        blockStep.description = QString("Блок %1: %2 → %3 (обратные S-блоки π7-π0)")
-                              .arg(blockCounter).arg(block8).arg(processedBlock);
-        result.steps.append(blockStep);
-    }
-
-    CipherStep finalStep;
-    finalStep.index = 999;
-    finalStep.originalChar = QChar('R');
-    finalStep.resultValue = decrypted;
-    finalStep.description = QString("Расшифрованный текст: %1").arg(decrypted);
-    result.steps.append(finalStep);
-
-    result.result = decrypted;
-    return result;
+    return process(text, params, false);
 }
 
 MagmaSBlock16CipherRegister::MagmaSBlock16CipherRegister()

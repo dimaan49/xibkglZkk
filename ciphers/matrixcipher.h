@@ -25,8 +25,10 @@ public:
 
 private:
 
-    QVector<int> textToNumbers(const QString& text);
-    QString numbersToText(const QVector<int>& numbers);
+    CipherResult process(const QString& text, const QVariantMap& params, bool encrypt);
+    QString formatMatrix(const QVector<QVector<int>>& matrix);
+    QString formatMatrixDouble(const QVector<QVector<double>>& matrix);
+    QString formatVector(const QVector<int>& vec);
     // Вспомогательные методы
     static bool parseMatrix(const QString& matrixStr, QVector<QVector<int>>& matrix);
     static bool isInvertible(const QVector<QVector<int>>& matrix, int& det);

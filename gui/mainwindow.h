@@ -65,6 +65,7 @@ private slots:
     void onActionsSelected(int index);
     void onOutputTransformToggled(bool checked);
     void onTableTypeChanged(int index);
+    void onOutputFormatChanged();
 
 private:
     void setupUI();
