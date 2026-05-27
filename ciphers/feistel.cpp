@@ -175,11 +175,7 @@ void FeistelCipher::expandKey(const QString& key)
     m_roundKeys[30] = keyParts[1]; // K31 = K2
     m_roundKeys[31] = keyParts[0]; // K32 = K1
 
-    // Для отладки выводим ключи
-    qDebug() << "Итерационные ключи:";
-    for (int i = 0; i < 32; ++i) {
-        qDebug() << QString("K%1 = %2").arg(i + 1).arg(CoreHex::uint32ToHex(m_roundKeys[i]));
-    }
+
 }
 
 CipherResult FeistelCipher::encrypt(const QString& text, const QVariantMap& params)

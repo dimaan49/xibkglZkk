@@ -28,24 +28,17 @@ QString ColumnTranspositionCipher::description() const
 
 QVector<int> ColumnTranspositionCipher::keyToColumnOrder(const QString& key, int columnCount, QString& errorMessage)
 {
-    QVector<int> order(columnCount, 0);
-
-    if (key.isEmpty()) {
-        errorMessage = "Ключ не может быть пустым";
-        return QVector<int>();
-    }
-
     QString cleanKey = CipherUtils::filterAlphabetOnly(key.toUpper(), RUSSIAN_ALPHABET);
 
     if (cleanKey.isEmpty()) {
         errorMessage = "Ключ должен содержать хотя бы одну букву русского алфавита";
-        return QVector<int>();
+        return {};
     }
 
     if (cleanKey.length() != columnCount) {
         errorMessage = QString("Длина ключа (%1) не соответствует количеству столбцов (%2)")
                               .arg(cleanKey.length()).arg(columnCount);
-        return QVector<int>();
+        return {};
     }
 
     QVector<QPair<QChar, int>> letters;
@@ -58,161 +51,79 @@ QVector<int> ColumnTranspositionCipher::keyToColumnOrder(const QString& key, int
             return a.first < b.first;
         });
 
+    QVector<int> order(columnCount, 0);
     for (int i = 0; i < letters.size(); ++i) {
-        int originalPos = letters[i].second;
-        order[originalPos] = i + 1;
+        order[letters[i].second] = i + 1;
     }
 
-    qDebug() << "keyToColumnOrder result:" << order;
     return order;
+}
+
+CipherResult ColumnTranspositionCipher::process(const QString& text, const QVariantMap& params, bool encrypt)
+{
+    QString cleanText = CipherUtils::filterAlphabetOnly(text, RUSSIAN_ALPHABET);
+
+    // Ключ
+    QString key = params.value("key", "").toString();
+
+    // Размеры
+    int rows = params.value("rows", 0).toInt();
+    int cols = params.value("cols", 0).toInt();
+
+    if (rows <= 0 || cols <= 0) {
+        getOptimalSize(cleanText.length(), rows, cols);
+    }
+
+    // Проверка ключа
+    QString errorMessage;
+    QVector<int> columnOrder = keyToColumnOrder(key, cols, errorMessage);
+    if (columnOrder.isEmpty()) {
+        return CipherResult(errorMessage, QVector<CipherStep>(), "Ошибка", name(), true);
+    }
+
+    // writeDirections
+    QVector<Direction> writeDirections;
+    if (params.contains("writeDirections")) {
+        QVariantList dirList = params.value("writeDirections").toList();
+        for (const QVariant& v : dirList) writeDirections.append(static_cast<Direction>(v.toInt()));
+    } else {
+        writeDirections = getDefaultWriteDirections(rows);
+    }
+
+    // readDirections
+    QVector<Direction> readDirections;
+    if (params.contains("readDirections")) {
+        QVariantList dirList = params.value("readDirections").toList();
+        for (const QVariant& v : dirList) readDirections.append(static_cast<Direction>(v.toInt()));
+    } else {
+        readDirections = QVector<Direction>(cols, TOP_TO_BOTTOM);
+    }
+
+    // rowOrder
+    QVector<int> rowOrder;
+    if (params.contains("rowOrder")) {
+        QVariantList orderList = params.value("rowOrder").toList();
+        for (const QVariant& v : orderList) rowOrder.append(v.toInt());
+    } else {
+        for (int i = 1; i <= rows; ++i) rowOrder.append(i);
+    }
+
+
+    if (encrypt) {
+        return encryptImpl(cleanText, rows, cols, writeDirections, columnOrder);
+    } else {
+        return decryptImpl(cleanText, rows, cols, writeDirections, readDirections, rowOrder, columnOrder);
+    }
 }
 
 CipherResult ColumnTranspositionCipher::encrypt(const QString& text, const QVariantMap& params)
 {
-    qDebug() << "\n=== ColumnTranspositionCipher::encrypt ===";
-
-    QString cleanText = CipherUtils::filterAlphabetOnly(text, RUSSIAN_ALPHABET);
-
-    // Получаем ключ из параметров
-    QString key = params.value("key", "").toString();
-    qDebug() << "Key from params:" << key;
-
-    // Получаем размеры из параметров
-    int rows = params.value("rows", 0).toInt();
-    int cols = params.value("cols", 0).toInt();
-
-    if (rows <= 0 || cols <= 0) {
-        getOptimalSize(cleanText.length(), rows, cols);
-        qDebug() << "Auto calculated size:" << rows << "x" << cols;
-    }
-
-    // Проверяем ключ
-    QString errorMessage;
-    QVector<int> columnOrder = keyToColumnOrder(key, cols, errorMessage);
-
-    if (columnOrder.isEmpty()) {
-        return CipherResult(errorMessage, QVector<CipherStep>(), "Ошибка", name(), true);
-    }
-
-    // ИСПРАВЛЕНО: берём writeDirections из параметров
-    QVector<Direction> writeDirections;
-    if (params.contains("writeDirections")) {
-        QVariantList dirList = params.value("writeDirections").toList();
-        for (const QVariant& v : dirList) {
-            writeDirections.append(static_cast<Direction>(v.toInt()));
-        }
-        qDebug() << "writeDirections from params:" << writeDirections.size();
-    } else {
-        writeDirections = getDefaultWriteDirections(rows);
-        qDebug() << "writeDirections from default:" << writeDirections.size();
-    }
-
-    // ИСПРАВЛЕНО: берём readDirections из параметров
-    QVector<Direction> readDirections;
-    if (params.contains("readDirections")) {
-        QVariantList dirList = params.value("readDirections").toList();
-        for (const QVariant& v : dirList) {
-            readDirections.append(static_cast<Direction>(v.toInt()));
-        }
-        qDebug() << "readDirections from params:" << readDirections.size();
-    } else {
-        readDirections = QVector<Direction>(cols, TOP_TO_BOTTOM);
-        qDebug() << "readDirections from default (all top-to-bottom):" << readDirections.size();
-    }
-
-    // ИСПРАВЛЕНО: берём rowOrder из параметров
-    QVector<int> rowOrder;
-    if (params.contains("rowOrder")) {
-        QVariantList orderList = params.value("rowOrder").toList();
-        for (const QVariant& v : orderList) {
-            rowOrder.append(v.toInt());
-        }
-        qDebug() << "rowOrder from params:" << rowOrder;
-    } else {
-        for (int i = 1; i <= rows; ++i) {
-            rowOrder.append(i);
-        }
-        qDebug() << "rowOrder from default:" << rowOrder;
-    }
-
-    qDebug() << "columnOrder from key:" << columnOrder;
-
-    return encryptImpl(cleanText, rows, cols, writeDirections, readDirections,
-                      rowOrder, columnOrder);
+    return process(text, params, true);
 }
 
 CipherResult ColumnTranspositionCipher::decrypt(const QString& text, const QVariantMap& params)
 {
-    qDebug() << "\n=== ColumnTranspositionCipher::decrypt ===";
-
-    QString cleanText = CipherUtils::filterAlphabetOnly(text, RUSSIAN_ALPHABET);
-
-    // Получаем ключ из параметров
-    QString key = params.value("key", "").toString();
-    qDebug() << "Key from params:" << key;
-
-    // Получаем размеры из параметров
-    int rows = params.value("rows", 0).toInt();
-    int cols = params.value("cols", 0).toInt();
-
-    if (rows <= 0 || cols <= 0) {
-        getOptimalSize(cleanText.length(), rows, cols);
-        qDebug() << "Auto calculated size:" << rows << "x" << cols;
-    }
-
-    // Проверяем ключ
-    QString errorMessage;
-    QVector<int> columnOrder = keyToColumnOrder(key, cols, errorMessage);
-
-    if (columnOrder.isEmpty()) {
-        return CipherResult(errorMessage, QVector<CipherStep>(), "Ошибка", name(), true);
-    }
-
-    // ИСПРАВЛЕНО: берём writeDirections из параметров
-    QVector<Direction> writeDirections;
-    if (params.contains("writeDirections")) {
-        QVariantList dirList = params.value("writeDirections").toList();
-        for (const QVariant& v : dirList) {
-            writeDirections.append(static_cast<Direction>(v.toInt()));
-        }
-        qDebug() << "writeDirections from params:" << writeDirections.size();
-    } else {
-        writeDirections = getDefaultWriteDirections(rows);
-        qDebug() << "writeDirections from default:" << writeDirections.size();
-    }
-
-    // ИСПРАВЛЕНО: берём readDirections из параметров
-    QVector<Direction> readDirections;
-    if (params.contains("readDirections")) {
-        QVariantList dirList = params.value("readDirections").toList();
-        for (const QVariant& v : dirList) {
-            readDirections.append(static_cast<Direction>(v.toInt()));
-        }
-        qDebug() << "readDirections from params:" << readDirections.size();
-    } else {
-        readDirections = QVector<Direction>(cols, TOP_TO_BOTTOM);
-        qDebug() << "readDirections from default:" << readDirections.size();
-    }
-
-    // ИСПРАВЛЕНО: берём rowOrder из параметров
-    QVector<int> rowOrder;
-    if (params.contains("rowOrder")) {
-        QVariantList orderList = params.value("rowOrder").toList();
-        for (const QVariant& v : orderList) {
-            rowOrder.append(v.toInt());
-        }
-        qDebug() << "rowOrder from params:" << rowOrder;
-    } else {
-        for (int i = 1; i <= rows; ++i) {
-            rowOrder.append(i);
-        }
-        qDebug() << "rowOrder from default:" << rowOrder;
-    }
-
-    qDebug() << "columnOrder from key:" << columnOrder;
-
-    return decryptImpl(cleanText, rows, cols, writeDirections, readDirections,
-                      rowOrder, columnOrder);
+    return process(text, params, false);
 }
 
 CipherResult ColumnTranspositionCipher::decryptImpl(const QString& text,
@@ -230,10 +141,6 @@ CipherResult ColumnTranspositionCipher::decryptImpl(const QString& text,
     int totalCells = rows * cols;
     int shortCols = totalCells - textLen;
 
-    qDebug() << "=== decryptImpl ===";
-    qDebug() << "rows:" << rows << "cols:" << cols;
-    qDebug() << "totalCells:" << totalCells << "textLen:" << textLen << "shortCols:" << shortCols;
-    qDebug() << "cleanText:" << cleanText;
 
     steps.append(CipherStep(1, QChar(), cleanText, QStringLiteral(u"Очищенный текст (шифртекст)")));
 
@@ -246,8 +153,6 @@ CipherResult ColumnTranspositionCipher::decryptImpl(const QString& text,
     QVector<int> normalizedRowOrder = normalizeOrder(rowOrder, rows, "строк");
     QVector<int> normalizedColumnOrder = normalizeOrder(columnOrder, cols, "столбцов");
 
-    qDebug() << "normalizedRowOrder:" << normalizedRowOrder;
-    qDebug() << "normalizedColumnOrder:" << normalizedColumnOrder;
 
     // Шаг 3: Создаем пустую таблицу
     std::vector<std::vector<QChar>> table(rows, std::vector<QChar>(cols, QChar()));
@@ -256,17 +161,23 @@ CipherResult ColumnTranspositionCipher::decryptImpl(const QString& text,
     int textIndex = 0;
     shortCols = totalCells - textLen;
 
-    qDebug() << "shortCols:" << shortCols;
 
-    // Определяем, какие столбцы короткие (имеют rows-1 символов)
-    // При шифровании последняя строка заполнялась справа налево (змейка)
-    // Значит, пустые ячейки находятся в начале строки (первые shortCols столбцов)
+    // Определяем направление последней заполненной строки
+    Direction lastRowDir = writeDirections[rows - 1];
+
+    // Определяем, какие столбцы короткие
     QVector<bool> isShort(cols, false);
-    for (int i = 0; i < shortCols; ++i) {
-        isShort[i] = true;
+    if (lastRowDir == LEFT_TO_RIGHT) {
+        // Пустые ячейки в конце строки → короткие столбцы справа
+        for (int i = cols - shortCols; i < cols; ++i) {
+            isShort[i] = true;
+        }
+    } else {
+        // Пустые ячейки в начале строки → короткие столбцы слева
+        for (int i = 0; i < shortCols; ++i) {
+            isShort[i] = true;
+        }
     }
-    qDebug() << "isShort (короткие столбцы):" << isShort;
-
     // Создаем список столбцов с их высотой
     QVector<int> columnHeights(cols, rows);
     for (int colIdx = 0; colIdx < cols; ++colIdx) {
@@ -288,7 +199,6 @@ CipherResult ColumnTranspositionCipher::decryptImpl(const QString& text,
         int colIdx = item.second;
         int colHeight = columnHeights[colIdx];
 
-        qDebug() << "Столбец" << colIdx << "(порядок" << readOrder << ") высота:" << colHeight;
 
         for (int i = 0; i < colHeight && textIndex < textLen; ++i) {
             table[i][colIdx] = cleanText[textIndex];
@@ -308,7 +218,6 @@ CipherResult ColumnTranspositionCipher::decryptImpl(const QString& text,
         }
         if (i < rows - 1) tableDisplay += "\n";
     }
-    qDebug() << "\nЗаполненная таблица:\n" << tableDisplay;
 
     steps.append(CipherStep(steps.size() + 1, QChar(),
         tableToString(table), QStringLiteral(u"Таблица, заполненная по столбцам")));
@@ -321,21 +230,13 @@ CipherResult ColumnTranspositionCipher::decryptImpl(const QString& text,
     for (int i = 0; i < rows; ++i) {
         rowIndexByOrder[normalizedRowOrder[i] - 1] = i;
     }
-    qDebug() << "rowIndexByOrder:" << rowIndexByOrder;
 
     for (int orderNum = 1; orderNum <= rows; ++orderNum) {
         int rowIdx = rowIndexByOrder[orderNum - 1];
 
         // Определяем направление чтения (используем writeDirections)
-        Direction direction = LEFT_TO_RIGHT;
-        if (rowIdx < writeDirections.size()) {
-            direction = writeDirections[rowIdx];
-        } else if (!writeDirections.isEmpty()) {
-            direction = writeDirections.last();
-        }
+        Direction direction = writeDirections[rowIdx];
 
-        qDebug() << "\nЧтение строки" << rowIdx << "(порядок записи" << orderNum
-                 << ") направление:" << (direction == LEFT_TO_RIGHT ? "→" : "←");
 
         QString rowChars;
 
@@ -344,7 +245,6 @@ CipherResult ColumnTranspositionCipher::decryptImpl(const QString& text,
                 if (!table[rowIdx][j].isNull()) {
                     decrypted += table[rowIdx][j];
                     rowChars += table[rowIdx][j];
-                    qDebug() << "  read [" << rowIdx << "][" << j << "] =" << table[rowIdx][j];
                 }
             }
         } else {
@@ -352,29 +252,23 @@ CipherResult ColumnTranspositionCipher::decryptImpl(const QString& text,
                 if (!table[rowIdx][j].isNull()) {
                     decrypted += table[rowIdx][j];
                     rowChars += table[rowIdx][j];
-                    qDebug() << "  read [" << rowIdx << "][" << j << "] =" << table[rowIdx][j];
                 }
             }
         }
 
-        qDebug() << "  результат:" << rowChars;
 
-        if (!rowChars.isEmpty()) {
-            steps.append(CipherStep(
-                steps.size() + 1,
-                QChar(),
-                rowChars,
-                QString("Чтение строки %1 (порядок %2): %3")
-                    .arg(rowIdx + 1)
-                    .arg(orderNum)
-                    .arg(direction == LEFT_TO_RIGHT ? "слева направо" : "справа налево")
-            ));
-        }
+        steps.append(CipherStep(
+            steps.size() + 1,
+            QChar(),
+            rowChars,
+            QString("Чтение строки %1 (порядок %2): %3")
+                .arg(rowIdx + 1)
+                .arg(orderNum)
+                .arg(direction == LEFT_TO_RIGHT ? "слева направо" : "справа налево")
+        ));
     }
 
     // Шаг 7: Итоговый результат
-    qDebug() << "\n=== ИТОГОВЫЙ РАСШИФРОВАННЫЙ ТЕКСТ ===";
-    qDebug() << decrypted;
 
     steps.append(CipherStep(steps.size() + 1, QChar(),
         decrypted, QStringLiteral(u"Итоговый расшифрованный текст")));
@@ -390,6 +284,54 @@ CipherResult ColumnTranspositionCipher::decryptImpl(const QString& text,
                         + QStringLiteral(u"Ключ определяет порядок столбцов\n");
 
     return CipherResult(decrypted, steps, description, name() + " (расшифрование)", false);
+}
+
+CipherResult ColumnTranspositionCipher::encryptImpl(const QString& text,
+                                                    int rows, int cols,
+                                                    const QVector<Direction>& writeDirections,
+                                                    const QVector<int>& columnOrder)
+{
+    QVector<CipherStep> steps;
+
+    // Шаг 1: Очистка текста
+    QString cleanText = CipherUtils::filterAlphabetOnly(text, RUSSIAN_ALPHABET);
+    steps.append(CipherStep(1, QChar(), cleanText, "Очищенный текст"));
+
+    // Шаг 2: Информация о таблице
+    steps.append(CipherStep(2, QChar(),
+        QString("%1×%2").arg(rows).arg(cols),
+        "Размер таблицы (столбцы = длина ключа)"));
+
+    // Шаг 3: Порядок строк по умолчанию (1..rows)
+    QVector<int> rowOrder;
+    for (int i = 1; i <= rows; ++i) rowOrder.append(i);
+
+    // Шаг 4: Заполнение таблицы
+    QVector<CipherStep> fillSteps;
+    auto table = fillTable(cleanText, writeDirections, rowOrder, cols, fillSteps);
+    for (const auto& step : fillSteps) steps.append(step);
+
+    // Шаг 5: Отображение таблицы
+    steps.append(CipherStep(steps.size() + 1, QChar(),
+        tableToString(table), "Заполненная таблица"));
+
+    // Шаг 6: Чтение по столбцам в порядке ключа
+    QVector<CipherStep> readSteps;
+    QVector<Direction> readDirections(cols, TOP_TO_BOTTOM);
+    QString encrypted = readTable(table, readDirections, columnOrder, readSteps);
+    for (const auto& step : readSteps) steps.append(step);
+
+    // Шаг 7: Результат
+    steps.append(CipherStep(steps.size() + 1, QChar(),
+        encrypted, "Итоговый шифртекст"));
+
+    // Перенумеровка
+    for (int i = 0; i < steps.size(); ++i) steps[i].index = i + 1;
+
+    return CipherResult(encrypted, steps,
+        QString("Вертикальная перестановка\nРазмер таблицы: %1×%2\nКлюч: %3 столбцов")
+            .arg(rows).arg(cols).arg(cols),
+        name(), false);
 }
 
 // ==================== РЕГИСТРАЦИЯ В ФАБРИКЕ ====================
@@ -446,12 +388,8 @@ public:
 
                 layout->addWidget(advancedWidget);
                 widgets["routeAdvancedWidget"] = advancedWidget;
-
-                qDebug() << "ColumnTranspositionCipher: расширенный виджет создан";
             }
         );
-
-        qDebug() << "ColumnTranspositionCipher зарегистрирован";
     }
 };
 

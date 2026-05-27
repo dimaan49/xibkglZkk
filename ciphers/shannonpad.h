@@ -24,7 +24,7 @@ public:
     static const int ALPHABET_SIZE = 32; // Размер русского алфавита (А-Я без Ё)
 
 private:
-    CipherResult process(const QString& text, const QVariantMap& params, bool encrypt);
+    CipherResult process(const QString& text, const QVariantMap& params);
     bool validateParameters(int t0, int a, int c, QString& errorMessage);
     QVector<int> generateGamma(int length, int t0, int a, int c);
     QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;

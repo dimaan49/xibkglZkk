@@ -43,12 +43,12 @@ ShannonPadCipher::ShannonPadCipher()
 
 CipherResult ShannonPadCipher::encrypt(const QString& text, const QVariantMap& params)
 {
-    return process(text, params, true);
+    return process(text, params);
 }
 
 CipherResult ShannonPadCipher::decrypt(const QString& text, const QVariantMap& params)
 {
-    return process(text, params, false);
+    return process(text, params);
 }
 
 bool ShannonPadCipher::validateParameters(int t0, int a, int c, QString& errorMessage)
@@ -70,21 +70,6 @@ bool ShannonPadCipher::validateParameters(int t0, int a, int c, QString& errorMe
         return false;
     }
 
-    // Проверка НОД через алгоритм Евклида
-    int gcd = [](int a, int b) {
-        while (b != 0) {
-            int temp = b;
-            b = a % b;
-            a = temp;
-        }
-        return a;
-    }(c, m);
-
-    if (gcd != 1) {
-        errorMessage = QString("Параметр 'c' должен быть взаимно прост с модулем 32 (НОД(%1, 32) = %2, требуется 1)")
-                          .arg(c).arg(gcd);
-        return false;
-    }
 
     // Проверка 3: b = a – 1 кратно p для каждого простого p, делителя m
     // Делители m=32: простые числа - только 2
@@ -119,21 +104,17 @@ QVector<int> ShannonPadCipher::generateGamma(int length, int t0, int a, int c)
     if (length <= 0) return gamma;
 
     const int m = ALPHABET_SIZE;
-    int current = t0 % m; // Нормализуем T0 к диапазону 0-31
-    if (current < 0) current += m;
+    int current = t0;
 
     for (int i = 0; i < length; ++i) {
-        gamma.append(current);
-        // T(i+1) = (a * T(i) + c) mod m
         current = (a * current + c) % m;
-        // Обработка отрицательных значений (на всякий случай)
-        if (current < 0) current += m;
+        gamma.append(current);
     }
 
     return gamma;
 }
 
-CipherResult ShannonPadCipher::process(const QString& text, const QVariantMap& params, bool encrypt)
+CipherResult ShannonPadCipher::process(const QString& text, const QVariantMap& params)
 {
     CipherResult result;
     result.cipherName = name();
@@ -173,15 +154,8 @@ CipherResult ShannonPadCipher::process(const QString& text, const QVariantMap& p
         int newPos;
         QString operation;
 
-        if (encrypt) {
-            // Шифрование: ci = (mi + ki) mod n
-            newPos = (textPos + gammaValue) % n;
-            operation = "+";
-        } else {
-            // расшифрование: mi = (ci - ki + n) mod n
-            newPos = (textPos - gammaValue + n) % n;
-            operation = "-";
-        }
+        newPos = (textPos ^ gammaValue);
+        operation = "^";
 
         QChar newChar = m_alphabet[newPos];
         transformed.append(newChar);

@@ -31,6 +31,11 @@ protected:
                             const QVector<Direction>& readDirections,
                             const QVector<int>& rowOrder,
                             const QVector<int>& columnOrder);
+    CipherResult encryptImpl(const QString& text,
+                            int rows, int cols,
+                            const QVector<Direction>& writeDirections,
+                            const QVector<int>& columnOrder);
+    CipherResult process(const QString& text, const QVariantMap& params, bool encrypt);
 
 
 private:

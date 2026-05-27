@@ -344,15 +344,7 @@ std::vector<std::vector<QChar>> RouteCipher::fillTable(const QString& text,
     for (int orderNum = 1; orderNum <= rows && textIndex < text.length(); ++orderNum) {
         int rowIdx = rowIndexByOrder[orderNum - 1];
 
-        // Определяем направление для текущей строки
-        Direction direction;
-        if (rowIdx < writeDirections.size()) {
-            direction = writeDirections[rowIdx];
-        } else if (!writeDirections.isEmpty()) {
-            direction = writeDirections.last();
-        } else {
-            direction = LEFT_TO_RIGHT;
-        }
+        Direction direction = writeDirections[rowIdx];
 
         QString rowChars;
 
@@ -407,15 +399,7 @@ QString RouteCipher::readTable(const std::vector<std::vector<QChar>>& table,
         int colIdx = colIndexByOrder[orderNum - 1];
 
         // Определяем направление для текущего столбца
-        Direction direction;
-        if (colIdx < readDirections.size()) {
-            direction = readDirections[colIdx];
-        } else if (!readDirections.isEmpty()) {
-            direction = readDirections.last();
-        } else {
-            direction = TOP_TO_BOTTOM;
-        }
-
+        Direction direction = readDirections[colIdx];
         QString columnChars;
 
         // Читаем столбец
@@ -486,7 +470,6 @@ RouteCipherRegister::RouteCipherRegister()
             RouteCipherAdvancedWidget* advancedWidget = new RouteCipherAdvancedWidget(parent);
             layout->addWidget(advancedWidget);
             widgets["routeAdvancedWidget"] = advancedWidget;
-            qDebug() << "RouteCipherAdvancedWidget created and registered";
         }
     );
 }

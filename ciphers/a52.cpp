@@ -281,7 +281,7 @@ void A52Cipher::initializeRegisters(const std::bitset<64>& key, uint32_t frameNu
     m_r4 &= (1 << R4_LEN) - 1;
 
     // Этап 4: 99 тактов холостого прогона
-    for (int i = 0; i < 99; ++i) {
+    for (int i = 0; i < 100; ++i) {
         bool clock1 = getBit(m_r4, R4_CLOCK_BIT3);  // R4(10) для R1
         bool clock2 = getBit(m_r4, R4_CLOCK_BIT1);  // R4(3) для R2
         bool clock3 = getBit(m_r4, R4_CLOCK_BIT2);  // R4(7) для R3
@@ -380,60 +380,113 @@ QString A52Cipher::bitsToText(const std::bitset<1024>& bits, int totalBits) cons
 
 CipherResult A52Cipher::processText(const QString& text, const std::bitset<64>& key, bool encrypt)
 {
+    Q_UNUSED(encrypt);
+
     CipherResult result;
     result.cipherName = name();
-    result.alphabet = m_alphabet;
+    result.alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
     result.isNumeric = false;
 
     QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), "Начало работы A5/2", "Инициализация"));
 
+    // Шаг 1: Фильтрация текста
     QString filteredText = CipherUtils::filterAlphabetOnly(text, m_alphabet);
-
     if (filteredText.isEmpty()) {
         result.result = "Нет букв для преобразования";
         return result;
     }
 
     steps.append(CipherStep(1, QChar(),
-        QString("Входной текст: %1").arg(filteredText.left(50)),
-        "Подготовка данных"));
+        QString("Входной текст (%1 букв): %2")
+            .arg(filteredText.length())
+            .arg(filteredText.left(50)),
+        "Подготовка текста"));
 
-    int totalBits;
-    std::bitset<1024> textBits = textToBits(filteredText, totalBits);
+    // Шаг 2: Преобразование текста в биты
+    QVector<bool> allTextBits;
+    for (int i = 0; i < filteredText.length(); ++i) {
+        int pos = m_alphabet.indexOf(filteredText[i]);
+        if (pos >= 0 && pos < 32) {
+            for (int b = 4; b >= 0; --b) {
+                allTextBits.append((pos >> b) & 1);
+            }
+        }
+    }
 
+    QString allBitsStr;
+    for (int i = 0; i < qMin(50, allTextBits.size()); ++i) {
+        allBitsStr.append(allTextBits[i] ? '1' : '0');
+    }
     steps.append(CipherStep(2, QChar(),
-        QString("Всего бит: %1").arg(totalBits),
-        "Преобразование текста"));
+        QString("Текст в битах (%1 бит): %2...")
+            .arg(allTextBits.size())
+            .arg(allBitsStr),
+        "Оцифровка текста (5 бит/буква)"));
 
-    initializeRegisters(key, 0);
+    // Шаг 3: Разбиение на кадры по 114 бит
+    const int FRAME_SIZE = 114;
+    int totalFrames = (allTextBits.size() + FRAME_SIZE - 1) / FRAME_SIZE;
 
-    steps.append(CipherStep(3, QChar(), "Инициализация регистров (кадр 0)", "Инициализация"));
+    steps.append(CipherStep(3, QChar(),
+        QString("Разбиение на кадры: %1 бит / %2 бит = %3 кадров")
+            .arg(allTextBits.size()).arg(FRAME_SIZE).arg(totalFrames),
+        "Покадровое разбиение"));
 
-    std::bitset<1024> gamma = generateGamma(totalBits);
+    // Шаг 4: Обработка каждого кадра
+    QVector<bool> allResultBits;
 
-    QString gammaPreview;
-    for (int i = 0; i < qMin(20, totalBits); ++i) {
-        gammaPreview.append(gamma[totalBits - 1 - i] ? '1' : '0');
+    for (int frameNum = 0; frameNum < totalFrames; ++frameNum) {
+        int frameStart = frameNum * FRAME_SIZE;
+        int frameBits = qMin(FRAME_SIZE, allTextBits.size() - frameStart);
+
+        // Инициализация регистров для этого кадра
+        initializeRegisters(key, static_cast<uint32_t>(frameNum));
+
+        // Генерация гаммы
+        QVector<bool> gamma;
+        QString gammaStr;
+        for (int i = 0; i < frameBits; ++i) {
+            bool bit = generateKeystreamBit();
+            gamma.append(bit);
+            gammaStr.append(bit ? '1' : '0');
+        }
+
+        // XOR с гаммой
+        QString resultStr;
+        for (int i = 0; i < frameBits; ++i) {
+            bool resultBit = allTextBits[frameStart + i] ^ gamma[i];
+            allResultBits.append(resultBit);
+            resultStr.append(resultBit ? '1' : '0');
+        }
+
+        steps.append(CipherStep(4 + frameNum, QChar(),
+            QString("Кадр %1 (%2 бит)\nГамма: %3\nРезультат: %4")
+                .arg(frameNum + 1)
+                .arg(frameBits)
+                .arg(gammaStr.left(30) + (gammaStr.length() > 30 ? "..." : ""))
+                .arg(resultStr.left(30) + (resultStr.length() > 30 ? "..." : "")),
+            QString("Обработка кадра %1/%2").arg(frameNum + 1).arg(totalFrames)));
     }
-    steps.append(CipherStep(4, QChar(),
-        QString("Гамма (первые %1 бит): %2...").arg(qMin(20, totalBits)).arg(gammaPreview),
-        "Генерация гаммы"));
 
-    std::bitset<1024> resultBits;
-    for (int i = 0; i < totalBits; ++i) {
-        resultBits[i] = textBits[i] ^ gamma[i];
+    // Шаг 5: Преобразование битов обратно в текст
+    QString resultText;
+    int numLetters = allResultBits.size() / 5;
+    for (int i = 0; i < numLetters; ++i) {
+        int pos = 0;
+        for (int b = 0; b < 5; ++b) {
+            if (allResultBits[i * 5 + b]) {
+                pos |= (1 << (4 - b));
+            }
+        }
+        resultText.append(pos < m_alphabet.length() ? m_alphabet[pos] : '?');
     }
 
-    QString resultText = bitsToText(resultBits, totalBits);
-
-    steps.append(CipherStep(5, QChar(),
-        QString("Результат: %1").arg(resultText),
+    steps.append(CipherStep(5 + totalFrames, QChar(),
+        QString("Итоговый текст: %1").arg(resultText),
         "Завершение"));
 
     result.result = resultText;
     result.steps = steps;
-
     return result;
 }
 

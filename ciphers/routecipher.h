@@ -21,16 +21,7 @@ public:
 
 private:
 
-    std::vector<std::vector<QChar>> fillTable(const QString& text,
-                                             const QVector<Direction>& writeDirections,
-                                             const QVector<int>& rowOrder,
-                                             int cols,
-                                             QVector<CipherStep>& steps) const;
 
-    QString readTable(const std::vector<std::vector<QChar>>& table,
-                     const QVector<Direction>& readDirections,
-                     const QVector<int>& columnOrder,
-                     QVector<CipherStep>& steps) const;
     void calculateOptimalSize(int textLength, int& optimalRows, int& optimalCols) const;
 
 
@@ -43,6 +34,21 @@ protected:
                             const QVector<Direction>& readDirections,
                             const QVector<int>& rowOrder,
                             const QVector<int>& columnOrder);
+    CipherResult decryptImpl(const QString& text,
+                            int rows, int cols,
+                            const QVector<Direction>& writeDirections,
+                            const QVector<Direction>& readDirections,
+                            const QVector<int>& rowOrder,
+                            const QVector<int>& columnOrder);
+    std::vector<std::vector<QChar>> fillTable(const QString& text,
+                                             const QVector<Direction>& writeDirections,
+                                             const QVector<int>& rowOrder,
+                                             int cols,
+                                             QVector<CipherStep>& steps) const;
+    QString readTable(const std::vector<std::vector<QChar>>& table,
+                     const QVector<Direction>& readDirections,
+                     const QVector<int>& columnOrder,
+                     QVector<CipherStep>& steps) const;
     // Фиксированные настройки по умолчанию
     QVector<Direction> getDefaultWriteDirections(int rows) const;
     QVector<Direction> getDefaultReadDirections(int cols) const;
