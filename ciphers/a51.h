@@ -83,7 +83,7 @@ private:
     std::bitset<64> generateGamma(int length);
 
     // Шифрование/расшифрование текста
-    CipherResult processText(const QString& text, const std::bitset<64>& key, bool encrypt);
+    CipherResult processText(const QString& text, const QVariantMap& params);
 
     // Преобразование текста в биты (русский алфавит -> 5 бит)
     std::bitset<64> textToBits(const QString& text) const;

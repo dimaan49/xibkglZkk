@@ -23,6 +23,7 @@ public:
     CipherResult encrypt(const QString& text, const QVariantMap& params) override;
     CipherResult decrypt(const QString& text, const QVariantMap& params) override;
 
+
     // Статические методы для генерации ключей
     static uint64_t generateEStatic(uint64_t phi);
 
@@ -32,6 +33,7 @@ private:
 
     // Проверка параметров RSA
     bool validateParameters(uint64_t p, uint64_t q, uint64_t e, QString& errorMessage) const;
+    CipherResult process(const QString& text, const QVariantMap& params, bool encrypt);
 
     // Основные операции RSA
     uint64_t encryptNumber(uint64_t m, uint64_t e, uint64_t n) const;

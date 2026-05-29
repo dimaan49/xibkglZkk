@@ -203,21 +203,18 @@ void A51Cipher::initializeRegisters(const std::bitset<64>& key, uint32_t frameNu
 
     // Этап 1: 64 такта, XOR с битами ключа
     for (int i = 0; i < 64; ++i) {
-        // Безопасное получение бита ключа
-        bool keyBit = false;
-        int keyIndex = 63 - i;
-        if (keyIndex >= 0 && keyIndex < 64) {
-            keyBit = key[keyIndex];
-        }
+        bool keyBit = key[63 - i];
 
         // Сдвигаем регистры и XOR-им бит ключа с младшим битом
-        uint32_t new_r1 = (m_r1 >> 1);
-        uint32_t new_r2 = (m_r2 >> 1);
-        uint32_t new_r3 = (m_r3 >> 1);
 
         uint32_t lsb1 = m_r1 & 1;
         uint32_t lsb2 = m_r2 & 1;
         uint32_t lsb3 = m_r3 & 1;
+
+        uint32_t new_r1 = (m_r1 >> 1);
+        uint32_t new_r2 = (m_r2 >> 1);
+        uint32_t new_r3 = (m_r3 >> 1);
+
 
         new_r1 |= ((keyBit ^ lsb1) << (R1_LEN - 1));
         new_r2 |= ((keyBit ^ lsb2) << (R2_LEN - 1));
@@ -232,13 +229,13 @@ void A51Cipher::initializeRegisters(const std::bitset<64>& key, uint32_t frameNu
     for (int i = 0; i < 22; ++i) {
         bool frameBit = (frameNumber >> i) & 1;
 
-        uint32_t new_r1 = (m_r1 >> 1);
-        uint32_t new_r2 = (m_r2 >> 1);
-        uint32_t new_r3 = (m_r3 >> 1);
-
         uint32_t lsb1 = m_r1 & 1;
         uint32_t lsb2 = m_r2 & 1;
         uint32_t lsb3 = m_r3 & 1;
+
+        uint32_t new_r1 = (m_r1 >> 1);
+        uint32_t new_r2 = (m_r2 >> 1);
+        uint32_t new_r3 = (m_r3 >> 1);
 
         new_r1 |= ((frameBit ^ lsb1) << (R1_LEN - 1));
         new_r2 |= ((frameBit ^ lsb2) << (R2_LEN - 1));
@@ -251,77 +248,39 @@ void A51Cipher::initializeRegisters(const std::bitset<64>& key, uint32_t frameNu
 
     // Этап 3: 100 тактов холостого прогона
     for (int i = 0; i < 100; ++i) {
-        bool clock1 = (m_r1 >> R1_CLOCK_BIT) & 1;
-        bool clock2 = (m_r2 >> R2_CLOCK_BIT) & 1;
-        bool clock3 = (m_r3 >> R3_CLOCK_BIT) & 1;
+        bool clock1 = getClockBit(m_r1, R1_CLOCK_BIT);
+        bool clock2 = getClockBit(m_r2, R2_CLOCK_BIT);
+        bool clock3 = getClockBit(m_r3, R3_CLOCK_BIT);
 
         bool maj = (clock1 && clock2) || (clock1 && clock3) || (clock2 && clock3);
 
-        if (clock1 == maj) {
-            uint32_t fb = feedbackR1();
-            m_r1 = (m_r1 >> 1) | (fb << (R1_LEN - 1));
-            m_r1 &= (1 << R1_LEN) - 1;
-        }
-        if (clock2 == maj) {
-            uint32_t fb = feedbackR2();
-            m_r2 = (m_r2 >> 1) | (fb << (R2_LEN - 1));
-            m_r2 &= (1 << R2_LEN) - 1;
-        }
-        if (clock3 == maj) {
-            uint32_t fb = feedbackR3();
-            m_r3 = (m_r3 >> 1) | (fb << (R3_LEN - 1));
-            m_r3 &= (1 << R3_LEN) - 1;
-        }
+        if (clock1 == maj) shiftR1();
+        if (clock2 == maj) shiftR2();
+        if (clock3 == maj) shiftR3();
     }
 }
 
 bool A51Cipher::generateKeystreamBit()
 {
+    // Выходные биты ДО сдвига (младшие биты регистров)
+    bool out1 = m_r1 & 1;
+    bool out2 = m_r2 & 1;
+    bool out3 = m_r3 & 1;
+
     // Получаем биты синхронизации
-    bool clock1 = (m_r1 >> R1_CLOCK_BIT) & 1;
-    bool clock2 = (m_r2 >> R2_CLOCK_BIT) & 1;
-    bool clock3 = (m_r3 >> R3_CLOCK_BIT) & 1;
+    bool clock1 = getClockBit(m_r1, R1_CLOCK_BIT);
+    bool clock2 = getClockBit(m_r2, R2_CLOCK_BIT);
+    bool clock3 = getClockBit(m_r3, R3_CLOCK_BIT);
 
     // Вычисляем мажоритарный бит
     bool maj = (clock1 && clock2) || (clock1 && clock3) || (clock2 && clock3);
 
     // Сдвигаем регистры
-    if (clock1 == maj) {
-        uint32_t fb = feedbackR1();
-        m_r1 = (m_r1 >> 1) | (fb << (R1_LEN - 1));
-        m_r1 &= (1 << R1_LEN) - 1;
-    }
-    if (clock2 == maj) {
-        uint32_t fb = feedbackR2();
-        m_r2 = (m_r2 >> 1) | (fb << (R2_LEN - 1));
-        m_r2 &= (1 << R2_LEN) - 1;
-    }
-    if (clock3 == maj) {
-        uint32_t fb = feedbackR3();
-        m_r3 = (m_r3 >> 1) | (fb << (R3_LEN - 1));
-        m_r3 &= (1 << R3_LEN) - 1;
-    }
-
-    // Выходной бит
-    bool out1 = (m_r1 >> (R1_LEN - 1)) & 1;
-    bool out2 = (m_r2 >> (R2_LEN - 1)) & 1;
-    bool out3 = (m_r3 >> (R3_LEN - 1)) & 1;
+    if (clock1 == maj) shiftR1();
+    if (clock2 == maj) shiftR2();
+    if (clock3 == maj) shiftR3();
 
     return out1 ^ out2 ^ out3;
-}
-
-std::bitset<64> A51Cipher::generateGamma(int numBits)
-{
-    std::bitset<64> gamma;
-    int maxBits = qMin(numBits, 64);
-
-    for (int i = 0; i < maxBits; ++i) {
-        bool bit = generateKeystreamBit();
-        if (bit) {
-            gamma.set(63 - i);
-        }
-    }
-    return gamma;
 }
 
 
@@ -370,9 +329,25 @@ QString A51Cipher::bitsToText(const std::bitset<64>& bits) const
     return result;
 }
 
-CipherResult A51Cipher::processText(const QString& text, const std::bitset<64>& key, bool encrypt)
+CipherResult A51Cipher::processText(const QString& text, const QVariantMap& params)
 {
-    Q_UNUSED(encrypt);
+    // Получаем ключ
+    QString keyType = params.value("keyType", "binary").toString();
+    std::bitset<64> key;
+
+    if (keyType == "binary") {
+        QString binaryKey = params.value("binaryKey", "").toString();
+        binaryKey.remove(' ');
+        int keyLen = qMin(binaryKey.length(), 64);
+        for (int i = 0; i < keyLen; ++i) {
+            if (binaryKey[i] == '1') {
+                key.set(63 - i);
+            }
+        }
+    } else {
+        QString textKey = params.value("textKey", "").toString();
+        key = textToBits(textKey);
+    }
 
     CipherResult result;
     result.cipherName = name();
@@ -398,10 +373,8 @@ CipherResult A51Cipher::processText(const QString& text, const std::bitset<64>& 
     QVector<bool> allTextBits;
     for (int i = 0; i < filteredText.length(); ++i) {
         int pos = m_alphabet.indexOf(filteredText[i]);
-        if (pos >= 0 && pos < 32) {
-            for (int b = 4; b >= 0; --b) {  // старший бит первый
-                allTextBits.append((pos >> b) & 1);
-            }
+        for (int b = 4; b >= 0; --b) {  // старший бит первый
+            allTextBits.append((pos >> b) & 1);
         }
     }
 
@@ -485,30 +458,12 @@ CipherResult A51Cipher::processText(const QString& text, const std::bitset<64>& 
 
 CipherResult A51Cipher::encrypt(const QString& text, const QVariantMap& params)
 {
-    QString keyType = params.value("keyType", "binary").toString();
-    std::bitset<64> key;
-
-    if (keyType == "binary") {
-        QString binaryKey = params.value("binaryKey", "").toString();
-        // Исправляем: удаляем пробелы безопасно
-        binaryKey.remove(QChar(' '));
-        int keyLen = qMin(binaryKey.length(), 64);
-        for (int i = 0; i < keyLen; ++i) {
-            if (binaryKey[i] == '1') {
-                key.set(63 - i);
-            }
-        }
-    } else {
-        QString textKey = params.value("textKey", "").toString();
-        key = textToBits(textKey);
-    }
-
-    return processText(text, key, true);
+    return processText(text, params);
 }
 
 CipherResult A51Cipher::decrypt(const QString& text, const QVariantMap& params)
 {
-    return encrypt(text, params);
+   return processText(text, params);
 }
 
 

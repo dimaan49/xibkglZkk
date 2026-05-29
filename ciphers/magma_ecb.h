@@ -38,6 +38,7 @@ private:
 
     // Шифрование одного 64-битного блока
     uint64_t encryptBlock(uint64_t block, const std::array<uint32_t, 32>& roundKeys) const;
+    CipherResult process(const QString& text, const QVariantMap& params, bool encrypt);
 
     // Развертывание ключа (key schedule) по ГОСТ Р 34.12-2015
     std::array<uint32_t, 32> keySchedule(const QString& keyHex) const;

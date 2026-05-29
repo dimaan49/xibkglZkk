@@ -8,6 +8,7 @@
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include <QDebug>
+#include <QCheckBox>
 
 // ==================== S-блоки ГОСТ Р 34.12-2015 ====================
 const std::array<uint8_t, 16> MagmaECBCipher::PI0 = {12, 4, 6, 2, 10, 5, 11, 9, 14, 8, 13, 7, 0, 3, 15, 1};
@@ -132,7 +133,7 @@ uint64_t MagmaECBCipher::encryptBlock(uint64_t block, const std::array<uint32_t,
 // ==================== Шифрование (режим простой замены) ====================
 // ГОСТ Р 34.13-2015, раздел 5.1.1, формула (1)
 
-CipherResult MagmaECBCipher::encrypt(const QString& text, const QVariantMap& params)
+CipherResult MagmaECBCipher::process(const QString& text, const QVariantMap& params, bool encrypt)
 {
     CipherResult result;
     result.cipherName = name();
@@ -140,9 +141,12 @@ CipherResult MagmaECBCipher::encrypt(const QString& text, const QVariantMap& par
     result.isNumeric = true;
 
     QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), "Начало шифрования Магма (режим простой замены)", "Инициализация"));
+    steps.append(CipherStep(0, QChar(),
+        QString("Начало %1 Магма (режим простой замены)")
+            .arg(encrypt ? "шифрования" : "расшифрования"),
+        "Инициализация"));
 
-    // Получаем ключ
+    // Ключ
     QString keyHex = params.value("key", "").toString();
     QString cleanedKey = CoreHex::normalizeHex(keyHex);
 
@@ -153,36 +157,60 @@ CipherResult MagmaECBCipher::encrypt(const QString& text, const QVariantMap& par
     }
 
     steps.append(CipherStep(1, QChar(),
-        QString("Ключ: %1").arg(cleanedKey),
-        "Параметры"));
+        QString("Ключ: %1").arg(cleanedKey), "Параметры"));
 
-    // Разворачиваем ключ
+    // Развертывание ключа
     std::array<uint32_t, 32> roundKeys = keySchedule(cleanedKey);
 
+    // Для расшифрования — обратный порядок
+    std::array<uint32_t, 32> effectiveKeys;
+    if (encrypt) {
+        effectiveKeys = roundKeys;
+    } else {
+        for (int i = 0; i < 32; ++i) effectiveKeys[i] = roundKeys[31 - i];
+    }
+
     steps.append(CipherStep(2, QChar(),
-        "Развернуто 32 итерационных ключа",
+        QString("Развернуто 32 итерационных ключа (%1)")
+            .arg(encrypt ? "прямой порядок" : "обратный порядок"),
         "Развертывание ключа"));
 
-    // Подготавливаем входные данные
+    // Входные данные
     QString hexData = CoreHex::normalizeHex(text);
     if (hexData.isEmpty()) {
-        result.result = "ОШИБКА: Нет данных для шифрования (введите HEX-строку)";
+        result.result = "ОШИБКА: Нет данных";
         return result;
     }
 
-    // Длина данных должна быть кратна 16 HEX символам (64 бита)
-    if (hexData.length() % 16 != 0) {
-        result.result = QString("ОШИБКА: Длина данных (%1 HEX символов) должна быть кратна 16 (64 бита)")
-                        .arg(hexData.length());
-        return result;
+    bool usePadding = params.value("usePadding", true).toBool();
+
+    if (encrypt) {
+        if (usePadding) {
+            QByteArray bytes = CoreHex::hexToBytes(hexData);
+            QByteArray padded = CoreHex::pkcs7Pad(bytes, 8);
+            hexData = CoreHex::bytesToHex(padded);
+
+            if (padded.size() != bytes.size()) {
+                steps.append(CipherStep(3, QChar(),
+                    QString("Паддинг PKCS#7: %1 → %2 (добавлено %3 байт)")
+                        .arg(CoreHex::bytesToHex(bytes)).arg(hexData).arg(padded.size() - bytes.size()),
+                    "Дополнение"));
+            }
+        } else {
+            if (hexData.length() % 16 != 0) {
+                result.result = QString("ОШИБКА: Длина данных (%1 HEX символов) должна быть кратна 16")
+                                .arg(hexData.length());
+                return result;
+            }
+        }
     }
 
-    steps.append(CipherStep(3, QChar(),
-        QString("Входные данные (HEX): %1").arg(hexData.left(64) + (hexData.length() > 64 ? "..." : "")),
+    steps.append(CipherStep(encrypt ? 4 : 3, QChar(),
+        QString("Входные данные: %1").arg(hexData.left(64) + (hexData.length() > 64 ? "..." : "")),
         "Данные"));
 
-    // Шифрование блоков
-    QString encryptedHex;
+    // Обработка блоков
+    QString outputHex;
     int blockCounter = 0;
 
     for (int i = 0; i < hexData.length(); i += 16) {
@@ -192,141 +220,54 @@ CipherResult MagmaECBCipher::encrypt(const QString& text, const QVariantMap& par
         std::array<uint8_t, 8> block{};
         CoreHex::hexToBytes(blockHex, block.data(), 8);
 
-        // Преобразуем 8 байт в 64-битное число (big-endian)
         uint64_t blockNum = 0;
-        for (int j = 0; j < 8; ++j) {
-            blockNum = (blockNum << 8) | block[j];
-        }
+        for (int j = 0; j < 8; ++j) blockNum = (blockNum << 8) | block[j];
 
-        // Шифруем блок
-        uint64_t encryptedNum = encryptBlock(blockNum, roundKeys);
+        uint64_t resultNum = encryptBlock(blockNum, effectiveKeys);
 
-        // Преобразуем обратно в байты (big-endian)
-        std::array<uint8_t, 8> encryptedBlock{};
-        for (int j = 0; j < 8; ++j) {
-            encryptedBlock[j] = (encryptedNum >> (56 - j * 8)) & 0xFF;
-        }
+        std::array<uint8_t, 8> resultBlock{};
+        for (int j = 0; j < 8; ++j) resultBlock[j] = (resultNum >> (56 - j * 8)) & 0xFF;
 
-        QString encryptedBlockHex = CoreHex::bytesToHex(encryptedBlock.data(), 8);
-        encryptedHex.append(encryptedBlockHex);
+        QString resultBlockHex = CoreHex::bytesToHex(resultBlock.data(), 8);
+        outputHex.append(resultBlockHex);
 
-        steps.append(CipherStep(4 + blockCounter, QChar(),
-            QString("Блок %1: %2 → %3").arg(blockCounter).arg(blockHex).arg(encryptedBlockHex),
+        steps.append(CipherStep((encrypt ? 5 : 4) + blockCounter, QChar(),
+            QString("Блок %1: %2 → %3").arg(blockCounter).arg(blockHex).arg(resultBlockHex),
             QString("Блок %1").arg(blockCounter)));
     }
 
-    steps.append(CipherStep(5 + blockCounter, QChar(),
-        QString("Результат: %1").arg(encryptedHex.left(64) + (encryptedHex.length() > 64 ? "..." : "")),
+    // Удаление паддинга при расшифровании
+    if (!encrypt && usePadding) {
+        QByteArray decryptedBytes = CoreHex::hexToBytes(outputHex);
+        QByteArray unpadded = CoreHex::pkcs7Unpad(decryptedBytes);
+        outputHex = CoreHex::bytesToHex(unpadded);
+
+        if (unpadded.size() != decryptedBytes.size()) {
+            steps.append(CipherStep(5 + blockCounter, QChar(),
+                QString("Удаление паддинга: %1 → %2 (удалено %3 байт)")
+                    .arg(CoreHex::bytesToHex(decryptedBytes)).arg(outputHex)
+                    .arg(decryptedBytes.size() - unpadded.size()),
+                "Удаление паддинга"));
+        }
+    }
+
+    steps.append(CipherStep((encrypt ? 6 : 6) + blockCounter, QChar(),
+        QString("Результат: %1").arg(outputHex.left(64) + (outputHex.length() > 64 ? "..." : "")),
         "Завершение"));
 
-    result.result = encryptedHex;
+    result.result = outputHex;
     result.steps = steps;
-
     return result;
 }
 
-// ==================== Расшифрование (режим простой замены) ====================
-// ГОСТ Р 34.13-2015, раздел 5.1.2, формула (2)
-// Расшифрование выполняется так же, как и зашифрование, но с обратным порядком ключей
+CipherResult MagmaECBCipher::encrypt(const QString& text, const QVariantMap& params)
+{
+    return process(text, params, true);
+}
 
 CipherResult MagmaECBCipher::decrypt(const QString& text, const QVariantMap& params)
 {
-    CipherResult result;
-    result.cipherName = name();
-    result.alphabet = m_alphabet;
-    result.isNumeric = true;
-
-    QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), "Начало расшифрования Магма (режим простой замены)", "Инициализация"));
-
-    // Получаем ключ
-    QString keyHex = params.value("key", "").toString();
-    QString cleanedKey = CoreHex::normalizeHex(keyHex);
-
-    if (cleanedKey.length() != 64) {
-        result.result = QString("ОШИБКА: Ключ должен быть 64 HEX символа (256 бит). Получено: %1")
-                        .arg(cleanedKey.length());
-        return result;
-    }
-
-    steps.append(CipherStep(1, QChar(),
-        QString("Ключ: %1").arg(cleanedKey),
-        "Параметры"));
-
-    // Разворачиваем ключ
-    std::array<uint32_t, 32> roundKeys = keySchedule(cleanedKey);
-
-    steps.append(CipherStep(2, QChar(),
-        "Развернуто 32 итерационных ключа",
-        "Развертывание ключа"));
-
-    // Подготавливаем входные данные
-    QString hexData = CoreHex::normalizeHex(text);
-    if (hexData.isEmpty()) {
-        result.result = "ОШИБКА: Нет данных для расшифрования (введите HEX-строку)";
-        return result;
-    }
-
-    // Длина данных должна быть кратна 16 HEX символам (64 бита)
-    if (hexData.length() % 16 != 0) {
-        result.result = QString("ОШИБКА: Длина данных (%1 HEX символов) должна быть кратна 16 (64 бита)")
-                        .arg(hexData.length());
-        return result;
-    }
-
-    steps.append(CipherStep(3, QChar(),
-        QString("Входные данные (HEX): %1").arg(hexData.left(64) + (hexData.length() > 64 ? "..." : "")),
-        "Данные"));
-
-    // Расшифрование: используем ключи в обратном порядке (K32..K1)
-    // Создаем массив ключей в обратном порядке
-    std::array<uint32_t, 32> reverseRoundKeys;
-    for (int i = 0; i < 32; ++i) {
-        reverseRoundKeys[i] = roundKeys[31 - i];
-    }
-
-    // Расшифрование блоков
-    QString decryptedHex;
-    int blockCounter = 0;
-
-    for (int i = 0; i < hexData.length(); i += 16) {
-        QString blockHex = hexData.mid(i, 16);
-        blockCounter++;
-
-        std::array<uint8_t, 8> block{};
-        CoreHex::hexToBytes(blockHex, block.data(), 8);
-
-        // Преобразуем 8 байт в 64-битное число (big-endian)
-        uint64_t blockNum = 0;
-        for (int j = 0; j < 8; ++j) {
-            blockNum = (blockNum << 8) | block[j];
-        }
-
-        // Расшифровываем блок (используем обратный порядок ключей)
-        uint64_t decryptedNum = encryptBlock(blockNum, reverseRoundKeys);
-
-        // Преобразуем обратно в байты (big-endian)
-        std::array<uint8_t, 8> decryptedBlock{};
-        for (int j = 0; j < 8; ++j) {
-            decryptedBlock[j] = (decryptedNum >> (56 - j * 8)) & 0xFF;
-        }
-
-        QString decryptedBlockHex = CoreHex::bytesToHex(decryptedBlock.data(), 8);
-        decryptedHex.append(decryptedBlockHex);
-
-        steps.append(CipherStep(4 + blockCounter, QChar(),
-            QString("Блок %1: %2 → %3").arg(blockCounter).arg(blockHex).arg(decryptedBlockHex),
-            QString("Блок %1").arg(blockCounter)));
-    }
-
-    steps.append(CipherStep(5 + blockCounter, QChar(),
-        QString("Результат: %1").arg(decryptedHex.left(64) + (decryptedHex.length() > 64 ? "..." : "")),
-        "Завершение"));
-
-    result.result = decryptedHex;
-    result.steps = steps;
-
-    return result;
+    return process(text, params, false);
 }
 
 // ==================== MagmaECBCipherRegister Implementation ====================
@@ -359,6 +300,14 @@ MagmaECBCipherRegister::MagmaECBCipherRegister()
             keyRow->addWidget(keyEdit);
             keyRow->addStretch();
             vbox->addLayout(keyRow);
+
+            QCheckBox* paddingCheck = new QCheckBox("Добавлять PKCS#7 паддинг");
+            paddingCheck->setObjectName("usePadding");
+            paddingCheck->setChecked(true);
+            paddingCheck->setToolTip("Отключите для тестов ГОСТ (длина уже кратна 8 байтам)");
+            vbox->addWidget(paddingCheck);
+
+            widgets["usePadding"] = paddingCheck;
 
             // Информационная панель
             QLabel* infoLabel = new QLabel(

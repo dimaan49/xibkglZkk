@@ -26,15 +26,9 @@ RSASignCipher::RSASignCipher()
 
 
 // ==================== Валидация параметров ====================
-bool RSASignCipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, uint64_t p_hash, QString& errorMessage) const
+bool RSASignCipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, QString& errorMessage) const
 {
     const uint64_t ALPHABET_SIZE = 32;
-
-    // Проверка модуля хеширования
-    if (p_hash <= ALPHABET_SIZE) {
-        errorMessage = QString("Модуль хеширования p = %1 должен быть больше мощности алфавита (%2)").arg(p_hash).arg(ALPHABET_SIZE);
-        return false;
-    }
 
     if (!CoreMath::isPrime(p)) {
         errorMessage = QString("P = %1 не является простым числом").arg(p);
@@ -51,8 +45,7 @@ bool RSASignCipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, uint6
 
     uint64_t n = p * q;
     if (n <= ALPHABET_SIZE) {
-        errorMessage = QString("N = P × Q = %1 должно быть больше %2 (мощности алфавита)")
-                           .arg(n).arg(ALPHABET_SIZE);
+        errorMessage = QString("N = P × Q = %1 должно быть больше %2").arg(n).arg(ALPHABET_SIZE);
         return false;
     }
 
@@ -67,17 +60,6 @@ bool RSASignCipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, uint6
     }
 
     return true;
-}
-
-
-uint64_t RSASignCipher::encryptNumber(uint64_t m, uint64_t e, uint64_t n) const
-{
-    return CoreMath::modPow(m, e, n);
-}
-
-uint64_t RSASignCipher::decryptNumber(uint64_t c, uint64_t d, uint64_t n) const
-{
-    return CoreMath::modPow(c, d, n);
 }
 
 
@@ -99,113 +81,7 @@ uint64_t RSASignCipher::generateEStatic(uint64_t phi)
 
 
 // ==================== Шифрование с подписью ====================
-CipherResult RSASignCipher::encrypt(const QString& text, const QVariantMap& params)
-{
-    CipherResult result;
-    result.cipherName = name();
-    result.alphabet = m_alphabet;
-    result.isNumeric = false;  // результат - текст, а не числа
-
-    QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), "Начало подписания RSA", "Инициализация"));
-
-    uint64_t p = params.value("p", 0).toULongLong();
-    uint64_t q = params.value("q", 0).toULongLong();
-    uint64_t e = params.value("e", 0).toULongLong();
-
-    if (p == 0 || q == 0 || e == 0) {
-        result.result = "ОШИБКА: Для подписания необходимо ввести P, Q и E";
-        return result;
-    }
-
-    // Проверка простоты P и Q
-    if (!CoreMath::isPrime(p)) {
-        result.result = QString("ОШИБКА: P = %1 не является простым числом").arg(p);
-        return result;
-    }
-    if (!CoreMath::isPrime(q)) {
-        result.result = QString("ОШИБКА: Q = %1 не является простым числом").arg(q);
-        return result;
-    }
-    if (p == q) {
-        result.result = "ОШИБКА: P и Q должны быть разными числами";
-        return result;
-    }
-
-    uint64_t n = p * q;
-    const uint64_t ALPHABET_SIZE = 32;
-    if (n <= ALPHABET_SIZE) {
-        result.result = QString("ОШИБКА: N = P × Q = %1 должно быть больше %2")
-                           .arg(n).arg(ALPHABET_SIZE);
-        return result;
-    }
-
-    uint64_t phi = (p - 1) * (q - 1);
-    if (e <= 1 || e >= phi) {
-        result.result = QString("ОШИБКА: E должно быть в диапазоне 1 < E < φ(N) = %1").arg(phi);
-        return result;
-    }
-    if (CoreMath::gcd(e, phi) != 1) {
-        result.result = QString("ОШИБКА: E и φ(N) = %1 не являются взаимно простыми").arg(phi);
-        return result;
-    }
-
-    uint64_t d = CoreMath::modInverse(e, phi);
-
-
-    // Проверка: e и d не должны быть равны
-    if (e == d) {
-        result.result = QString("ОШИБКА: Открытый ключ E (%1) равен закрытому ключу D (%2)! "
-                                "Выберите другие простые числа P и Q или другую экспоненту E.\n"
-                                "Это происходит, когда E² ≡ 1 (mod φ(N)).")
-                            .arg(e).arg(d);
-        return result;
-    }
-
-    steps.append(CipherStep(1, QChar(),
-        QString("Параметры: P=%1, Q=%2, E=%3, N=%4, φ(N)=%5, D=%6")
-            .arg(p).arg(q).arg(e).arg(n).arg(phi).arg(d),
-        "Вычисление ключей"));
-
-    QString filteredText = CipherUtils::filterAlphabetOnly(text, m_alphabet);
-
-    if (filteredText.isEmpty()) {
-        result.result = "Нет букв для преобразования";
-        return result;
-    }
-
-    steps.append(CipherStep(2, QChar(),
-        QString("Сообщение: %1").arg(filteredText),
-        "Подготовка данных"));
-
-    // Вычисляем хеш с использованием N как модуля хеширования
-    int stepCounter = 3;
-    uint64_t hash = CoreHash::quadraticHash(filteredText, n, &steps, stepCounter);
-    stepCounter += filteredText.length() + 2;
-
-    // Вычисляем подпись
-    uint64_t signature = CoreMath::modPow(hash, d, n);
-
-    steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Подпись: S = H^D mod N = %1^%2 mod %3 = %4")
-            .arg(hash).arg(d).arg(n).arg(signature),
-        "Создание подписи"));
-
-    // Формируем результат: само сообщение и подпись через разделитель
-    QString finalResult = filteredText + " | " + QString::number(signature);
-
-    steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Результат: %1 | %2").arg(filteredText).arg(signature),
-        "Завершение"));
-
-    result.result = finalResult;
-    result.steps = steps;
-
-    return result;
-}
-
-// ==================== Расшифрование с проверкой подписи ====================
-CipherResult RSASignCipher::decrypt(const QString& text, const QVariantMap& params)
+CipherResult RSASignCipher::process(const QString& text, const QVariantMap& params, bool encrypt)
 {
     CipherResult result;
     result.cipherName = name();
@@ -213,78 +89,133 @@ CipherResult RSASignCipher::decrypt(const QString& text, const QVariantMap& para
     result.isNumeric = false;
 
     QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), "Начало проверки подписи RSA", "Инициализация"));
+    steps.append(CipherStep(0, QChar(),
+        QString("Начало %1").arg(encrypt ? "подписания RSA" : "проверки подписи RSA"),
+        "Инициализация"));
 
-    uint64_t n = params.value("n", 0).toULongLong();
-    uint64_t e = params.value("e", 0).toULongLong();
+    if (encrypt) {
+        // === Подписание ===
+        uint64_t p = params.value("p", 0).toULongLong();
+        uint64_t q = params.value("q", 0).toULongLong();
+        uint64_t e = params.value("e", 0).toULongLong();
 
-    if (n == 0) {
-        result.result = "ОШИБКА: Не указан модуль N";
-        return result;
-    }
-    if (e == 0) {
-        result.result = "ОШИБКА: Не указан открытый ключ E для проверки подписи";
-        return result;
-    }
+        if (p == 0 || q == 0 || e == 0) {
+            result.result = "ОШИБКА: Для подписания необходимо ввести P, Q и E";
+            return result;
+        }
 
-    steps.append(CipherStep(1, QChar(),
-        QString("Параметры: N=%1, E=%2").arg(n).arg(e),
-        "Проверка параметров"));
+        QString validationError;
+        if (!validateParameters(p, q, e, validationError)) {
+            result.result = "ОШИБКА: " + validationError;
+            return result;
+        }
 
-    // Разбираем входные данные: сообщение | подпись
-    QString inputText = text.trimmed();
-    int separatorPos = inputText.lastIndexOf("|");
+        uint64_t n = p * q;
+        uint64_t phi = (p - 1) * (q - 1);
+        uint64_t d = CoreMath::modInverse(e, phi);
 
-    if (separatorPos == -1) {
-        result.result = "ОШИБКА: Неверный формат. Ожидается: 'сообщение | подпись'";
-        return result;
-    }
+        if (e == d) {
+            result.result = "ОШИБКА: Открытый ключ E равен закрытому ключу D!";
+            return result;
+        }
 
-    QString message = inputText.left(separatorPos).trimmed();
-    QString signaturePart = inputText.mid(separatorPos + 1).trimmed();
+        steps.append(CipherStep(1, QChar(),
+            QString("P=%1, Q=%2, E=%3, N=%4, φ(N)=%5, D=%6").arg(p).arg(q).arg(e).arg(n).arg(phi).arg(d),
+            "Вычисление ключей"));
 
-    bool sigOk;
-    uint64_t signature = signaturePart.toULongLong(&sigOk);
-    if (!sigOk) {
-        result.result = "ОШИБКА: Не удалось распознать подпись: " + signaturePart;
-        return result;
-    }
+        QString filteredText = CipherUtils::filterAlphabetOnly(text, m_alphabet);
+        if (filteredText.isEmpty()) {
+            result.result = "Нет букв для преобразования";
+            return result;
+        }
 
-    steps.append(CipherStep(2, QChar(),
-        QString("Получено сообщение: %1").arg(message),
-        "Извлечение сообщения"));
+        steps.append(CipherStep(2, QChar(),
+            QString("Сообщение: %1").arg(filteredText), "Подготовка данных"));
 
-    steps.append(CipherStep(3, QChar(),
-        QString("Получена подпись: %1").arg(signature),
-        "Извлечение подписи"));
+        int stepCounter = 3;
+        uint64_t hash = CoreHash::quadraticHash(filteredText, n, &steps, stepCounter);
+        stepCounter += filteredText.length() + 2;
 
-    // Вычисляем хеш сообщения
-    int stepCounter = 4;
-    uint64_t computedHash = CoreHash::quadraticHash(message, n, &steps, stepCounter);
-    stepCounter += message.length() + 2;
+        uint64_t signature = CoreMath::modPow(hash, d, n);
 
-    // Расшифровываем подпись (получаем хеш)
-    uint64_t decryptedHash = CoreMath::modPow(signature, e, n);
-    steps.append(CipherStep(stepCounter++, QChar(),
-        QString("Расшифрованная подпись: H2 = S^E mod N = %1^%2 mod %3 = %4")
-            .arg(signature).arg(e).arg(n).arg(decryptedHash),
-        "Расшифрование подписи"));
-
-    // Проверка
-    if (computedHash == decryptedHash) {
         steps.append(CipherStep(stepCounter++, QChar(),
-            QString("✓ Подпись ВЕРНА! H1 (%1) == H2 (%2)").arg(computedHash).arg(decryptedHash),
-            "Проверка подписи - УСПЕШНО"));
-        result.result = QString("✓ ПОДПИСЬ ВЕРНА!\n\nСообщение: %1").arg(message);
+            QString("Подпись: S = H^D mod N = %1^%2 mod %3 = %4")
+                .arg(hash).arg(d).arg(n).arg(signature),
+            "Создание подписи"));
+
+        result.result = filteredText + " | " + QString::number(signature);
+
     } else {
+        // === Проверка подписи ===
+        uint64_t n = params.value("n", 0).toULongLong();
+        uint64_t e = params.value("e", 0).toULongLong();
+
+        if (n == 0 || e == 0) {
+            result.result = "ОШИБКА: Не указаны N и E для проверки подписи";
+            return result;
+        }
+
+        steps.append(CipherStep(1, QChar(),
+            QString("N=%1, E=%2").arg(n).arg(e), "Параметры"));
+
+        QString inputText = text.trimmed();
+        int separatorPos = inputText.lastIndexOf("|");
+
+        if (separatorPos == -1) {
+            result.result = "ОШИБКА: Неверный формат. Ожидается: 'сообщение | подпись'";
+            return result;
+        }
+
+        QString message = inputText.left(separatorPos).trimmed();
+        QString signaturePart = inputText.mid(separatorPos + 1).trimmed();
+
+        bool sigOk;
+        uint64_t signature = signaturePart.toULongLong(&sigOk);
+        if (!sigOk) {
+            result.result = "ОШИБКА: Не удалось распознать подпись: " + signaturePart;
+            return result;
+        }
+
+        steps.append(CipherStep(2, QChar(),
+            QString("Сообщение: %1, Подпись: %2").arg(message).arg(signature),
+            "Извлечение данных"));
+
+        int stepCounter = 3;
+        uint64_t computedHash = CoreHash::quadraticHash(message, n, &steps, stepCounter);
+        stepCounter += message.length() + 2;
+
+        uint64_t decryptedHash = CoreMath::modPow(signature, e, n);
+
         steps.append(CipherStep(stepCounter++, QChar(),
-            QString("✗ Подпись НЕВЕРНА! H1 = %1 != H2 = %2").arg(computedHash).arg(decryptedHash),
-            "Проверка подписи - ОШИБКА"));
-        result.result = QString("ОШИБКА ПОДПИСИ: H1 = %1 != H2 = %2").arg(computedHash).arg(decryptedHash);
+            QString("Расшифрованная подпись: H2 = S^E mod N = %1^%2 mod %3 = %4")
+                .arg(signature).arg(e).arg(n).arg(decryptedHash),
+            "Расшифрование подписи"));
+
+        if (computedHash == decryptedHash) {
+            steps.append(CipherStep(stepCounter++, QChar(),
+                QString("✓ Подпись ВЕРНА! H1 = H2 = %1").arg(computedHash),
+                "Проверка подписи — УСПЕШНО"));
+            result.result = QString("✓ ПОДПИСЬ ВЕРНА!\n\nСообщение: %1").arg(message);
+        } else {
+            steps.append(CipherStep(stepCounter++, QChar(),
+                QString("✗ Подпись НЕВЕРНА! H1=%1 ≠ H2=%2").arg(computedHash).arg(decryptedHash),
+                "Проверка подписи — ОШИБКА"));
+            result.result = QString("ОШИБКА ПОДПИСИ: H1=%1 ≠ H2=%2").arg(computedHash).arg(decryptedHash);
+        }
     }
 
     result.steps = steps;
     return result;
+}
+
+CipherResult RSASignCipher::encrypt(const QString& text, const QVariantMap& params)
+{
+    return process(text, params, true);
+}
+
+CipherResult RSASignCipher::decrypt(const QString& text, const QVariantMap& params)
+{
+    return process(text, params, false);
 }
 
 // ==================== RSASignCipherRegister Implementation ====================
@@ -307,106 +238,76 @@ RSASignCipherRegister::RSASignCipherRegister()
             mainLayout->setSpacing(8);
             mainLayout->setContentsMargins(0, 5, 0, 5);
 
-            // Заголовок для ПОДПИСАНИЯ
-            QLabel* signTitle = new QLabel("Для ПОДПИСАНИЯ (создание подписи):");
-            signTitle->setStyleSheet("font-weight: bold; color: #2c3e50;");
-            mainLayout->addWidget(signTitle);
-
-            // Сетка для P, Q, E
-            QGridLayout* gridLayout = new QGridLayout();
-            gridLayout->setSpacing(8);
-
-            // Строка 0: P и Q
-            QLabel* pLabel = new QLabel("P (простое):");
-            pLabel->setFixedWidth(100);
+            // P
+            QHBoxLayout* pRow = new QHBoxLayout();
+            QLabel* pLabel = new QLabel("P (простое число):");
+            pLabel->setFixedWidth(130);
             NumberLineEdit* pEdit = new NumberLineEdit();
-            pEdit->setPlaceholderText("61");
+            pEdit->setObjectName("p");
+            pEdit->setPlaceholderText("Простое число (например, 61)");
+            pRow->addWidget(pLabel);
+            pRow->addWidget(pEdit);
+            pRow->addStretch();
+            mainLayout->addLayout(pRow);
 
-            QLabel* qLabel = new QLabel("Q (простое):");
-            qLabel->setFixedWidth(100);
+            // Q
+            QHBoxLayout* qRow = new QHBoxLayout();
+            QLabel* qLabel = new QLabel("Q (простое число):");
+            qLabel->setFixedWidth(130);
             NumberLineEdit* qEdit = new NumberLineEdit();
             qEdit->setObjectName("q");
-            qEdit->setPlaceholderText("53");
+            qEdit->setPlaceholderText("Простое число (например, 53)");
+            qRow->addWidget(qLabel);
+            qRow->addWidget(qEdit);
+            qRow->addStretch();
+            mainLayout->addLayout(qRow);
 
-            gridLayout->addWidget(pLabel, 0, 0);
-            gridLayout->addWidget(pEdit, 0, 1);
-            gridLayout->addWidget(qLabel, 0, 2);
-            gridLayout->addWidget(qEdit, 0, 3);
-
-            // Строка 1: E
-            QLabel* eLabel = new QLabel("E (открытый):");
-            eLabel->setFixedWidth(100);
+            // E
+            QHBoxLayout* eRow = new QHBoxLayout();
+            QLabel* eLabel = new QLabel("E (открытый ключ):");
+            eLabel->setFixedWidth(130);
             NumberLineEdit* eEdit = new NumberLineEdit();
             eEdit->setObjectName("e");
-            eEdit->setPlaceholderText("17");
-            eEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("^[0-9]{1,20}$"), eEdit));
+            eEdit->setPlaceholderText("Взаимно простое с φ(N) (например, 17)");
+            eRow->addWidget(eLabel);
+            eRow->addWidget(eEdit);
+            eRow->addStretch();
+            mainLayout->addLayout(eRow);
 
-            gridLayout->addWidget(eLabel, 1, 0);
-            gridLayout->addWidget(eEdit, 1, 1);
+            QFrame* line = new QFrame();
+            line->setFrameShape(QFrame::HLine);
+            mainLayout->addWidget(line);
 
-            mainLayout->addLayout(gridLayout);
-
-            // Разделитель
-            QFrame* line1 = new QFrame();
-            line1->setFrameShape(QFrame::HLine);
-            mainLayout->addWidget(line1);
-
-            // Заголовок для ПРОВЕРКИ
-            QLabel* verifyTitle = new QLabel("Для ПРОВЕРКИ подписи:");
-            verifyTitle->setStyleSheet("font-weight: bold; color: #2c3e50; margin-top: 5px;");
-            mainLayout->addWidget(verifyTitle);
-
-            // Сетка для N и E
-            QGridLayout* gridLayout2 = new QGridLayout();
-            gridLayout2->setSpacing(8);
-
-            // N (модуль) - вычисляется автоматически из P и Q
-            QLabel* nLabel = new QLabel("N = P × Q (модуль):");
-            nLabel->setFixedWidth(120);
+            // N
+            QHBoxLayout* nRow = new QHBoxLayout();
+            QLabel* nLabel = new QLabel("N (модуль):");
+            nLabel->setFixedWidth(130);
             NumberLineEdit* nEdit = new NumberLineEdit();
             nEdit->setObjectName("n");
-            nEdit->setReadOnly(true);
-            nEdit->setPlaceholderText("Вычисляется автоматически");
-            nEdit->setStyleSheet("NumberLineEdit { background-color: #f0f0f0; }");
+            nEdit->setPlaceholderText("N = P × Q");
+            nRow->addWidget(nLabel);
+            nRow->addWidget(nEdit);
+            nRow->addStretch();
+            mainLayout->addLayout(nRow);
 
-            // E (открытая экспонента) - для проверки
-            QLabel* eCheckLabel = new QLabel("E (открытый ключ):");
-            eCheckLabel->setFixedWidth(100);
-            NumberLineEdit* eCheckEdit = new NumberLineEdit();
-            eCheckEdit->setObjectName("e");
-            eCheckEdit->setPlaceholderText("Та же E");
-
-            gridLayout2->addWidget(nLabel, 0, 0);
-            gridLayout2->addWidget(nEdit, 0, 1);
-            gridLayout2->addWidget(eCheckLabel, 0, 2);
-            gridLayout2->addWidget(eCheckEdit, 0, 3);
-
-            mainLayout->addLayout(gridLayout2);
-
-            // Разделитель
-            QFrame* line2 = new QFrame();
-            line2->setFrameShape(QFrame::HLine);
-            mainLayout->addWidget(line2);
-
-            // Информация о хешировании
-            QLabel* infoTitle = new QLabel("📌 Примечание:");
-            infoTitle->setStyleSheet("font-weight: bold; color: #2c3e50; margin-top: 5px;");
-            mainLayout->addWidget(infoTitle);
-
-            QLabel* infoLabel = new QLabel(
-                "Хеш-функция: hᵢ = (hᵢ₋₁ + Mᵢ)² mod N (N = P × Q)\n"
-                "Подпись: S = H^D mod N\n"
-                "Проверка: H = S^E mod N"
-            );
-            infoLabel->setStyleSheet("color: #666; font-size: 10px; padding: 5px; background-color: #f5f5f5; border-radius: 3px;");
-            infoLabel->setWordWrap(true);
-            mainLayout->addWidget(infoLabel);
-
-            // Кнопка генерации ключей
-            QPushButton* generateButton = new QPushButton("🎲 Сгенерировать ключи (16 бит)");
+            // Кнопка
+            QPushButton* generateButton = new QPushButton("Сгенерировать ключи (16 бит)");
             generateButton->setObjectName("generateButton");
             generateButton->setCursor(Qt::PointingHandCursor);
             mainLayout->addWidget(generateButton);
+
+            // Инфо
+            QLabel* infoLabel = new QLabel(
+                "RSA с цифровой подписью:\n"
+                "• N = P × Q\n"
+                "• φ(N) = (P-1) × (Q-1)\n"
+                "• D = E⁻¹ mod φ(N) (закрытый ключ, вычисляется автоматически)\n"
+                "• Подпись: S = H^D mod N (используются P, Q, E)\n"
+                "• Проверка: H = S^E mod N (используются N, E)"
+            );
+            infoLabel->setStyleSheet("color: #666; font-style: italic; padding: 5px; background-color: #f5f5f5; border-radius: 3px;");
+            infoLabel->setWordWrap(true);
+            mainLayout->addWidget(infoLabel);
 
             layout->addWidget(paramsContainer);
 
@@ -416,41 +317,22 @@ RSASignCipherRegister::RSASignCipherRegister()
             widgets["n"] = nEdit;
             widgets["generateButton"] = generateButton;
 
-            // Функция обновления N
-            auto updateN = [pEdit, qEdit, nEdit]() {
-                uint64_t p = pEdit->text().toULongLong();
-                uint64_t q = qEdit->text().toULongLong();
-                if (p > 0 && q > 0) {
-                    uint64_t n = p * q;
-                    nEdit->setText(QString::number(n));
-                } else {
-                    nEdit->clear();
-                }
-            };
-
-            QObject::connect(pEdit, &NumberLineEdit::textChanged, [updateN](const QString&) { updateN(); });
-            QObject::connect(qEdit, &NumberLineEdit::textChanged, [updateN](const QString&) { updateN(); });
-
-            // Генерация ключей
             QObject::connect(generateButton, &QPushButton::clicked, [pEdit, qEdit, eEdit, nEdit]() {
                 uint64_t p = CoreMath::generatePrime(16);
                 uint64_t q = CoreMath::generatePrime(16);
                 uint64_t phi = (p - 1) * (q - 1);
                 uint64_t e = RSASignCipher::generateEStatic(phi);
                 uint64_t n = p * q;
-
-                // Вычисляем D через временный объект
                 uint64_t d = CoreMath::modInverse(e, phi);
 
-                pEdit->setText(QString::number(p));
-                qEdit->setText(QString::number(q));
-                eEdit->setText(QString::number(e));
-                nEdit->setText(QString::number(n));
+                pEdit->setValue(p);
+                qEdit->setValue(q);
+                eEdit->setValue(e);
+                nEdit->setValue(n);
 
                 QMessageBox::information(nullptr, "Ключи сгенерированы",
-                    QString("P = %1\nQ = %2\nN = %3\nE = %4\n\n"
-                            "D = %5")
-                        .arg(p).arg(q).arg(n).arg(e).arg(d));
+                    QString("P = %1\nQ = %2\nN = %3\nE = %4 (открытый)\nD = %5 (закрытый, сохраните)\n\nφ(N) = %6")
+                        .arg(p).arg(q).arg(n).arg(e).arg(d).arg(phi));
             });
         }
     );

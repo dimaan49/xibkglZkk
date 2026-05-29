@@ -33,7 +33,8 @@ private:
     const QString m_alphabet = CipherUtils::RUSSIAN_ALPHABET_32;
 
     // Проверка параметров (с учетом p_hash)
-    bool validateParameters(uint64_t p, uint64_t q, uint64_t e, uint64_t p_hash, QString& errorMessage) const;
+    CipherResult process(const QString& text, const QVariantMap& params, bool encrypt);
+    bool validateParameters(uint64_t p, uint64_t q, uint64_t e, QString& errorMessage) const;
 
 
     // Основные криптографические операции

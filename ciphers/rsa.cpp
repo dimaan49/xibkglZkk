@@ -71,19 +71,6 @@ bool RSACipher::validateParameters(uint64_t p, uint64_t q, uint64_t e, QString& 
 
 
 
-uint64_t RSACipher::encryptNumber(uint64_t m, uint64_t e, uint64_t n) const
-{
-    return CoreMath::modPow(m, e, n);
-}
-
-uint64_t RSACipher::decryptNumber(uint64_t c, uint64_t d, uint64_t n) const
-{
-    return CoreMath::modPow(c, d, n);
-}
-
-
-
-
 uint64_t RSACipher::generateEStatic(uint64_t phi)
 {
     std::random_device rd;
@@ -100,228 +87,126 @@ uint64_t RSACipher::generateEStatic(uint64_t phi)
 
 
 
-// Шифрование
+CipherResult RSACipher::process(const QString& text, const QVariantMap& params, bool encrypt)
+{
+    CipherResult result;
+    result.cipherName = name();
+    result.alphabet = m_alphabet;
+    result.isNumeric = encrypt;
+
+    QVector<CipherStep> steps;
+    steps.append(CipherStep(0, QChar(),
+        QString("Начало %1 RSA").arg(encrypt ? "шифрования" : "расшифрования"),
+        "Инициализация"));
+
+    if (encrypt) {
+        // === Шифрование ===
+        uint64_t p = params.value("p", 0).toULongLong();
+        uint64_t q = params.value("q", 0).toULongLong();
+        uint64_t e = params.value("e", 0).toULongLong();
+
+        if (p == 0 || q == 0 || e == 0) {
+            result.result = "ОШИБКА: Для шифрования необходимо ввести P, Q и E";
+            return result;
+        }
+
+        QString validationError;
+        if (!validateParameters(p, q, e, validationError)) {
+            result.result = "ОШИБКА: " + validationError;
+            return result;
+        }
+
+        uint64_t n = p * q;
+        uint64_t phi = (p - 1) * (q - 1);
+        uint64_t d = CoreMath::modInverse(e, phi);
+
+        if (e == d) {
+            result.result = "ОШИБКА: Открытый ключ E равен закрытому ключу D!";
+            return result;
+        }
+
+        steps.append(CipherStep(1, QChar(),
+            QString("P=%1, Q=%2, E=%3, N=%4, D=%5").arg(p).arg(q).arg(e).arg(n).arg(d),
+            "Параметры"));
+
+        QString filteredText = CipherUtils::filterAlphabetOnly(text, m_alphabet);
+        if (filteredText.isEmpty()) {
+            result.result = "Нет букв для преобразования";
+            return result;
+        }
+
+        QVector<uint64_t> numbers = CipherUtils::textToNumbers<uint64_t>(filteredText, m_alphabet);
+
+        QStringList encryptedParts;
+        for (int i = 0; i < numbers.size(); ++i) {
+            uint64_t enc = CoreMath::modPow(numbers[i], e, n);
+            encryptedParts.append(QString::number(enc));
+
+            steps.append(CipherStep(2 + i, QChar(),
+                QString("'%1' = %2 → %2^%3 mod %4 = %5")
+                    .arg(filteredText[i]).arg(numbers[i]).arg(e).arg(n).arg(enc),
+                QString("Шаг %1").arg(i + 1)));
+        }
+
+        result.result = encryptedParts.join(" ");
+
+    } else {
+        // === Расшифрование ===
+        uint64_t n = params.value("n", 0).toULongLong();
+        uint64_t d = params.value("d", 0).toULongLong();
+
+        if (n == 0 || d == 0) {
+            result.result = "ОШИБКА: Не указаны N и D";
+            return result;
+        }
+
+        if (n == d) {
+            result.result = "ОШИБКА: N не должен быть равен D!";
+            return result;
+        }
+
+        steps.append(CipherStep(1, QChar(),
+            QString("N=%1, D=%2").arg(n).arg(d), "Параметры"));
+
+        QString cleaned = text;
+        cleaned.replace(',', ' ');
+        QStringList parts = cleaned.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+
+        QVector<uint64_t> encryptedNumbers;
+        for (const QString& part : parts) {
+            bool ok;
+            uint64_t num = part.toULongLong(&ok);
+            if (ok) encryptedNumbers.append(num);
+        }
+
+        QVector<uint64_t> decryptedNumbers;
+        for (int i = 0; i < encryptedNumbers.size(); ++i) {
+            uint64_t dec = CoreMath::modPow(encryptedNumbers[i], d, n);
+            decryptedNumbers.append(dec);
+
+            steps.append(CipherStep(2 + i, QChar(),
+                QString("%1^%2 mod %3 = %4")
+                    .arg(encryptedNumbers[i]).arg(d).arg(n).arg(dec),
+                QString("Шаг %1").arg(i + 1)));
+        }
+
+        result.result = CipherUtils::numbersToText(decryptedNumbers, m_alphabet);
+    }
+
+    result.steps = steps;
+    return result;
+}
+
+
 CipherResult RSACipher::encrypt(const QString& text, const QVariantMap& params)
 {
-    CipherResult result;
-    result.cipherName = name();
-    result.alphabet = m_alphabet;
-    result.isNumeric = true;
-
-    QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), "Начало шифрования RSA", "Инициализация"));
-
-    // Получаем параметры
-    uint64_t p = params.value("p", 0).toULongLong();
-    uint64_t q = params.value("q", 0).toULongLong();
-    uint64_t e = params.value("e", 0).toULongLong();
-
-    if (p == 0 || q == 0 || e == 0) {
-        result.result = "ОШИБКА: Для шифрования необходимо ввести P, Q и E";
-        return result;
-    }
-
-    // Проверяем параметры
-    QString validationError;
-    if (!validateParameters(p, q, e, validationError)) {
-        result.result = "ОШИБКА: " + validationError;
-        return result;
-    }
-
-    steps.append(CipherStep(1, QChar(),
-        QString("Параметры: P=%1, Q=%2, E=%3").arg(p).arg(q).arg(e),
-        "Проверка параметров"));
-
-    uint64_t n = p * q;
-    uint64_t phi = (p - 1) * (q - 1);
-    uint64_t d = CoreMath::modInverse(e, phi);
-
-    if (e == d) {
-         result.result = "ОШИБКА: Открытый ключ E равен закрытому ключу D! "
-                         "Выберите другие простые числа P и Q или другую экспоненту E.\n"
-                         "Это происходит, когда E² ≡ 1 (mod φ(N)).";
-         return result;
-     }
-
-
-    const uint64_t ALPHABET_SIZE = 32;
-    if (n <= ALPHABET_SIZE) {
-        result.result = QString("ОШИБКА: N = P × Q = %1 должно быть больше мощности алфавита (%2). "
-                                "Увеличьте P и Q или выберите другие простые числа.")
-                            .arg(n).arg(ALPHABET_SIZE);
-        return result;
-    }
-
-    steps.append(CipherStep(2, QChar(),
-        QString("N=%1, φ(N)=%2, D=%3").arg(n).arg(phi).arg(d),
-        "Вычисление ключей"));
-
-    // Фильтруем текст
-    QString filteredText = CipherUtils::filterAlphabetOnly(text, m_alphabet);
-
-    if (filteredText.isEmpty()) {
-        result.result = "Нет букв для преобразования";
-        return result;
-    }
-
-    steps.append(CipherStep(3, QChar(),
-        QString("Входной текст: %1").arg(filteredText),
-        "Подготовка данных"));
-
-    // Преобразуем текст в числа (каждая буква -> число 0-31)
-    QVector<uint64_t> numbers = CipherUtils::textToNumbers<uint64_t>(filteredText, m_alphabet);
-
-    // Показываем оригинальные числа
-    QString numbersStr;
-    for (int i = 0; i < numbers.size() && i < 20; ++i) {
-        numbersStr += QString("%1(%2) ").arg(filteredText[i]).arg(numbers[i]);
-    }
-    if (numbers.size() > 20) numbersStr += "...";
-
-    steps.append(CipherStep(4, QChar(),
-        QString("Преобразовано в числа 0-31: %1").arg(numbersStr),
-        "Преобразование текста"));
-
-    // Шифруем каждое число
-    QVector<uint64_t> encryptedNumbers;
-    QVector<QString> stepDetails;
-
-    for (int i = 0; i < numbers.size(); ++i) {
-        uint64_t encrypted = encryptNumber(numbers[i], e, n);
-        encryptedNumbers.append(encrypted);
-        stepDetails.append(QString("Буква %1: '%2' = %3 → %3^%4 mod %5 = %6")
-            .arg(i + 1)
-            .arg(filteredText[i])
-            .arg(numbers[i])
-            .arg(e)
-            .arg(n)
-            .arg(encrypted));
-    }
-
-    // Формируем результат: просто склеиваем числа через пробел
-    // Это самый простой и читаемый способ
-    QString resultNumbers;
-    for (int i = 0; i < encryptedNumbers.size(); ++i) {
-        if (i > 0) resultNumbers += " ";
-        resultNumbers += QString::number(encryptedNumbers[i]);
-    }
-
-    steps.append(CipherStep(5, QChar(),
-        QString("Результат: %1").arg(resultNumbers.left(100) + (resultNumbers.length() > 100 ? "..." : "")),
-        "Завершение"));
-
-    // Добавляем детальные шаги (первые 10)
-    for (int i = 0; i < stepDetails.size() && i < 10; ++i) {
-        steps.append(CipherStep(6 + i, QChar(), stepDetails[i], QString("Шаг %1").arg(i + 1)));
-    }
-
-    if (stepDetails.size() > 10) {
-        steps.append(CipherStep(6 + stepDetails.size(), QChar(),
-            QString("... и еще %1 шагов").arg(stepDetails.size() - 10),
-            "Пропущенные шаги"));
-    }
-
-    result.result = resultNumbers;  // Числа через пробел
-    result.steps = steps;
-
-    return result;
+    return process(text, params, true);
 }
 
-// расшифрование
 CipherResult RSACipher::decrypt(const QString& text, const QVariantMap& params)
 {
-    CipherResult result;
-    result.cipherName = name();
-    result.alphabet = m_alphabet;
-    result.isNumeric = false;
-
-    QVector<CipherStep> steps;
-    steps.append(CipherStep(0, QChar(), "Начало расшифрования RSA", "Инициализация"));
-
-    // Получаем параметры - для расшифрования нужны N и D
-    uint64_t n = params.value("n", 0).toULongLong();
-    uint64_t d = params.value("d", 0).toULongLong();
-
-    // Проверяем наличие ключей
-    if (n == 0 || d == 0) {
-        result.result = "ОШИБКА: Не указаны закрытый ключ D и модуль N";
-        return result;
-    }
-
-    steps.append(CipherStep(1, QChar(),
-        QString("Параметры: N=%1, D=%2").arg(n).arg(d),
-        "Проверка параметров"));
-
-    // Разбираем входные числа (разделены пробелами или запятыми)
-    QString inputText = text.trimmed();
-    inputText.replace(',', ' ');
-    inputText.replace('\n', ' ');
-
-    QStringList parts = inputText.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-
-    QVector<uint64_t> encryptedNumbers;
-    for (const QString& part : parts) {
-        bool ok;
-        uint64_t num = part.toULongLong(&ok);
-        if (ok) {
-            encryptedNumbers.append(num);
-        }
-    }
-
-    steps.append(CipherStep(2, QChar(),
-        QString("Получено %1 чисел для расшифрования").arg(encryptedNumbers.size()),
-        "Подготовка данных"));
-
-    // Расшифровываем каждое число
-    QVector<uint64_t> decryptedNumbers;
-    QVector<QString> stepDetails;
-
-    for (int i = 0; i < encryptedNumbers.size(); ++i) {
-        uint64_t decrypted = decryptNumber(encryptedNumbers[i], d, n);
-        decryptedNumbers.append(decrypted);
-        stepDetails.append(QString("Число %1: %2^%3 mod %4 = %5")
-            .arg(i + 1)
-            .arg(encryptedNumbers[i])
-            .arg(d)
-            .arg(n)
-            .arg(decrypted));
-    }
-
-    // Показываем расшифрованные числа
-    QString decryptedStr;
-    for (int i = 0; i < decryptedNumbers.size() && i < 20; ++i) {
-        decryptedStr += QString::number(decryptedNumbers[i]) + " ";
-    }
-    if (decryptedNumbers.size() > 20) decryptedStr += "...";
-
-    steps.append(CipherStep(3, QChar(),
-        QString("Расшифрованные числа: %1").arg(decryptedStr),
-        "Расшифрованные числа"));
-
-    // Преобразуем числа обратно в текст
-    QString resultText = CipherUtils::numbersToText(decryptedNumbers, m_alphabet);
-
-    steps.append(CipherStep(4, QChar(),
-        QString("Результат: %1").arg(resultText),
-        "Завершение"));
-
-    // Добавляем детальные шаги (первые 10)
-    for (int i = 0; i < stepDetails.size() && i < 10; ++i) {
-        steps.append(CipherStep(5 + i, QChar(), stepDetails[i], QString("Шаг %1").arg(i + 1)));
-    }
-
-    if (stepDetails.size() > 10) {
-        steps.append(CipherStep(5 + stepDetails.size(), QChar(),
-            QString("... и еще %1 шагов").arg(stepDetails.size() - 10),
-            "Пропущенные шаги"));
-    }
-
-    result.result = resultText;
-    result.steps = steps;
-
-    return result;
+    return process(text, params, false);
 }
-
 // ==================== RSACipherRegister Implementation ====================
 
 // В регистраторе RSA (в конце rsa.cpp)
